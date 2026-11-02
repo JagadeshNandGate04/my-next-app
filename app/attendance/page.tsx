@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -28,6 +27,14 @@ import {
   CalendarDays,
   Clock,
   Users,
+  // --- icons added only for the new roster table design ---
+  ListFilter,
+  CheckCircle2,
+  TimerOff,
+  Flag,
+  Pencil,
+  ClipboardCheck,
+  PlusCircle,
 } from "lucide-react";
 
 import Sidebar from "../components/SideBar";
@@ -135,6 +142,98 @@ const statusStyles: Record<string, string> = {
   NO_RECORD: "bg-slate-50 text-slate-500 border-slate-200",
   UPCOMING: "bg-blue-50 text-blue-700 border-blue-200",
 };
+
+// --------------------------------------------------
+// DISPLAY-ONLY HELPERS (roster table design)
+// These only format/colour what the API already returns.
+// --------------------------------------------------
+
+const parseClock = (value: string | null) => {
+  if (!value) return null;
+
+  const raw = value.includes("T")
+    ? value.split("T")[1]
+    : value.includes(" ")
+      ? value.split(" ")[1]
+      : value;
+
+  if (!raw) return null;
+
+  const [hh, mm = "00", ss = "00"] = raw.slice(0, 8).split(":");
+  const hour = Number(hh);
+
+  if (Number.isNaN(hour)) return null;
+
+  return {
+    hour12: String(hour % 12 || 12).padStart(2, "0"),
+    mm,
+    ss: ss.slice(0, 2),
+    meridiem: hour >= 12 ? "PM" : "AM",
+  };
+};
+
+const formatClock12 = (value: string | null) => {
+  const clock = parseClock(value);
+  return clock
+    ? `${clock.hour12}:${clock.mm}:${clock.ss} ${clock.meridiem}`
+    : null;
+};
+
+const formatShort12 = (value: string | null) => {
+  const clock = parseClock(value);
+  return clock ? `${clock.hour12}:${clock.mm} ${clock.meridiem}` : null;
+};
+
+// Avatar gradient palette – picked per employee so each person keeps the same colour
+const avatarGradients = [
+  "from-cyan-400 to-blue-600",
+  "from-amber-400 to-orange-600",
+  "from-indigo-500 to-violet-600",
+  "from-rose-500 to-pink-600",
+  "from-emerald-400 to-teal-600",
+];
+
+const getAvatarGradient = (userId: number | string) => {
+  const index = Math.abs(Number(userId)) % avatarGradients.length;
+  return avatarGradients[Number.isNaN(index) ? 0 : index];
+};
+
+function TimePill({
+  value,
+  tone,
+}: {
+  value: string | null;
+  tone: "late" | "live" | "plain";
+}) {
+  if (!value) {
+    return (
+      <span className="inline-flex items-center rounded-full bg-slate-100 px-4 py-2.5 font-mono text-sm font-bold text-slate-400 whitespace-nowrap">
+        --:--:--
+      </span>
+    );
+  }
+
+  const wrapper =
+    tone === "late"
+      ? "bg-amber-50 border-amber-300 text-amber-900"
+      : "bg-slate-100 border-slate-200 text-slate-900";
+
+  const icon =
+    tone === "late"
+      ? "text-amber-600"
+      : tone === "live"
+        ? "text-blue-600"
+        : "text-slate-500";
+
+  return (
+    <span
+      className={`inline-flex items-center gap-2 rounded-full border px-4 py-2.5 font-mono text-sm font-bold whitespace-nowrap ${wrapper}`}
+    >
+      <Clock className={`w-4 h-4 shrink-0 ${icon}`} />
+      {formatClock12(value) ?? formatPunchTime(value)}
+    </span>
+  );
+}
 
 export default function AdminAttendanceOperationsPage() {
   const dispatch = useDispatch<AppDispatch>();
@@ -782,11 +881,12 @@ export default function AdminAttendanceOperationsPage() {
 
               {/* DAILY ROSTER */}
 
-              <div className="bg-white border border-[#d5dbe1] rounded-3xl shadow-sm overflow-hidden">
-                <div className="p-5 lg:p-6 border-b border-[#e2e8f0] flex flex-col xl:flex-row justify-between gap-4">
-                  <div className="flex flex-wrap items-center gap-2">
+              <div className="bg-white border border-[#e6edf4] rounded-[28px] shadow-sm overflow-hidden">
+                {/* ---------- TOOLBAR (filter pills + search + export) ---------- */}
+                <div className="p-5 lg:p-6 bg-[#f7f9fd] border-b border-[#e8eef5] flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                  <div className="flex flex-wrap items-center gap-2.5">
                     {[
-                      { key: "ALL", label: `All (${totalEmployees})` },
+                      { key: "ALL", label: `All Roster (${totalEmployees})` },
                       { key: "LIVE_IN", label: `Live In (${stats.liveIn})` },
                       { key: "LATE", label: `Late (${stats.late})` },
                       {
@@ -799,10 +899,10 @@ export default function AdminAttendanceOperationsPage() {
                         key={tab.key}
                         type="button"
                         onClick={() => setFilterRoster(tab.key)}
-                        className={`px-4 py-2.5 rounded-full text-sm font-bold transition-all ${
+                        className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
                           filterRoster === tab.key
-                            ? "bg-[#1b64da] text-white"
-                            : "bg-[#eef4fa] text-[#475569] hover:bg-[#e2e8f0]"
+                            ? "bg-[#0a4ec4] text-white shadow-sm"
+                            : "bg-[#e9edf5] text-slate-600 hover:bg-[#dfe5ef]"
                         }`}
                       >
                         {tab.label}
@@ -812,14 +912,14 @@ export default function AdminAttendanceOperationsPage() {
 
                   <div className="flex items-center gap-3">
                     <div className="relative flex-1 sm:w-80">
-                      <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <ListFilter className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
 
                       <input
                         type="text"
                         placeholder="Search by name, ID or role..."
                         value={searchQuery}
                         onChange={(event) => setSearchQuery(event.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#f8fafc] border border-[#d5dbe1] text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]"
+                        className="w-full pl-11 pr-4 py-3 rounded-full bg-white border border-transparent shadow-sm text-sm font-medium text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]"
                       />
                     </div>
 
@@ -828,7 +928,7 @@ export default function AdminAttendanceOperationsPage() {
                       onClick={handleExport}
                       disabled={!employees.length}
                       aria-label="Export attendance"
-                      className="p-3 rounded-xl border border-[#d5dbe1] hover:bg-[#f8fafc] text-[#64748b] disabled:opacity-40"
+                      className="h-12 w-12 shrink-0 flex items-center justify-center rounded-full bg-[#e9edf5] hover:bg-[#dfe5ef] text-slate-700 shadow-sm disabled:opacity-40"
                     >
                       <Download className="w-5 h-5" />
                     </button>
@@ -838,7 +938,7 @@ export default function AdminAttendanceOperationsPage() {
                       onClick={() => dispatch(fetchDailyAttendance(selectedDate))}
                       disabled={dailyLoading}
                       aria-label="Refresh attendance"
-                      className="p-3 rounded-xl border border-[#d5dbe1] hover:bg-[#f8fafc] text-[#64748b] disabled:opacity-40"
+                      className="h-12 w-12 shrink-0 flex items-center justify-center rounded-full bg-[#e9edf5] hover:bg-[#dfe5ef] text-slate-700 shadow-sm disabled:opacity-40"
                     >
                       <RefreshCw className={`w-5 h-5 ${dailyLoading ? "animate-spin" : ""}`} />
                     </button>
@@ -874,147 +974,274 @@ export default function AdminAttendanceOperationsPage() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className="bg-[#f8fafc] border-b border-[#e2e8f0] text-xs font-bold text-[#64748b] uppercase tracking-wider">
-                          <th className="py-4 px-6">Employee</th>
-                          <th className="py-4 px-6">Status & Live Feed</th>
-                          <th className="py-4 px-6">First In</th>
-                          <th className="py-4 px-6">Last Out</th>
-                          <th className="py-4 px-6">Work Duration</th>
-                          <th className="py-4 px-6">Audit Flags</th>
-                          <th className="py-4 px-6 text-right">Operations</th>
+                        <tr className="bg-[#eef1f6] border-b border-[#e3e8f0] text-xs font-bold text-slate-600 uppercase tracking-wider">
+                          <th className="py-5 px-6">Employee</th>
+                          <th className="py-5 px-6">Status & Live Feed</th>
+                          <th className="py-5 px-6">First In</th>
+                          <th className="py-5 px-6">Last Out</th>
+                          <th className="py-5 px-6">Work Duration</th>
+                          <th className="py-5 px-6">Audit Flags</th>
+                          <th className="py-5 px-6 text-right">Operations</th>
                         </tr>
                       </thead>
 
-                      <tbody className="divide-y divide-[#e2e8f0] text-sm">
+                      <tbody className="divide-y divide-[#eef1f6] text-sm">
                         {filteredEmployees.length > 0 ? (
-                          filteredEmployees.map((employee) => (
-                            <tr
-                              key={employee.user_id}
-                              className="hover:bg-[#f8fafc]/80 transition-colors"
-                            >
-                              <td className="py-4 px-6">
-                                <div className="flex items-center gap-3 min-w-[220px]">
-                                  <div className="w-11 h-11 shrink-0 rounded-full bg-[#dbeafe] text-[#1b64da] font-black flex items-center justify-center text-sm">
-                                    {employee.name.slice(0, 2).toUpperCase()}
-                                  </div>
+                          filteredEmployees.map((employee) => {
+                            const isLive = employee.live_status === "IN";
+                            const isLate = Boolean(employee.flags.is_late);
+                            const isHalfDay = employee.status === "HALF_DAY";
+                            const hasWork = employee.work_min > 0;
+                            const hasFirstIn = Boolean(employee.first_in);
+                            const noPunch = !hasFirstIn && employee.status === "ABSENT";
 
-                                  <div>
-                                    <div className="font-bold text-[#0f172a] flex items-center gap-2 flex-wrap text-sm">
-                                      <span>{employee.name}</span>
-                                      <span className="text-xs font-semibold text-[#64748b] bg-[#eef4fa] px-2 py-1 rounded">
-                                        {employee.emp_code}
+                            const percent = Math.min(
+                              100,
+                              Math.round((employee.work_min / 480) * 100)
+                            );
+
+                            // duration colours
+                            const durationText = !hasWork
+                              ? "text-slate-400"
+                              : isHalfDay
+                                ? "text-teal-700"
+                                : isLate
+                                  ? "text-slate-800"
+                                  : "text-sky-700";
+
+                            const barFill = isHalfDay
+                              ? "from-teal-700 to-teal-500"
+                              : isLate
+                                ? "from-amber-500 to-orange-500"
+                                : "from-blue-600 to-cyan-400";
+
+                            const percentText = isLate ? "text-amber-600" : "text-blue-600";
+
+                            return (
+                              <tr
+                                key={employee.user_id}
+                                className="bg-white hover:bg-[#f8faff] transition-colors"
+                              >
+                                {/* EMPLOYEE */}
+                                <td className="py-5 px-6">
+                                  <div className="flex items-center gap-3.5 min-w-[240px]">
+                                    <div
+                                      className={`w-12 h-12 shrink-0 rounded-2xl bg-gradient-to-br ${getAvatarGradient(
+                                        employee.user_id
+                                      )} text-white font-black flex items-center justify-center text-base shadow-sm`}
+                                    >
+                                      {employee.name.slice(0, 2).toUpperCase()}
+                                    </div>
+
+                                    <div>
+                                      <div className="font-bold text-slate-900 flex items-center gap-2 flex-wrap text-[15px]">
+                                        <span>{employee.name}</span>
+                                        <span className="text-xs font-bold text-blue-700 bg-[#dbe5ff] px-2.5 py-0.5 rounded-full">
+                                          {employee.emp_code}
+                                        </span>
+                                      </div>
+
+                                      <div className="text-sm text-slate-600 font-medium mt-1">
+                                        {employee.designation}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+
+                                {/* STATUS & LIVE FEED */}
+                                <td className="py-5 px-6">
+                                  {isLive ? (
+                                    <span className="inline-flex items-center gap-2.5 px-4 py-2 rounded-3xl bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">
+                                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                      <span className="text-sm leading-tight">
+                                        <span className="block font-bold">IN OFFICE</span>
+                                        {formatShort12(employee.first_in) && (
+                                          <span className="block font-semibold">
+                                            ({formatShort12(employee.first_in)})
+                                          </span>
+                                        )}
                                       </span>
+                                    </span>
+                                  ) : noPunch ? (
+                                    <span className="inline-flex items-center gap-2.5 px-4 py-2 rounded-3xl bg-rose-50 text-rose-600 border border-rose-200 whitespace-nowrap">
+                                      <span className="w-2 h-2 rounded-full bg-rose-500" />
+                                      <span className="text-sm leading-tight font-bold">
+                                        <span className="block">NO PUNCH</span>
+                                        <span className="block">RECORDED</span>
+                                      </span>
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-2.5 px-4 py-2 rounded-3xl bg-slate-100 text-slate-600 border border-slate-200 whitespace-nowrap">
+                                      <span className="w-2 h-2 rounded-full bg-slate-500" />
+                                      <span className="text-sm leading-tight">
+                                        {employee.last_out ? (
+                                          <>
+                                            <span className="block font-semibold">LOGGED OUT</span>
+                                            <span className="block font-medium">
+                                              ({formatShort12(employee.last_out)})
+                                            </span>
+                                          </>
+                                        ) : (
+                                          <span className="block font-semibold">
+                                            {employee.status.replace("_", " ")}
+                                          </span>
+                                        )}
+                                      </span>
+                                    </span>
+                                  )}
+                                </td>
+
+                                {/* FIRST IN */}
+                                <td className="py-5 px-6">
+                                  <TimePill
+                                    value={employee.first_in}
+                                    tone={isLate ? "late" : isLive ? "live" : "plain"}
+                                  />
+                                </td>
+
+                                {/* LAST OUT */}
+                                <td className="py-5 px-6">
+                                  {isLive ? (
+                                    <span className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#e8f1fb] text-blue-900 text-sm font-semibold whitespace-nowrap">
+                                      <span className="w-2 h-2 rounded-full bg-teal-700" />
+                                      Active on floor
+                                    </span>
+                                  ) : (
+                                    <TimePill value={employee.last_out} tone="plain" />
+                                  )}
+                                </td>
+
+                                {/* WORK DURATION */}
+                                <td className="py-5 px-6">
+                                  <div className="min-w-[170px]">
+                                    <div className="flex items-center justify-between gap-3">
+                                      <span
+                                        className={`font-bold text-lg whitespace-nowrap ${durationText}`}
+                                      >
+                                        {formatDuration(employee.work_min)}
+                                      </span>
+
+                                      {isHalfDay ? (
+                                        <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-bold whitespace-nowrap">
+                                          Half Day
+                                        </span>
+                                      ) : (
+                                        hasWork && (
+                                          <span className={`text-xs font-bold ${percentText}`}>
+                                            {percent}%
+                                          </span>
+                                        )
+                                      )}
                                     </div>
 
-                                    <div className="text-sm text-[#64748b] font-medium mt-1">
-                                      {employee.designation}
+                                    <div className="mt-2 h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                                      {hasWork && (
+                                        <div
+                                          className={`h-full rounded-full bg-gradient-to-r ${barFill}`}
+                                          style={{ width: `${percent}%` }}
+                                        />
+                                      )}
                                     </div>
                                   </div>
-                                </div>
-                              </td>
+                                </td>
 
-                              <td className="py-4 px-6">
-                                {employee.live_status === "IN" ? (
-                                  <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 font-bold text-sm border border-emerald-200 whitespace-nowrap">
-                                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                    IN OFFICE
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 font-bold text-sm border border-slate-200 whitespace-nowrap">
-                                    <span className="w-2 h-2 rounded-full bg-slate-400" />
-                                    {employee.status.replace("_", " ")}
-                                  </span>
-                                )}
-                              </td>
-
-                              <td className="py-4 px-6 font-mono font-bold text-sm text-[#0f172a] whitespace-nowrap">
-                                {formatPunchTime(employee.first_in)}
-                              </td>
-
-                              <td className="py-4 px-6 font-mono font-semibold text-sm text-[#64748b] whitespace-nowrap">
-                                {employee.live_status === "IN"
-                                  ? "Active on floor"
-                                  : formatPunchTime(employee.last_out)}
-                              </td>
-
-                              <td className="py-4 px-6">
-                                <div className="flex items-center gap-3">
-                                  <span className="font-bold text-sm text-[#0f172a] min-w-[75px] whitespace-nowrap">
-                                    {formatDuration(employee.work_min)}
-                                  </span>
-
-                                  {employee.work_min > 0 && (
-                                    <div className="w-20 h-2 bg-[#eef4fa] rounded-full overflow-hidden">
-                                      <div
-                                        className={`h-full rounded-full ${
-                                          employee.work_min >= 480
-                                            ? "bg-emerald-500"
-                                            : employee.work_min >= 240
-                                              ? "bg-[#1b64da]"
-                                              : "bg-amber-500"
-                                        }`}
-                                        style={{
-                                          width: `${Math.min(
-                                            100,
-                                            (employee.work_min / 480) * 100
-                                          )}%`,
-                                        }}
-                                      />
-                                    </div>
-                                  )}
-                                </div>
-                              </td>
-
-                              <td className="py-4 px-6">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  {employee.flags.is_late && (
-                                    <span className="px-2.5 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700 font-bold text-xs">
-                                      <AlertTriangle className="w-3.5 h-3.5 inline mr-1" />
-                                      Late
-                                    </span>
-                                  )}
-
-                                  {employee.flags.excess_break && (
-                                    <span className="px-2.5 py-1.5 rounded-full bg-rose-50 border border-rose-200 text-rose-700 font-bold text-xs">
-                                      Excess Break
-                                    </span>
-                                  )}
-
-                                  {employee.flags.needs_regularization && (
-                                    <span className="px-2.5 py-1.5 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold text-xs">
-                                      Needs Regularization
-                                    </span>
-                                  )}
-
-                                  {!employee.flags.is_late &&
-                                    !employee.flags.excess_break &&
-                                    !employee.flags.needs_regularization &&
-                                    employee.status === "PRESENT" && (
-                                      <span className="px-2.5 py-1.5 rounded-full bg-emerald-50 text-emerald-700 font-semibold text-xs">
-                                        Compliant
+                                {/* AUDIT FLAGS */}
+                                <td className="py-5 px-6">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    {employee.flags.is_late && (
+                                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-100 border border-amber-300 text-amber-900 font-bold text-xs whitespace-nowrap">
+                                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                                        Late
                                       </span>
                                     )}
 
-                                  {employee.is_locked && (
-                                    <span className="px-2.5 py-1.5 rounded-full bg-slate-100 text-slate-600 font-bold text-xs">
-                                      <Lock className="w-3.5 h-3.5 inline mr-1" />
-                                      Locked
-                                    </span>
-                                  )}
-                                </div>
-                              </td>
+                                    {employee.flags.excess_break && (
+                                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-50 border border-rose-200 text-rose-600 font-bold text-xs whitespace-nowrap">
+                                        <TimerOff className="w-3.5 h-3.5" />
+                                        Excess Break
+                                      </span>
+                                    )}
 
-                              <td className="py-4 px-6 text-right">
-                                <button
-                                  type="button"
-                                  onClick={() => openCorrectionForEmployee(employee)}
-                                  className="px-3.5 py-2 bg-[#eef4fa] hover:bg-[#dbeafe] text-[#1b64da] font-bold text-sm rounded-xl transition-colors whitespace-nowrap"
-                                >
-                                  + Add Punch
-                                </button>
-                              </td>
-                            </tr>
-                          ))
+                                    {employee.flags.needs_regularization && (
+                                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#e0e8ff] border border-blue-200 text-blue-800 font-bold text-xs whitespace-nowrap">
+                                        <Flag className="w-3.5 h-3.5" />
+                                        Needs Regularization
+                                      </span>
+                                    )}
+
+                                    {!employee.flags.is_late &&
+                                      !employee.flags.excess_break &&
+                                      !employee.flags.needs_regularization &&
+                                      employee.status === "PRESENT" && (
+                                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-300 text-slate-600 font-bold text-xs whitespace-nowrap">
+                                          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                          Compliant
+                                        </span>
+                                      )}
+
+                                    {employee.is_locked && (
+                                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-slate-600 font-bold text-xs whitespace-nowrap">
+                                        <Lock className="w-3.5 h-3.5" />
+                                        Locked
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+
+                                {/* OPERATIONS */}
+                                <td className="py-5 px-6">
+                                  <div className="flex items-center justify-end gap-3">
+                                    {employee.flags.needs_regularization ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => openCorrectionForEmployee(employee)}
+                                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#0a47b3] hover:bg-[#083a91] text-white font-bold text-sm whitespace-nowrap shadow-sm transition-colors"
+                                      >
+                                        <ClipboardCheck className="w-4 h-4" />
+                                        Manual In/Out
+                                      </button>
+                                    ) : employee.flags.excess_break ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => openCorrectionForEmployee(employee)}
+                                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#1b64da] hover:bg-[#1552b5] text-white font-bold text-sm whitespace-nowrap shadow-sm transition-colors"
+                                      >
+                                        <PlusCircle className="w-4 h-4" />
+                                        Correction
+                                      </button>
+                                    ) : employee.flags.is_late ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => openCorrectionForEmployee(employee)}
+                                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-900 font-bold text-sm whitespace-nowrap transition-colors"
+                                      >
+                                        <Pencil className="w-4 h-4" />
+                                        Correct Punch
+                                      </button>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => openCorrectionForEmployee(employee)}
+                                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#dbe7ff] hover:bg-[#c9d9ff] text-blue-700 font-bold text-sm whitespace-nowrap transition-colors"
+                                      >
+                                        <Plus className="w-4 h-4" />
+                                        Punch
+                                      </button>
+                                    )}
+
+                                    <button
+                                      type="button"
+                                      aria-label="Audit history"
+                                      title="Audit history (endpoint not connected yet)"
+                                      className="p-2 rounded-full text-slate-700 hover:bg-slate-100 transition-colors"
+                                    >
+                                      <History className="w-5 h-5" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })
                         ) : (
                           <tr>
                             <td
@@ -1031,11 +1258,11 @@ export default function AdminAttendanceOperationsPage() {
                 )}
 
                 {!dailyLoading && !dailyError && (
-                  <div className="p-4 bg-[#f8fafc] border-t border-[#e2e8f0] flex items-center justify-between text-sm text-[#64748b]">
+                  <div className="px-6 py-5 bg-[#f7f9fd] border-t border-[#e8eef5] flex items-center justify-between text-sm font-medium text-slate-600">
                     <span>
                       Showing {filteredEmployees.length} of {totalEmployees} employee records
                     </span>
-                    <span className="font-bold">{formattedSelectedDate}</span>
+                    <span className="font-bold text-slate-800">{formattedSelectedDate}</span>
                   </div>
                 )}
               </div>

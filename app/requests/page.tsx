@@ -135,8 +135,10 @@ const statusToApi = (status: StatusFilter): RequestStatus => {
   switch (status) {
     case "approved":
       return "APPROVED";
+
     case "rejected":
       return "REJECTED";
+
     default:
       return "PENDING";
   }
@@ -161,7 +163,6 @@ const formatDate = (value?: string | null): string => {
 const formatTime = (value?: string | null): string => {
   if (!value) return "Not provided";
 
-  // Handle a time-only value such as 14:30:00.
   const timeMatch = value.match(/^(\d{1,2}):(\d{2})/);
 
   if (timeMatch) {
@@ -320,6 +321,30 @@ const mapRegularizationRequest = (
 };
 
 // --------------------------------------------------
+// CALENDAR EVENT COLORS
+// IMPORTANT: Keep this OUTSIDE the JSX return.
+// --------------------------------------------------
+
+const getEventColor = (type: CalendarEvent["type"]) => {
+  switch (type) {
+    case "annual":
+      return "bg-violet-100 text-violet-800 border-violet-200";
+
+    case "sick":
+      return "bg-amber-100 text-amber-800 border-amber-200";
+
+    case "permission":
+      return "bg-sky-100 text-sky-800 border-sky-200";
+
+    case "regularization":
+      return "bg-amber-100 text-amber-800 border-amber-200";
+
+    default:
+      return "bg-slate-100 text-slate-700 border-slate-200";
+  }
+};
+
+// --------------------------------------------------
 // MAIN PAGE
 // --------------------------------------------------
 
@@ -350,7 +375,6 @@ export default function AdminRequestsApprovals() {
     totalRegularizationRequests,
   } = useSelector((state: RootState) => state.requests);
 
-  // Calendar uses the same authentication token.
   const storeAuthToken = useSelector(
     (state: RootState) => state.auth.token
   );
@@ -369,7 +393,6 @@ export default function AdminRequestsApprovals() {
   const [currentMonth, setCurrentMonth] = useState(0);
   const [currentYear, setCurrentYear] = useState(2000);
 
-  // Calendar data is kept separate from the request-card Redux arrays.
   const [calendarRequests, setCalendarRequests] =
     useState<CalendarRequests>({
       leaves: [],
@@ -417,7 +440,6 @@ export default function AdminRequestsApprovals() {
 
   // --------------------------------------------------
   // FETCH ALL CALENDAR REQUESTS
-  // Independent of the request-card status filter.
   // --------------------------------------------------
 
   useEffect(() => {
@@ -446,12 +468,6 @@ export default function AdminRequestsApprovals() {
           Authorization: `Bearer ${storeAuthToken}`,
         };
 
-        const statuses: RequestStatus[] = [
-          "PENDING",
-          "APPROVED",
-          "REJECTED",
-        ];
-
         const fetchRequests = async <T,>(
           endpoint: string,
           status: RequestStatus
@@ -470,7 +486,9 @@ export default function AdminRequestsApprovals() {
           }
 
           if (!Array.isArray(result?.data?.requests)) {
-            throw new Error("The calendar API returned an unexpected response.");
+            throw new Error(
+              "The calendar API returned an unexpected response."
+            );
           }
 
           return result.data.requests as T[];
@@ -501,12 +519,20 @@ export default function AdminRequestsApprovals() {
           fetchRequests<PermissionRequest>(permissionEndpoint, "APPROVED"),
           fetchRequests<PermissionRequest>(permissionEndpoint, "REJECTED"),
 
-          fetchRequests<RegularizationRequest>(regularizationEndpoint, "PENDING"),
-          fetchRequests<RegularizationRequest>(regularizationEndpoint, "APPROVED"),
-          fetchRequests<RegularizationRequest>(regularizationEndpoint, "REJECTED"),
+          fetchRequests<RegularizationRequest>(
+            regularizationEndpoint,
+            "PENDING"
+          ),
+          fetchRequests<RegularizationRequest>(
+            regularizationEndpoint,
+            "APPROVED"
+          ),
+          fetchRequests<RegularizationRequest>(
+            regularizationEndpoint,
+            "REJECTED"
+          ),
         ]);
 
-        // Remove duplicates by request ID.
         const uniqueById = <T extends { id: number }>(items: T[]): T[] => {
           return Array.from(
             new Map(items.map((item) => [item.id, item])).values()
@@ -557,7 +583,7 @@ export default function AdminRequestsApprovals() {
   }, [storeAuthToken]);
 
   // --------------------------------------------------
-  // CLEAR DECISION MESSAGES WHEN PAGE CHANGES
+  // CLEAR DECISION MESSAGES
   // --------------------------------------------------
 
   useEffect(() => {
@@ -590,13 +616,6 @@ export default function AdminRequestsApprovals() {
       : activeTab === "permissions"
       ? permissionError
       : regularizationError;
-
-  const currentCount =
-    activeTab === "leaves"
-      ? totalLeaveRequests
-      : activeTab === "permissions"
-      ? totalPermissionRequests
-      : totalRegularizationRequests;
 
   // --------------------------------------------------
   // CALENDAR
@@ -647,12 +666,13 @@ export default function AdminRequestsApprovals() {
   };
 
   // --------------------------------------------------
-  // BUILD CALENDAR EVENTS FROM API DATA
+  // BUILD CALENDAR EVENTS
   // --------------------------------------------------
 
   const allCalendarEvents: CalendarEvent[] = [];
 
-  // Leave requests: create one event for every day of the leave.
+  // Leave requests: one event for every day of leave.
+
   calendarRequests.leaves.forEach((request) => {
     const name = request.employee_name || "Unknown Employee";
 
@@ -673,6 +693,7 @@ export default function AdminRequestsApprovals() {
   });
 
   // Permission requests.
+
   calendarRequests.permissions.forEach((request) => {
     const date = toDateKey(request.perm_date);
 
@@ -688,6 +709,7 @@ export default function AdminRequestsApprovals() {
   });
 
   // Regularization requests.
+
   calendarRequests.regularizations.forEach((request) => {
     const date = toDateKey(request.work_date);
 
@@ -702,7 +724,8 @@ export default function AdminRequestsApprovals() {
     });
   });
 
-  // Filter calendar events by the selected month and category.
+  // Filter by selected month and category.
+
   const monthPrefix = `${currentYear}-${String(
     currentMonth + 1
   ).padStart(2, "0")}`;
@@ -739,25 +762,6 @@ export default function AdminRequestsApprovals() {
 
   const visibleEventCount = visibleCalendarEvents.length;
 
-  const getEventColor = (type: CalendarEvent["type"]) => {
-    switch (type) {
-      case "annual":
-        return "bg-[#eaf2fd] text-[#0284c7] border-[#d6e5fb]";
-
-      case "sick":
-        return "bg-amber-50 text-amber-800 border-amber-200";
-
-      case "permission":
-        return "bg-sky-50 text-[#0284c7] border-sky-200";
-
-      case "regularization":
-        return "bg-blue-50 text-[#0284c7] border-blue-200";
-
-      default:
-        return "bg-slate-50 text-slate-600 border-slate-200";
-    }
-  };
-
   // --------------------------------------------------
   // OPEN DECISION MODAL
   // --------------------------------------------------
@@ -785,11 +789,7 @@ export default function AdminRequestsApprovals() {
   // --------------------------------------------------
 
   const handleDecision = async () => {
-    if (!selectedRequest) return;
-
-    if (!decisionNote.trim()) {
-      return;
-    }
+    if (!selectedRequest || !decisionNote.trim()) return;
 
     try {
       await dispatch(
@@ -801,26 +801,18 @@ export default function AdminRequestsApprovals() {
         })
       );
 
-      // Refresh the list after the decision.
-
       const status = statusToApi(statusFilter);
 
       if (selectedRequest.requestType === "leave") {
-        await dispatch(
-          fetchAdminLeaveRequests({ status })
-        );
+        await dispatch(fetchAdminLeaveRequests({ status }));
       }
 
       if (selectedRequest.requestType === "permission") {
-        await dispatch(
-          fetchAdminPermissionRequests({ status })
-        );
+        await dispatch(fetchAdminPermissionRequests({ status }));
       }
 
       if (selectedRequest.requestType === "regularization") {
-        await dispatch(
-          fetchAdminRegularizationRequests({ status })
-        );
+        await dispatch(fetchAdminRegularizationRequests({ status }));
       }
 
       setSelectedRequest(null);
@@ -874,15 +866,12 @@ export default function AdminRequestsApprovals() {
             <div className="bg-white rounded-2xl p-6 border border-[#d6e5fb] shadow-sm hover:shadow-md transition-all">
 
               <div className="flex items-start justify-between gap-3">
-
                 <div className="min-w-0">
-
                   <h3 className="text-xl font-bold text-slate-900">
                     Leave Requests
                   </h3>
 
                   <div className="mt-3 flex items-baseline gap-3">
-
                     <span className="text-[44px] leading-none font-extrabold text-[#0284c7]">
                       {totalLeaveRequests}
                     </span>
@@ -890,20 +879,17 @@ export default function AdminRequestsApprovals() {
                     <span className="text-base font-medium text-slate-500">
                       Matching Requests
                     </span>
-
                   </div>
                 </div>
 
                 <div className="w-14 h-14 shrink-0 rounded-2xl bg-[#eaf2fd] border border-[#d3e7fa] flex items-center justify-center text-[#0284c7]">
                   <CalendarIcon className="w-7 h-7" />
                 </div>
-
               </div>
 
               <div className="mt-5 pt-4 border-t border-slate-100 text-base font-medium text-slate-500">
                 Live count from leave API
               </div>
-
             </div>
 
             {/* PERMISSION */}
@@ -911,15 +897,12 @@ export default function AdminRequestsApprovals() {
             <div className="bg-white rounded-2xl p-6 border border-[#d6e5fb] shadow-sm hover:shadow-md transition-all">
 
               <div className="flex items-start justify-between gap-3">
-
                 <div className="min-w-0">
-
                   <h3 className="text-xl font-bold text-slate-900">
                     Permission Requests
                   </h3>
 
                   <div className="mt-3 flex items-baseline gap-3">
-
                     <span className="text-[44px] leading-none font-extrabold text-[#0284c7]">
                       {totalPermissionRequests}
                     </span>
@@ -927,20 +910,17 @@ export default function AdminRequestsApprovals() {
                     <span className="text-base font-medium text-slate-500">
                       Matching Requests
                     </span>
-
                   </div>
                 </div>
 
                 <div className="w-14 h-14 shrink-0 rounded-2xl bg-[#eaf2fd] border border-[#d3e7fa] flex items-center justify-center text-[#0284c7]">
                   <Clock className="w-7 h-7" />
                 </div>
-
               </div>
 
               <div className="mt-5 pt-4 border-t border-slate-100 text-base font-medium text-slate-500">
                 Live count from permission API
               </div>
-
             </div>
 
             {/* REGULARIZATION */}
@@ -948,15 +928,12 @@ export default function AdminRequestsApprovals() {
             <div className="bg-white rounded-2xl p-6 border border-[#d6e5fb] shadow-sm hover:shadow-md transition-all">
 
               <div className="flex items-start justify-between gap-3">
-
                 <div className="min-w-0">
-
                   <h3 className="text-xl font-bold text-slate-900">
                     Regularization Requests
                   </h3>
 
                   <div className="mt-3 flex items-baseline gap-3">
-
                     <span className="text-[44px] leading-none font-extrabold text-[#0284c7]">
                       {totalRegularizationRequests}
                     </span>
@@ -964,20 +941,17 @@ export default function AdminRequestsApprovals() {
                     <span className="text-base font-medium text-slate-500">
                       Matching Requests
                     </span>
-
                   </div>
                 </div>
 
                 <div className="w-14 h-14 shrink-0 rounded-2xl bg-[#eaf2fd] border border-[#d3e7fa] flex items-center justify-center text-[#0284c7]">
                   <CheckCircle2 className="w-7 h-7" />
                 </div>
-
               </div>
 
               <div className="mt-5 pt-4 border-t border-slate-100 text-base font-medium text-slate-500">
                 Live count from regularization API
               </div>
-
             </div>
 
           </div>
@@ -1048,7 +1022,6 @@ export default function AdminRequestsApprovals() {
                 {(
                   ["pending", "approved", "rejected"] as StatusFilter[]
                 ).map((status) => (
-
                   <button
                     key={status}
                     onClick={() => setStatusFilter(status)}
@@ -1060,7 +1033,6 @@ export default function AdminRequestsApprovals() {
                   >
                     {status}
                   </button>
-
                 ))}
 
               </div>
@@ -1093,16 +1065,13 @@ export default function AdminRequestsApprovals() {
           )}
 
           {loading ? (
-
             <div className="bg-white rounded-2xl border border-[#d6e5fb] p-12 flex flex-col items-center justify-center gap-3">
               <Loader2 className="w-8 h-8 text-[#0284c7] animate-spin" />
               <p className="text-slate-500 font-medium">
                 Loading {activeTab} requests...
               </p>
             </div>
-
           ) : requests.length === 0 ? (
-
             <div className="bg-white rounded-2xl border border-[#d6e5fb] p-12 text-center">
               <div className="w-14 h-14 mx-auto rounded-2xl bg-[#eaf2fd] flex items-center justify-center text-[#0284c7]">
                 <CheckCircle2 className="w-7 h-7" />
@@ -1116,13 +1085,10 @@ export default function AdminRequestsApprovals() {
                 There are currently no matching {activeTab} requests.
               </p>
             </div>
-
           ) : (
-
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
 
               {requests.map((req) => (
-
                 <div
                   key={`${req.requestType}-${req.id}`}
                   className="bg-white rounded-2xl p-6 border border-[#d6e5fb] shadow-sm flex flex-col justify-between hover:border-[#7BBDE8] hover:shadow-md transition-all min-w-0"
@@ -1143,7 +1109,6 @@ export default function AdminRequestsApprovals() {
                         <div className="min-w-0">
 
                           <div className="flex flex-wrap items-center gap-2">
-
                             <h4 className="text-lg font-bold text-slate-900">
                               {req.name}
                             </h4>
@@ -1151,7 +1116,6 @@ export default function AdminRequestsApprovals() {
                             <span className="text-[13px] text-slate-400 font-semibold">
                               {req.empId}
                             </span>
-
                           </div>
 
                           <p className="text-[15px] text-slate-500 mt-1.5 truncate">
@@ -1245,7 +1209,6 @@ export default function AdminRequestsApprovals() {
                     </div>
 
                     {req.status === "PENDING" && (
-
                       <div className="flex items-center gap-2">
 
                         <button
@@ -1273,17 +1236,14 @@ export default function AdminRequestsApprovals() {
                         </button>
 
                       </div>
-
                     )}
 
                   </div>
 
                 </div>
-
               ))}
 
             </div>
-
           )}
 
           {/* =========================================
@@ -1297,7 +1257,6 @@ export default function AdminRequestsApprovals() {
             <div className="bg-gradient-to-r from-[#eaf2fd] via-[#f0f6fa] to-[#eaf2fd] border-b border-[#d3e7fa] px-5 md:px-6 py-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
 
               <div>
-
                 <h2 className="text-2xl font-bold text-slate-900">
                   Team Absence &amp; Leave Calendar
                 </h2>
@@ -1306,7 +1265,6 @@ export default function AdminRequestsApprovals() {
                   Company-wide planned leave, permission hours &amp;
                   regularizations
                 </p>
-
               </div>
 
               <div className="flex flex-wrap items-center justify-between lg:justify-end gap-3">
@@ -1323,9 +1281,9 @@ export default function AdminRequestsApprovals() {
                       "regularizations",
                     ] as RequestStream[]
                   ).map((tab) => (
-
                     <button
                       key={tab}
+                      type="button"
                       onClick={() => setCalendarStream(tab)}
                       className={`px-4 py-2.5 rounded-lg capitalize font-semibold whitespace-nowrap transition-colors ${
                         calendarStream === tab
@@ -1338,9 +1296,7 @@ export default function AdminRequestsApprovals() {
                         : tab === "leaves"
                         ? "Leaves"
                         : tab}
-
                     </button>
-
                   ))}
 
                 </div>
@@ -1350,6 +1306,7 @@ export default function AdminRequestsApprovals() {
                 <div className="flex items-center gap-4 bg-white border border-[#d3e7fa] px-4 py-3 rounded-xl text-base font-bold text-slate-800 shadow-sm">
 
                   <button
+                    type="button"
                     onClick={() => changeMonth(-1)}
                     className="p-1 hover:text-[#0284c7] text-slate-500"
                     aria-label="Previous month"
@@ -1362,6 +1319,7 @@ export default function AdminRequestsApprovals() {
                   </span>
 
                   <button
+                    type="button"
                     onClick={() => changeMonth(1)}
                     className="p-1 hover:text-[#0284c7] text-slate-500"
                     aria-label="Next month"
@@ -1397,11 +1355,9 @@ export default function AdminRequestsApprovals() {
                 "Sat",
                 "Sun",
               ].map((day) => (
-
                 <div key={day}>
                   {day}
                 </div>
-
               ))}
 
             </div>
@@ -1416,7 +1372,6 @@ export default function AdminRequestsApprovals() {
             >
 
               {calendarDays.map((day, idx) => {
-
                 const isWeekend =
                   idx % 7 === 5 || idx % 7 === 6;
 
@@ -1425,7 +1380,6 @@ export default function AdminRequestsApprovals() {
                   : [];
 
                 return (
-
                   <div
                     key={`${currentYear}-${currentMonth}-${idx}`}
                     className={`min-h-[85px] md:min-h-[95px] p-2 md:p-3 border-r border-b border-slate-100 flex flex-col ${
@@ -1434,6 +1388,8 @@ export default function AdminRequestsApprovals() {
                         : "bg-white"
                     }`}
                   >
+
+                    {/* DATE */}
 
                     <div className="flex items-center justify-between text-base font-bold text-slate-400 shrink-0">
 
@@ -1457,10 +1413,11 @@ export default function AdminRequestsApprovals() {
 
                     </div>
 
+                    {/* EVENTS */}
+
                     <div className="space-y-1.5 mt-2">
 
                       {events.map((event, eventIndex) => (
-
                         <div
                           key={`${event.date}-${eventIndex}`}
                           title={`${event.title} · ${event.person} · ${event.status}`}
@@ -1474,17 +1431,13 @@ export default function AdminRequestsApprovals() {
                             {" · "}
                             {event.person}
                           </span>
-
                         </div>
-
                       ))}
 
                     </div>
 
                   </div>
-
                 );
-
               })}
 
             </div>
@@ -1495,28 +1448,39 @@ export default function AdminRequestsApprovals() {
 
               <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
 
+                {/* LEAVE */}
+
                 <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-[#0284c7]" />
+                  <span className="w-3 h-3 rounded-full bg-violet-500" />
+
                   <span className="text-base font-medium text-slate-700">
                     Leave
                   </span>
                 </div>
 
+                {/* PERMISSION */}
+
                 <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-[#7BBDE8]" />
+                  <span className="w-3 h-3 rounded-full bg-sky-500" />
+
                   <span className="text-base font-medium text-slate-700">
                     Permission Hours
                   </span>
                 </div>
 
+                {/* REGULARIZATION */}
+
                 <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-sky-400" />
+                  <span className="w-3 h-3 rounded-full bg-amber-500" />
+
                   <span className="text-base font-medium text-slate-700">
                     Regularization
                   </span>
                 </div>
 
               </div>
+
+              {/* EVENT COUNT */}
 
               <div className="text-base font-medium text-slate-500">
                 {calendarLoading
@@ -1537,7 +1501,6 @@ export default function AdminRequestsApprovals() {
       ========================================= */}
 
       {selectedRequest && (
-
         <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
 
           <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden">
@@ -1547,7 +1510,6 @@ export default function AdminRequestsApprovals() {
             <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
 
               <div>
-
                 <h2 className="text-xl font-bold text-slate-900">
                   {decisionAction === "APPROVE"
                     ? selectedRequest.type === "Regularization"
@@ -1559,7 +1521,6 @@ export default function AdminRequestsApprovals() {
                 <p className="text-sm text-slate-500 mt-1">
                   Request ID: #{selectedRequest.id}
                 </p>
-
               </div>
 
               <button
@@ -1613,6 +1574,7 @@ export default function AdminRequestsApprovals() {
               />
 
               <div className="flex items-center justify-between mt-2">
+
                 <p className="text-xs text-slate-400">
                   A decision note is required.
                 </p>
@@ -1620,6 +1582,7 @@ export default function AdminRequestsApprovals() {
                 <p className="text-xs text-slate-400">
                   {decisionNote.length}/1000
                 </p>
+
               </div>
 
               {decisionError && (
@@ -1679,7 +1642,6 @@ export default function AdminRequestsApprovals() {
           </div>
 
         </div>
-
       )}
 
     </div>
