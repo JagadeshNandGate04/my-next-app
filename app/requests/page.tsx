@@ -28,7 +28,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
-  Eye,
   Check,
   X,
   Loader2,
@@ -65,34 +64,67 @@ interface ApprovalRequest {
 }
 
 interface CalendarEvent {
-  day: number;
+  date: string;
   title: string;
-  person?: string;
+  person: string;
   type: "annual" | "sick" | "permission" | "regularization";
+  status: RequestStatus;
+}
+
+interface CalendarRequests {
+  leaves: LeaveRequest[];
+  permissions: PermissionRequest[];
+  regularizations: RegularizationRequest[];
 }
 
 // --------------------------------------------------
-// SAMPLE CALENDAR DATA
-// Replace with a calendar API when available.
+// CALENDAR DATE HELPERS
 // --------------------------------------------------
 
-const calendarEvents: Record<number, CalendarEvent[]> = {
-  1: [{ day: 1, title: "Sick Leave", person: "N", type: "sick" }],
-  2: [{ day: 2, title: "+1 Day Sick", type: "sick" }],
-  5: [{ day: 5, title: "Annual Leave", person: "Natalie", type: "annual" }],
-  6: [{ day: 6, title: "Annual Leave D2", type: "annual" }],
-  9: [{ day: 9, title: "Annual Leave", person: "Karthik", type: "annual" }],
-  10: [{ day: 10, title: "Karthik Reception", type: "annual" }],
-  12: [{ day: 12, title: "2Hrs Permission", type: "permission" }],
-  13: [
-    {
-      day: 13,
-      title: "Late Login Regularized",
-      type: "regularization",
-    },
-  ],
-  16: [{ day: 16, title: "1Hr Permission", type: "permission" }],
-  23: [{ day: 23, title: "Missed-Punch Req", type: "regularization" }],
+const toDateKey = (value?: string | null): string => {
+  if (!value) return "";
+
+  const match = value.match(/^(\d{4}-\d{2}-\d{2})/);
+
+  if (match) {
+    return match[1];
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+};
+
+const getDateRangeKeys = (
+  fromDate: string,
+  toDate: string
+): string[] => {
+  const startKey = toDateKey(fromDate);
+  const endKey = toDateKey(toDate);
+
+  if (!startKey || !endKey || startKey > endKey) {
+    return [];
+  }
+
+  const dates: string[] = [];
+
+  const current = new Date(`${startKey}T00:00:00Z`);
+  const end = new Date(`${endKey}T00:00:00Z`);
+
+  while (current <= end) {
+    dates.push(current.toISOString().slice(0, 10));
+    current.setUTCDate(current.getUTCDate() + 1);
+  }
+
+  return dates;
 };
 
 // --------------------------------------------------
@@ -318,6 +350,11 @@ export default function AdminRequestsApprovals() {
     totalRegularizationRequests,
   } = useSelector((state: RootState) => state.requests);
 
+  // Calendar uses the same authentication token.
+  const storeAuthToken = useSelector(
+    (state: RootState) => state.auth.token
+  );
+
   // Local UI state
 
   const [activeTab, setActiveTab] =
@@ -329,8 +366,19 @@ export default function AdminRequestsApprovals() {
   const [calendarStream, setCalendarStream] =
     useState<RequestStream>("all");
 
-  const [currentMonth, setCurrentMonth] = useState(5);
-  const [currentYear, setCurrentYear] = useState(2026);
+  const [currentMonth, setCurrentMonth] = useState(0);
+  const [currentYear, setCurrentYear] = useState(2000);
+
+  // Calendar data is kept separate from the request-card Redux arrays.
+  const [calendarRequests, setCalendarRequests] =
+    useState<CalendarRequests>({
+      leaves: [],
+      permissions: [],
+      regularizations: [],
+    });
+
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const [calendarError, setCalendarError] = useState<string | null>(null);
 
   // Decision modal state
 
@@ -343,20 +391,170 @@ export default function AdminRequestsApprovals() {
   const [decisionNote, setDecisionNote] = useState("");
 
   // --------------------------------------------------
+  // INITIALIZE CURRENT CALENDAR MONTH
+  // --------------------------------------------------
+
+  useEffect(() => {
+    const now = new Date();
+
+    setCurrentMonth(now.getMonth());
+    setCurrentYear(now.getFullYear());
+  }, []);
+
+  // --------------------------------------------------
   // FETCH REQUESTS
   // --------------------------------------------------
 
+  useEffect(() => {
+    const status = statusToApi(statusFilter);
 
-useEffect(() => {
-  const status = statusToApi(statusFilter);
+    dispatch(fetchAdminLeaveRequests({ status })).catch(() => {});
 
-  dispatch(fetchAdminLeaveRequests({ status })).catch(() => {});
+    dispatch(fetchAdminPermissionRequests({ status })).catch(() => {});
 
-  dispatch(fetchAdminPermissionRequests({ status })).catch(() => {});
+    dispatch(fetchAdminRegularizationRequests({ status })).catch(() => {});
+  }, [dispatch, statusFilter]);
 
-  dispatch(fetchAdminRegularizationRequests({ status })).catch(() => {});
-}, [dispatch, statusFilter]);
+  // --------------------------------------------------
+  // FETCH ALL CALENDAR REQUESTS
+  // Independent of the request-card status filter.
+  // --------------------------------------------------
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchCalendarRequests = async () => {
+      if (!storeAuthToken) {
+        setCalendarError("Please sign in again to load calendar events.");
+        setCalendarLoading(false);
+        return;
+      }
+
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "");
+
+      if (!baseUrl) {
+        setCalendarError("API URL is not configured.");
+        setCalendarLoading(false);
+        return;
+      }
+
+      setCalendarLoading(true);
+      setCalendarError(null);
+
+      try {
+        const headers = {
+          Authorization: `Bearer ${storeAuthToken}`,
+        };
+
+        const statuses: RequestStatus[] = [
+          "PENDING",
+          "APPROVED",
+          "REJECTED",
+        ];
+
+        const fetchRequests = async <T,>(
+          endpoint: string,
+          status: RequestStatus
+        ): Promise<T[]> => {
+          const response = await fetch(
+            `${baseUrl}${endpoint}?status=${status}`,
+            { headers }
+          );
+
+          const result = await response.json();
+
+          if (!response.ok) {
+            throw new Error(
+              result?.message || `Unable to load ${status} calendar data.`
+            );
+          }
+
+          if (!Array.isArray(result?.data?.requests)) {
+            throw new Error("The calendar API returned an unexpected response.");
+          }
+
+          return result.data.requests as T[];
+        };
+
+        const leaveEndpoint = "/api/v1/leave/admin/requests";
+        const permissionEndpoint = "/api/v1/permission/admin/permissions";
+        const regularizationEndpoint = "/api/v1/regularization/admin/requests";
+
+        const [
+          pendingLeaves,
+          approvedLeaves,
+          rejectedLeaves,
+
+          pendingPermissions,
+          approvedPermissions,
+          rejectedPermissions,
+
+          pendingRegularizations,
+          approvedRegularizations,
+          rejectedRegularizations,
+        ] = await Promise.all([
+          fetchRequests<LeaveRequest>(leaveEndpoint, "PENDING"),
+          fetchRequests<LeaveRequest>(leaveEndpoint, "APPROVED"),
+          fetchRequests<LeaveRequest>(leaveEndpoint, "REJECTED"),
+
+          fetchRequests<PermissionRequest>(permissionEndpoint, "PENDING"),
+          fetchRequests<PermissionRequest>(permissionEndpoint, "APPROVED"),
+          fetchRequests<PermissionRequest>(permissionEndpoint, "REJECTED"),
+
+          fetchRequests<RegularizationRequest>(regularizationEndpoint, "PENDING"),
+          fetchRequests<RegularizationRequest>(regularizationEndpoint, "APPROVED"),
+          fetchRequests<RegularizationRequest>(regularizationEndpoint, "REJECTED"),
+        ]);
+
+        // Remove duplicates by request ID.
+        const uniqueById = <T extends { id: number }>(items: T[]): T[] => {
+          return Array.from(
+            new Map(items.map((item) => [item.id, item])).values()
+          );
+        };
+
+        if (!cancelled) {
+          setCalendarRequests({
+            leaves: uniqueById([
+              ...pendingLeaves,
+              ...approvedLeaves,
+              ...rejectedLeaves,
+            ]),
+
+            permissions: uniqueById([
+              ...pendingPermissions,
+              ...approvedPermissions,
+              ...rejectedPermissions,
+            ]),
+
+            regularizations: uniqueById([
+              ...pendingRegularizations,
+              ...approvedRegularizations,
+              ...rejectedRegularizations,
+            ]),
+          });
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setCalendarError(
+            error instanceof Error
+              ? error.message
+              : "Unable to load calendar events."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setCalendarLoading(false);
+        }
+      }
+    };
+
+    fetchCalendarRequests();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [storeAuthToken]);
 
   // --------------------------------------------------
   // CLEAR DECISION MESSAGES WHEN PAGE CHANGES
@@ -448,6 +646,99 @@ useEffect(() => {
     setCurrentYear(nextDate.getFullYear());
   };
 
+  // --------------------------------------------------
+  // BUILD CALENDAR EVENTS FROM API DATA
+  // --------------------------------------------------
+
+  const allCalendarEvents: CalendarEvent[] = [];
+
+  // Leave requests: create one event for every day of the leave.
+  calendarRequests.leaves.forEach((request) => {
+    const name = request.employee_name || "Unknown Employee";
+
+    const dates = getDateRangeKeys(
+      request.from_date,
+      request.to_date
+    );
+
+    dates.forEach((date) => {
+      allCalendarEvents.push({
+        date,
+        title: "Leave",
+        person: name,
+        type: "annual",
+        status: request.status,
+      });
+    });
+  });
+
+  // Permission requests.
+  calendarRequests.permissions.forEach((request) => {
+    const date = toDateKey(request.perm_date);
+
+    if (!date) return;
+
+    allCalendarEvents.push({
+      date,
+      title: `${request.minutes}m Permission`,
+      person: request.employee_name || "Unknown Employee",
+      type: "permission",
+      status: request.status,
+    });
+  });
+
+  // Regularization requests.
+  calendarRequests.regularizations.forEach((request) => {
+    const date = toDateKey(request.work_date);
+
+    if (!date) return;
+
+    allCalendarEvents.push({
+      date,
+      title: `Regularization · ${request.type.replace(/_/g, " ")}`,
+      person: request.employee?.name || "Unknown Employee",
+      type: "regularization",
+      status: request.status,
+    });
+  });
+
+  // Filter calendar events by the selected month and category.
+  const monthPrefix = `${currentYear}-${String(
+    currentMonth + 1
+  ).padStart(2, "0")}`;
+
+  const visibleCalendarEvents = allCalendarEvents.filter((event) => {
+    if (!event.date.startsWith(monthPrefix)) {
+      return false;
+    }
+
+    if (calendarStream === "leaves") {
+      return event.type === "annual" || event.type === "sick";
+    }
+
+    if (calendarStream === "permissions") {
+      return event.type === "permission";
+    }
+
+    if (calendarStream === "regularizations") {
+      return event.type === "regularization";
+    }
+
+    return true;
+  });
+
+  const filteredCalendarEvents = (day: number): CalendarEvent[] => {
+    const dateKey = `${currentYear}-${String(
+      currentMonth + 1
+    ).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+    return visibleCalendarEvents.filter(
+      (event) => event.date === dateKey
+    );
+  };
+
+  const visibleEventCount = visibleCalendarEvents.length;
+
   const getEventColor = (type: CalendarEvent["type"]) => {
     switch (type) {
       case "annual":
@@ -466,43 +757,6 @@ useEffect(() => {
         return "bg-slate-50 text-slate-600 border-slate-200";
     }
   };
-
-  const filteredCalendarEvents = (day: number) => {
-    if (currentYear !== 2026 || currentMonth !== 5) {
-      return [];
-    }
-
-    const events = calendarEvents[day] || [];
-
-    if (calendarStream === "all") {
-      return events;
-    }
-
-    return events.filter((event) => {
-      if (calendarStream === "leaves") {
-        return (
-          event.type === "annual" ||
-          event.type === "sick"
-        );
-      }
-
-      if (calendarStream === "permissions") {
-        return event.type === "permission";
-      }
-
-      if (calendarStream === "regularizations") {
-        return event.type === "regularization";
-      }
-
-      return true;
-    });
-  };
-
-  const visibleEventCount = Object.keys(calendarEvents).reduce(
-    (total, day) =>
-      total + filteredCalendarEvents(Number(day)).length,
-    0
-  );
 
   // --------------------------------------------------
   // OPEN DECISION MODAL
@@ -1121,6 +1375,15 @@ useEffect(() => {
 
             </div>
 
+            {/* CALENDAR ERROR */}
+
+            {calendarError && (
+              <div className="px-5 py-3 bg-rose-50 border-b border-rose-200 text-sm text-rose-700 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                {calendarError}
+              </div>
+            )}
+
             {/* WEEKDAY HEADER */}
 
             <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50 text-center py-3.5 text-base font-bold text-slate-500 uppercase tracking-wider">
@@ -1199,24 +1462,18 @@ useEffect(() => {
                       {events.map((event, eventIndex) => (
 
                         <div
-                          key={`${event.day}-${eventIndex}`}
-                          title={`${event.title}${
-                            event.person
-                              ? ` · ${event.person}`
-                              : ""
-                          }`}
+                          key={`${event.date}-${eventIndex}`}
+                          title={`${event.title} · ${event.person} · ${event.status}`}
                           className={`px-2 py-1.5 rounded-md border text-xs md:text-sm font-semibold truncate ${getEventColor(
                             event.type
                           )}`}
                         >
                           {event.title}
 
-                          {event.person && (
-                            <span className="hidden xl:inline">
-                              {" · "}
-                              {event.person}
-                            </span>
-                          )}
+                          <span className="hidden xl:inline">
+                            {" · "}
+                            {event.person}
+                          </span>
 
                         </div>
 
@@ -1241,14 +1498,7 @@ useEffect(() => {
                 <div className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full bg-[#0284c7]" />
                   <span className="text-base font-medium text-slate-700">
-                    Annual Leave
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-amber-500" />
-                  <span className="text-base font-medium text-slate-700">
-                    Sick Leave
+                    Leave
                   </span>
                 </div>
 
@@ -1269,7 +1519,9 @@ useEffect(() => {
               </div>
 
               <div className="text-base font-medium text-slate-500">
-                Showing {visibleEventCount} sample team events
+                {calendarLoading
+                  ? "Loading team events..."
+                  : `Showing ${visibleEventCount} team events`}
               </div>
 
             </div>
