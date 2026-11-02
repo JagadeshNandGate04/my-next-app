@@ -1,8 +1,26 @@
 
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import Sidebar from "../components/SideBar";
+
+import type { AppDispatch, RootState } from "@/app/store/store";
+
+import {
+  fetchAdminLeaveRequests,
+  fetchAdminPermissionRequests,
+  fetchAdminRegularizationRequests,
+  decideAdminRequest,
+  clearRequestMessages,
+  type RequestType,
+  type DecisionAction,
+  type RequestStatus,
+  type LeaveRequest,
+  type PermissionRequest,
+  type RegularizationRequest,
+} from "../store/requests/requestSlice";
+
 import {
   Calendar as CalendarIcon,
   Clock,
@@ -13,9 +31,13 @@ import {
   Eye,
   Check,
   X,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 
-// ---------------- TYPES ----------------
+// --------------------------------------------------
+// TYPES
+// --------------------------------------------------
 
 type RequestStream =
   | "leaves"
@@ -26,21 +48,20 @@ type RequestStream =
 type StatusFilter = "pending" | "approved" | "rejected";
 
 interface ApprovalRequest {
-  id: string;
+  id: number;
   name: string;
   empId: string;
   role: string;
   department: string;
   initials: string;
   type: "Leave" | "Permission" | "Regularization";
-  subType?: string;
+  requestType: RequestType;
+  subType: string;
   dateRange: string;
   quotaInfo: string;
   appliedTime: string;
   reason: string;
-  status: "pending" | "approved" | "rejected";
-  slaBadge?: string;
-  slaUrgent?: boolean;
+  status: RequestStatus;
 }
 
 interface CalendarEvent {
@@ -50,60 +71,10 @@ interface CalendarEvent {
   type: "annual" | "sick" | "permission" | "regularization";
 }
 
-// ---------------- SAMPLE DATA ----------------
-
-const requests: ApprovalRequest[] = [
-  {
-    id: "REQ-101",
-    name: "Karthik Raja",
-    empId: "#EMP-1048",
-    role: "Cloud Infra · Engineering",
-    department: "Engineering",
-    initials: "KR",
-    type: "Leave",
-    subType: "Annual Leave (2 Days)",
-    dateRange: "09-06 to 10-06-2026",
-    quotaInfo: "Quota: 8 Days Left",
-    appliedTime: "Applied: 2h ago",
-    reason:
-      "Attending family wedding reception in hometown Tirunelveli. Standby dev assigned.",
-    status: "pending",
-  },
-  {
-    id: "REQ-102",
-    name: "Sneha Mohanty",
-    empId: "#EMP-1203",
-    role: "UI/UX · Product Design",
-    department: "Design",
-    initials: "SM",
-    type: "Permission",
-    subType: "2 Hours (14:30 - 16:30)",
-    dateRange: "Date: 12-06-2026",
-    quotaInfo: "Quota Used: 90/120m",
-    appliedTime: "Applied: 4h ago",
-    reason:
-      "Urgent personal health checkup appointment at Apollo Clinic. Work handover given.",
-    status: "pending",
-    slaBadge: "Requires SLA Decision",
-    slaUrgent: true,
-  },
-  {
-    id: "REQ-103",
-    name: "Arun Prakash",
-    empId: "#EMP-0982",
-    role: "QA Automation · Quality",
-    department: "QA",
-    initials: "AP",
-    type: "Regularization",
-    subType: "Missed Out-Punch (18:30)",
-    dateRange: "Gate 02 Sync Log",
-    quotaInfo: "Shift Date: 05-06-2026",
-    appliedTime: "Auto-Flagged",
-    reason:
-      "Biometric turnstile Reader 02 was offline during evening exit shift. CCTV verified with security.",
-    status: "pending",
-  },
-];
+// --------------------------------------------------
+// SAMPLE CALENDAR DATA
+// Replace with a calendar API when available.
+// --------------------------------------------------
 
 const calendarEvents: Record<number, CalendarEvent[]> = {
   1: [{ day: 1, title: "Sick Leave", person: "N", type: "sick" }],
@@ -124,9 +95,231 @@ const calendarEvents: Record<number, CalendarEvent[]> = {
   23: [{ day: 23, title: "Missed-Punch Req", type: "regularization" }],
 };
 
-// ---------------- MAIN PAGE ----------------
+// --------------------------------------------------
+// HELPERS
+// --------------------------------------------------
+
+const statusToApi = (status: StatusFilter): RequestStatus => {
+  switch (status) {
+    case "approved":
+      return "APPROVED";
+    case "rejected":
+      return "REJECTED";
+    default:
+      return "PENDING";
+  }
+};
+
+const formatDate = (value?: string | null): string => {
+  if (!value) return "Not provided";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+const formatTime = (value?: string | null): string => {
+  if (!value) return "Not provided";
+
+  // Handle a time-only value such as 14:30:00.
+  const timeMatch = value.match(/^(\d{1,2}):(\d{2})/);
+
+  if (timeMatch) {
+    const hours = Number(timeMatch[1]);
+    const minutes = Number(timeMatch[2]);
+    const date = new Date();
+
+    date.setHours(hours, minutes, 0, 0);
+
+    return date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const getInitials = (name?: string): string => {
+  if (!name) return "NA";
+
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
+};
+
+const getAppliedTime = (value?: string): string => {
+  if (!value) return "Application date unavailable";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return `Applied: ${value}`;
+  }
+
+  return `Applied: ${date.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })}`;
+};
+
+// --------------------------------------------------
+// CONVERT API DATA INTO CARD DATA
+// --------------------------------------------------
+
+const mapLeaveRequest = (
+  request: LeaveRequest
+): ApprovalRequest => {
+  const name = request.employee_name || "Unknown Employee";
+
+  return {
+    id: request.id,
+    name,
+    empId: request.emp_code || "N/A",
+    role: request.designation || "Employee",
+    department: request.designation || "General",
+    initials: getInitials(name),
+    type: "Leave",
+    requestType: "leave",
+    subType: `${request.days} Day${request.days === 1 ? "" : "s"} Leave`,
+    dateRange: `${formatDate(request.from_date)} - ${formatDate(
+      request.to_date
+    )}`,
+    quotaInfo: request.is_retroactive
+      ? "Retroactive Request"
+      : `${request.days} Day${request.days === 1 ? "" : "s"} Requested`,
+    appliedTime: getAppliedTime(request.created_at),
+    reason: request.reason,
+    status: request.status,
+  };
+};
+
+const mapPermissionRequest = (
+  request: PermissionRequest
+): ApprovalRequest => {
+  const name = request.employee_name || "Unknown Employee";
+
+  const hours = Math.floor(request.minutes / 60);
+  const minutes = request.minutes % 60;
+
+  const duration =
+    hours > 0
+      ? `${hours}h ${minutes > 0 ? `${minutes}m` : ""}`.trim()
+      : `${minutes} minutes`;
+
+  return {
+    id: request.id,
+    name,
+    empId: request.emp_code || "N/A",
+    role: request.designation || "Employee",
+    department: request.designation || "General",
+    initials: getInitials(name),
+    type: "Permission",
+    requestType: "permission",
+    subType: `${duration} Permission`,
+    dateRange: `${formatDate(request.perm_date)} · ${formatTime(
+      request.start_time
+    )}`,
+    quotaInfo: `${request.minutes} Minutes Requested`,
+    appliedTime: getAppliedTime(request.created_at),
+    reason: request.reason,
+    status: request.status,
+  };
+};
+
+const mapRegularizationRequest = (
+  request: RegularizationRequest
+): ApprovalRequest => {
+  const name = request.employee?.name || "Unknown Employee";
+
+  let subType = request.type.replace(/_/g, " ");
+
+  if (request.claimed_in && request.claimed_out) {
+    subType = `In: ${formatTime(request.claimed_in)} · Out: ${formatTime(
+      request.claimed_out
+    )}`;
+  } else if (request.claimed_in) {
+    subType = `Claimed In: ${formatTime(request.claimed_in)}`;
+  } else if (request.claimed_out) {
+    subType = `Claimed Out: ${formatTime(request.claimed_out)}`;
+  }
+
+  return {
+    id: request.id,
+    name,
+    empId: request.employee?.emp_code || "N/A",
+    role: request.employee?.designation || "Employee",
+    department: request.employee?.designation || "General",
+    initials: getInitials(name),
+    type: "Regularization",
+    requestType: "regularization",
+    subType,
+    dateRange: formatDate(request.work_date),
+    quotaInfo: request.day_context?.status
+      ? `Attendance: ${request.day_context.status}`
+      : "Attendance Correction",
+    appliedTime: getAppliedTime(request.created_at),
+    reason: request.reason,
+    status: request.status,
+  };
+};
+
+// --------------------------------------------------
+// MAIN PAGE
+// --------------------------------------------------
 
 export default function AdminRequestsApprovals() {
+  const dispatch = useDispatch<AppDispatch>();
+
+  // Redux state
+
+  const {
+    leaveRequests,
+    permissionRequests,
+    regularizationRequests,
+
+    leaveLoading,
+    permissionLoading,
+    regularizationLoading,
+
+    leaveError,
+    permissionError,
+    regularizationError,
+
+    deciding,
+    decisionError,
+    decisionSuccess,
+
+    totalLeaveRequests,
+    totalPermissionRequests,
+    totalRegularizationRequests,
+  } = useSelector((state: RootState) => state.requests);
+
+  // Local UI state
+
   const [activeTab, setActiveTab] =
     useState<RequestStream>("leaves");
 
@@ -139,12 +332,82 @@ export default function AdminRequestsApprovals() {
   const [currentMonth, setCurrentMonth] = useState(5);
   const [currentYear, setCurrentYear] = useState(2026);
 
+  // Decision modal state
+
+  const [selectedRequest, setSelectedRequest] =
+    useState<ApprovalRequest | null>(null);
+
+  const [decisionAction, setDecisionAction] =
+    useState<DecisionAction>("APPROVE");
+
+  const [decisionNote, setDecisionNote] = useState("");
+
+  // --------------------------------------------------
+  // FETCH REQUESTS
+  // --------------------------------------------------
+
+
+useEffect(() => {
+  const status = statusToApi(statusFilter);
+
+  dispatch(fetchAdminLeaveRequests({ status })).catch(() => {});
+
+  dispatch(fetchAdminPermissionRequests({ status })).catch(() => {});
+
+  dispatch(fetchAdminRegularizationRequests({ status })).catch(() => {});
+}, [dispatch, statusFilter]);
+
+
+  // --------------------------------------------------
+  // CLEAR DECISION MESSAGES WHEN PAGE CHANGES
+  // --------------------------------------------------
+
+  useEffect(() => {
+    dispatch(clearRequestMessages());
+  }, [dispatch, activeTab, statusFilter]);
+
+  // --------------------------------------------------
+  // CURRENT REQUEST LIST
+  // --------------------------------------------------
+
+  const requests: ApprovalRequest[] =
+    activeTab === "leaves"
+      ? leaveRequests.map(mapLeaveRequest)
+      : activeTab === "permissions"
+      ? permissionRequests.map(mapPermissionRequest)
+      : activeTab === "regularizations"
+      ? regularizationRequests.map(mapRegularizationRequest)
+      : [];
+
+  const loading =
+    activeTab === "leaves"
+      ? leaveLoading
+      : activeTab === "permissions"
+      ? permissionLoading
+      : regularizationLoading;
+
+  const error =
+    activeTab === "leaves"
+      ? leaveError
+      : activeTab === "permissions"
+      ? permissionError
+      : regularizationError;
+
+  const currentCount =
+    activeTab === "leaves"
+      ? totalLeaveRequests
+      : activeTab === "permissions"
+      ? totalPermissionRequests
+      : totalRegularizationRequests;
+
+  // --------------------------------------------------
+  // CALENDAR
+  // --------------------------------------------------
+
   const monthName = new Date(
     currentYear,
     currentMonth
   ).toLocaleString("en-US", { month: "long" });
-
-  // Calendar calculation: Monday is the first day of the week.
 
   const firstDay = new Date(
     currentYear,
@@ -204,8 +467,6 @@ export default function AdminRequestsApprovals() {
     }
   };
 
-  // The supplied sample events are for June 2026 only.
-
   const filteredCalendarEvents = (day: number) => {
     if (currentYear !== 2026 || currentMonth !== 5) {
       return [];
@@ -243,12 +504,106 @@ export default function AdminRequestsApprovals() {
     0
   );
 
+  // --------------------------------------------------
+  // OPEN DECISION MODAL
+  // --------------------------------------------------
+
+  const openDecisionModal = (
+    request: ApprovalRequest,
+    action: DecisionAction
+  ) => {
+    setSelectedRequest(request);
+    setDecisionAction(action);
+    setDecisionNote("");
+    dispatch(clearRequestMessages());
+  };
+
+  const closeDecisionModal = () => {
+    if (deciding) return;
+
+    setSelectedRequest(null);
+    setDecisionNote("");
+    dispatch(clearRequestMessages());
+  };
+
+  // --------------------------------------------------
+  // SUBMIT DECISION
+  // --------------------------------------------------
+
+  const handleDecision = async () => {
+    if (!selectedRequest) return;
+
+    if (!decisionNote.trim()) {
+      return;
+    }
+
+    try {
+      await dispatch(
+        decideAdminRequest({
+          id: selectedRequest.id,
+          type: selectedRequest.requestType,
+          action: decisionAction,
+          note: decisionNote.trim(),
+        })
+      );
+
+      // Refresh the list after the decision.
+
+      const status = statusToApi(statusFilter);
+
+      if (selectedRequest.requestType === "leave") {
+        await dispatch(
+          fetchAdminLeaveRequests({ status })
+        );
+      }
+
+      if (selectedRequest.requestType === "permission") {
+        await dispatch(
+          fetchAdminPermissionRequests({ status })
+        );
+      }
+
+      if (selectedRequest.requestType === "regularization") {
+        await dispatch(
+          fetchAdminRegularizationRequests({ status })
+        );
+      }
+
+      setSelectedRequest(null);
+      setDecisionNote("");
+    } catch {
+      // Redux stores the decision/fetch error.
+    }
+  };
+
+  // --------------------------------------------------
+  // STATUS BADGE
+  // --------------------------------------------------
+
+  const getStatusStyle = (status: RequestStatus) => {
+    switch (status) {
+      case "APPROVED":
+        return "bg-emerald-50 text-emerald-700 border-emerald-200";
+
+      case "REJECTED":
+        return "bg-rose-50 text-rose-700 border-rose-200";
+
+      case "CANCELLED":
+        return "bg-slate-100 text-slate-600 border-slate-200";
+
+      default:
+        return "bg-amber-50 text-amber-700 border-amber-200";
+    }
+  };
+
+  // --------------------------------------------------
+  // RENDER
+  // --------------------------------------------------
+
   return (
     <div className="min-h-screen w-full bg-[#f0f6fa] flex font-sans text-slate-800">
 
       <Sidebar />
-
-      {/* MAIN CONTENT */}
 
       <main className="flex-1 min-w-0 min-h-screen xl:h-screen xl:overflow-y-auto p-4 md:p-6 xl:p-8">
 
@@ -260,33 +615,26 @@ export default function AdminRequestsApprovals() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
 
-            {/* LEAVE REQUESTS */}
+            {/* LEAVE */}
 
             <div className="bg-white rounded-2xl p-6 border border-[#d6e5fb] shadow-sm hover:shadow-md transition-all">
 
               <div className="flex items-start justify-between gap-3">
 
                 <div className="min-w-0">
-                  <div className="flex items-center flex-wrap gap-2">
 
-                    <h3 className="text-xl font-bold text-slate-900">
-                      Leave Requests
-                    </h3>
-
-                    <span className="px-2.5 py-1 rounded-full text-[13px] font-semibold bg-[#eaf2fd] text-[#0284c7] border border-[#d3e7fa]">
-                      8 Annual · 6 Sick
-                    </span>
-
-                  </div>
+                  <h3 className="text-xl font-bold text-slate-900">
+                    Leave Requests
+                  </h3>
 
                   <div className="mt-3 flex items-baseline gap-3">
 
                     <span className="text-[44px] leading-none font-extrabold text-[#0284c7]">
-                      14
+                      {totalLeaveRequests}
                     </span>
 
                     <span className="text-base font-medium text-slate-500">
-                      Pending Approval
+                      Matching Requests
                     </span>
 
                   </div>
@@ -298,46 +646,32 @@ export default function AdminRequestsApprovals() {
 
               </div>
 
-              <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between flex-wrap gap-3 text-base font-medium">
-
-                <span className="text-slate-500">
-                  42 Approved this month
-                </span>
-
-                <span className="px-3 py-1.5 rounded-lg bg-sky-50 text-[#0284c7] font-semibold border border-sky-100">
-                  SLA: &lt; 24 Hrs
-                </span>
-
+              <div className="mt-5 pt-4 border-t border-slate-100 text-base font-medium text-slate-500">
+                Live count from leave API
               </div>
+
             </div>
 
-            {/* PERMISSION REQUESTS */}
+            {/* PERMISSION */}
 
             <div className="bg-white rounded-2xl p-6 border border-[#d6e5fb] shadow-sm hover:shadow-md transition-all">
 
               <div className="flex items-start justify-between gap-3">
 
                 <div className="min-w-0">
-                  <div className="flex items-center flex-wrap gap-2">
 
-                    <h3 className="text-xl font-bold text-slate-900">
-                      Permission Requests
-                    </h3>
-
-                    <span className="px-2.5 py-1 rounded-full text-[13px] font-semibold bg-[#eaf2fd] text-[#0284c7] border border-[#d3e7fa]">
-                      120m Policy Cap
-                    </span>
-
-                  </div>
+                  <h3 className="text-xl font-bold text-slate-900">
+                    Permission Requests
+                  </h3>
 
                   <div className="mt-3 flex items-baseline gap-3">
 
                     <span className="text-[44px] leading-none font-extrabold text-[#0284c7]">
-                      6
+                      {totalPermissionRequests}
                     </span>
 
                     <span className="text-base font-medium text-slate-500">
-                      Pending Review
+                      Matching Requests
                     </span>
 
                   </div>
@@ -349,46 +683,32 @@ export default function AdminRequestsApprovals() {
 
               </div>
 
-              <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between flex-wrap gap-3 text-base font-medium">
-
-                <span className="text-slate-500">
-                  18 Approved this month
-                </span>
-
-                <span className="px-3 py-1.5 rounded-lg bg-amber-50 text-amber-600 font-semibold border border-amber-200">
-                  SLA: Urgent (Today)
-                </span>
-
+              <div className="mt-5 pt-4 border-t border-slate-100 text-base font-medium text-slate-500">
+                Live count from permission API
               </div>
+
             </div>
 
-            {/* REGULARIZATION REQUESTS */}
+            {/* REGULARIZATION */}
 
             <div className="bg-white rounded-2xl p-6 border border-[#d6e5fb] shadow-sm hover:shadow-md transition-all">
 
               <div className="flex items-start justify-between gap-3">
 
                 <div className="min-w-0">
-                  <div className="flex items-center flex-wrap gap-2">
 
-                    <h3 className="text-xl font-bold text-slate-900">
-                      Regularization Requests
-                    </h3>
-
-                    <span className="px-2.5 py-1 rounded-full text-[13px] font-semibold bg-[#eaf2fd] text-[#0284c7] border border-[#d3e7fa]">
-                      Biometric &amp; In-Out
-                    </span>
-
-                  </div>
+                  <h3 className="text-xl font-bold text-slate-900">
+                    Regularization Requests
+                  </h3>
 
                   <div className="mt-3 flex items-baseline gap-3">
 
                     <span className="text-[44px] leading-none font-extrabold text-[#0284c7]">
-                      9
+                      {totalRegularizationRequests}
                     </span>
 
                     <span className="text-base font-medium text-slate-500">
-                      Pending Reconcile
+                      Matching Requests
                     </span>
 
                   </div>
@@ -400,17 +720,10 @@ export default function AdminRequestsApprovals() {
 
               </div>
 
-              <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between flex-wrap gap-3 text-base font-medium">
-
-                <span className="text-slate-500">
-                  28 Reconciled this cycle
-                </span>
-
-                <span className="px-3 py-1.5 rounded-lg bg-sky-50 text-[#0284c7] font-semibold border border-sky-100">
-                  SLA: Immediate
-                </span>
-
+              <div className="mt-5 pt-4 border-t border-slate-100 text-base font-medium text-slate-500">
+                Live count from regularization API
               </div>
+
             </div>
 
           </div>
@@ -436,7 +749,7 @@ export default function AdminRequestsApprovals() {
                 Leave Requests
 
                 <span className="px-2.5 py-1 text-[13px] font-bold rounded-full bg-[#0284c7] text-white">
-                  14
+                  {totalLeaveRequests}
                 </span>
               </button>
 
@@ -451,7 +764,7 @@ export default function AdminRequestsApprovals() {
                 Permission Requests
 
                 <span className="px-2.5 py-1 text-[13px] font-bold rounded-full bg-slate-100 text-slate-600">
-                  6
+                  {totalPermissionRequests}
                 </span>
               </button>
 
@@ -466,7 +779,7 @@ export default function AdminRequestsApprovals() {
                 Regularization Requests
 
                 <span className="px-2.5 py-1 text-[13px] font-bold rounded-full bg-slate-100 text-slate-600">
-                  9
+                  {totalRegularizationRequests}
                 </span>
               </button>
 
@@ -478,206 +791,246 @@ export default function AdminRequestsApprovals() {
 
               <div className="flex items-center bg-white rounded-xl p-1.5 border border-[#d6e5fb] shadow-sm">
 
-                <button
-                  onClick={() => setStatusFilter("pending")}
-                  className={`px-4 py-2.5 rounded-lg text-[15px] font-bold transition-all ${
-                    statusFilter === "pending"
-                      ? "bg-[#0284c7] text-white shadow-sm"
-                      : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  Pending (29)
-                </button>
+                {(
+                  ["pending", "approved", "rejected"] as StatusFilter[]
+                ).map((status) => (
 
-                <button
-                  onClick={() => setStatusFilter("approved")}
-                  className={`px-4 py-2.5 rounded-lg text-[15px] font-bold transition-all ${
-                    statusFilter === "approved"
-                      ? "bg-[#0284c7] text-white shadow-sm"
-                      : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  Approved (88)
-                </button>
+                  <button
+                    key={status}
+                    onClick={() => setStatusFilter(status)}
+                    className={`px-4 py-2.5 rounded-lg text-[15px] font-bold capitalize transition-all ${
+                      statusFilter === status
+                        ? "bg-[#0284c7] text-white shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    {status}
+                  </button>
 
-                <button
-                  onClick={() => setStatusFilter("rejected")}
-                  className={`px-4 py-2.5 rounded-lg text-[15px] font-bold transition-all ${
-                    statusFilter === "rejected"
-                      ? "bg-[#0284c7] text-white shadow-sm"
-                      : "text-slate-600 hover:text-slate-900"
-                  }`}
-                >
-                  Rejected (5)
-                </button>
+                ))}
 
               </div>
 
-              <button className="flex items-center gap-2.5 px-4 py-3 bg-white border border-[#d6e5fb] rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 shadow-sm">
-
+              <div className="flex items-center gap-2.5 px-4 py-3 bg-white border border-[#d6e5fb] rounded-xl text-base font-semibold text-slate-500 shadow-sm">
                 <Filter className="w-5 h-5 text-slate-500" />
-
-                Department Filter
-
-              </button>
+                All Departments
+              </div>
 
             </div>
+
           </div>
 
           {/* =========================================
               3. REQUEST CARDS
           ========================================= */}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+          {decisionSuccess && (
+            <div className="flex items-center gap-2 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700">
+              <CheckCircle2 className="w-5 h-5 shrink-0" />
+              {decisionSuccess}
+            </div>
+          )}
 
-            {requests.map((req) => (
+          {error && (
+            <div className="flex items-center gap-2 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700">
+              <AlertCircle className="w-5 h-5 shrink-0" />
+              {error}
+            </div>
+          )}
 
-              <div
-                key={req.id}
-                className="bg-white rounded-2xl p-6 border border-[#d6e5fb] shadow-sm flex flex-col justify-between hover:border-[#7BBDE8] hover:shadow-md transition-all min-w-0"
-              >
+          {loading ? (
 
-                <div>
+            <div className="bg-white rounded-2xl border border-[#d6e5fb] p-12 flex flex-col items-center justify-center gap-3">
+              <Loader2 className="w-8 h-8 text-[#0284c7] animate-spin" />
+              <p className="text-slate-500 font-medium">
+                Loading {activeTab} requests...
+              </p>
+            </div>
 
-                  {/* EMPLOYEE DETAILS */}
+          ) : requests.length === 0 ? (
 
-                  <div className="flex items-start justify-between gap-3">
+            <div className="bg-white rounded-2xl border border-[#d6e5fb] p-12 text-center">
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-[#eaf2fd] flex items-center justify-center text-[#0284c7]">
+                <CheckCircle2 className="w-7 h-7" />
+              </div>
 
-                    <div className="flex items-center gap-3.5 min-w-0">
+              <h3 className="mt-4 text-xl font-bold text-slate-900">
+                No {statusFilter} requests found
+              </h3>
 
-                      <div className="w-14 h-14 shrink-0 rounded-full bg-[#eaf2fd] border border-[#d3e7fa] text-[#0284c7] font-bold flex items-center justify-center text-lg">
-                        {req.initials}
-                      </div>
+              <p className="mt-2 text-slate-500">
+                There are currently no matching {activeTab} requests.
+              </p>
+            </div>
 
-                      <div className="min-w-0">
+          ) : (
 
-                        <div className="flex flex-wrap items-center gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
 
-                          <h4 className="text-lg font-bold text-slate-900">
-                            {req.name}
-                          </h4>
+              {requests.map((req) => (
 
-                          <span className="text-[13px] text-slate-400 font-semibold">
-                            {req.empId}
-                          </span>
+                <div
+                  key={`${req.requestType}-${req.id}`}
+                  className="bg-white rounded-2xl p-6 border border-[#d6e5fb] shadow-sm flex flex-col justify-between hover:border-[#7BBDE8] hover:shadow-md transition-all min-w-0"
+                >
+
+                  <div>
+
+                    {/* EMPLOYEE DETAILS */}
+
+                    <div className="flex items-start justify-between gap-3">
+
+                      <div className="flex items-center gap-3.5 min-w-0">
+
+                        <div className="w-14 h-14 shrink-0 rounded-full bg-[#eaf2fd] border border-[#d3e5fa] text-[#0284c7] font-bold flex items-center justify-center text-lg">
+                          {req.initials}
+                        </div>
+
+                        <div className="min-w-0">
+
+                          <div className="flex flex-wrap items-center gap-2">
+
+                            <h4 className="text-lg font-bold text-slate-900">
+                              {req.name}
+                            </h4>
+
+                            <span className="text-[13px] text-slate-400 font-semibold">
+                              {req.empId}
+                            </span>
+
+                          </div>
+
+                          <p className="text-[15px] text-slate-500 mt-1.5 truncate">
+                            {req.role}
+                          </p>
 
                         </div>
 
-                        <p className="text-[15px] text-slate-500 mt-1.5 truncate">
-                          {req.role}
-                        </p>
+                      </div>
+
+                      <span className="shrink-0 px-3 py-1.5 rounded-full text-[13px] font-bold bg-[#eaf2fd] text-[#0284c7] border border-[#d6e5fb]">
+                        {req.type}
+                      </span>
+
+                    </div>
+
+                    {/* REQUEST INFORMATION */}
+
+                    <div className="mt-5 grid grid-cols-2 gap-4 py-4 px-4 bg-[#f8fbff] rounded-xl border border-[#e2edfa]">
+
+                      <div className="min-w-0">
+
+                        <span className="text-[13px] text-slate-400 block uppercase font-bold tracking-wider">
+                          Request Type
+                        </span>
+
+                        <span className="font-bold text-slate-800 text-base mt-2 block leading-snug">
+                          {req.subType}
+                        </span>
+
+                        <span className="text-[13px] text-[#0284c7] font-semibold mt-2 block">
+                          {req.status === "PENDING"
+                            ? "● Pending Admin Approval"
+                            : req.status}
+                        </span>
+
+                      </div>
+
+                      <div className="text-right min-w-0">
+
+                        <span className="text-[13px] text-slate-400 block uppercase font-bold tracking-wider">
+                          Date / Details
+                        </span>
+
+                        <span className="font-semibold text-slate-700 text-base mt-2 block leading-snug">
+                          {req.dateRange}
+                        </span>
+
+                        <span className="text-[13px] text-slate-500 mt-2 block">
+                          {req.quotaInfo}
+                        </span>
 
                       </div>
 
                     </div>
 
-                    <span className="shrink-0 px-3 py-1.5 rounded-full text-[13px] font-bold bg-[#eaf2fd] text-[#0284c7] border border-[#d6e5fb]">
-                      {req.type}
-                    </span>
+                    {/* REASON */}
 
-                  </div>
+                    <div className="mt-4">
 
-                  {/* REQUEST INFORMATION */}
-
-                  <div className="mt-5 grid grid-cols-2 gap-4 py-4 px-4 bg-[#f8fbff] rounded-xl border border-[#e2edfa]">
-
-                    <div className="min-w-0">
-
-                      <span className="text-[13px] text-slate-400 block uppercase font-bold tracking-wider">
-                        Request Type
+                      <span className="text-[13px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
+                        Reason / Justification
                       </span>
 
-                      <span className="font-bold text-slate-800 text-base mt-2 block leading-snug">
-                        {req.subType}
-                      </span>
-
-                      <span className="text-[13px] text-[#0284c7] font-semibold mt-2 block">
-                        ● Pending Admin Approval
-                      </span>
+                      <p className="text-[15px] md:text-base text-slate-600 italic bg-white p-4 rounded-xl border border-slate-100 leading-relaxed">
+                        &ldquo;{req.reason}&rdquo;
+                      </p>
 
                     </div>
 
-                    <div className="text-right min-w-0">
+                    {/* APPLIED TIME */}
 
-                      <span className="text-[13px] text-slate-400 block uppercase font-bold tracking-wider">
-                        Slot / Range
-                      </span>
-
-                      <span className="font-semibold text-slate-700 text-base mt-2 block leading-snug">
-                        {req.dateRange}
-                      </span>
-
-                      <span className="text-[13px] text-slate-500 mt-2 block">
-                        {req.quotaInfo}
-                      </span>
-
-                    </div>
-
-                  </div>
-
-                  {/* REASON */}
-
-                  <div className="mt-4">
-
-                    <span className="text-[13px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
-                      Reason / Justification
-                    </span>
-
-                    <p className="text-[15px] md:text-base text-slate-600 italic bg-white p-4 rounded-xl border border-slate-100 leading-relaxed">
-                      &ldquo;{req.reason}&rdquo;
+                    <p className="mt-3 text-[13px] font-medium text-slate-400">
+                      {req.appliedTime}
                     </p>
 
                   </div>
 
-                  {/* APPLIED TIME */}
+                  {/* ACTION BUTTONS */}
 
-                  <p className="mt-3 text-[13px] font-medium text-slate-400">
-                    {req.appliedTime}
-                  </p>
+                  <div className="mt-5 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
 
-                </div>
+                    <div className="flex items-center gap-2 text-[13px] font-semibold">
+                      <span
+                        className={`px-3 py-1.5 rounded-full border ${getStatusStyle(
+                          req.status
+                        )}`}
+                      >
+                        {req.status}
+                      </span>
+                    </div>
 
-                {/* ACTION BUTTONS */}
+                    {req.status === "PENDING" && (
 
-                <div className="mt-5 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
 
-                  <button className="flex items-center gap-2 text-[15px] font-semibold text-slate-500 hover:text-[#0284c7] transition-colors py-2 px-1">
+                        <button
+                          onClick={() =>
+                            openDecisionModal(req, "REJECT")
+                          }
+                          disabled={deciding}
+                          className="flex items-center gap-2 px-4 py-2.5 text-[15px] font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors border border-rose-200 disabled:opacity-50"
+                        >
+                          <X className="w-4 h-4" />
+                          Reject
+                        </button>
 
-                    <Eye className="w-5 h-5" />
+                        <button
+                          onClick={() =>
+                            openDecisionModal(req, "APPROVE")
+                          }
+                          disabled={deciding}
+                          className="flex items-center gap-2 px-4 py-2.5 text-[15px] font-bold text-white bg-[#0284c7] hover:bg-[#0369a1] rounded-xl transition-colors shadow-sm disabled:opacity-50"
+                        >
+                          <Check className="w-4 h-4" />
+                          {req.type === "Regularization"
+                            ? "Reconcile"
+                            : "Approve"}
+                        </button>
 
-                    Audit History
+                      </div>
 
-                  </button>
-
-                  <div className="flex items-center gap-2">
-
-                    <button className="flex items-center gap-2 px-4 py-2.5 text-[15px] font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors border border-rose-200">
-
-                      <X className="w-4 h-4" />
-
-                      Reject
-
-                    </button>
-
-                    <button className="flex items-center gap-2 px-4 py-2.5 text-[15px] font-bold text-white bg-[#0284c7] hover:bg-[#0369a1] rounded-xl transition-colors shadow-sm">
-
-                      <Check className="w-4 h-4" />
-
-                      {req.type === "Regularization"
-                        ? "Reconcile"
-                        : "Approve"}
-
-                    </button>
+                    )}
 
                   </div>
 
                 </div>
 
-              </div>
+              ))}
 
-            ))}
+            </div>
 
-          </div>
+          )}
 
           {/* =========================================
               4. TEAM ABSENCE & LEAVE CALENDAR
@@ -819,8 +1172,6 @@ export default function AdminRequestsApprovals() {
                     }`}
                   >
 
-                    {/* DAY NUMBER */}
-
                     <div className="flex items-center justify-between text-base font-bold text-slate-400 shrink-0">
 
                       <span
@@ -842,8 +1193,6 @@ export default function AdminRequestsApprovals() {
                       )}
 
                     </div>
-
-                    {/* EVENTS */}
 
                     <div className="space-y-1.5 mt-2">
 
@@ -920,18 +1269,166 @@ export default function AdminRequestsApprovals() {
               </div>
 
               <div className="text-base font-medium text-slate-500">
-                Showing {visibleEventCount} active team events
+                Showing {visibleEventCount} sample team events
               </div>
 
             </div>
 
           </div>
 
-          {/* END CALENDAR */}
-
         </div>
 
       </main>
+
+      {/* =========================================
+          5. APPROVE / REJECT MODAL
+      ========================================= */}
+
+      {selectedRequest && (
+
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+
+          <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden">
+
+            {/* MODAL HEADER */}
+
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+
+              <div>
+
+                <h2 className="text-xl font-bold text-slate-900">
+                  {decisionAction === "APPROVE"
+                    ? selectedRequest.type === "Regularization"
+                      ? "Reconcile Request"
+                      : "Approve Request"
+                    : "Reject Request"}
+                </h2>
+
+                <p className="text-sm text-slate-500 mt-1">
+                  Request ID: #{selectedRequest.id}
+                </p>
+
+              </div>
+
+              <button
+                onClick={closeDecisionModal}
+                disabled={deciding}
+                className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 disabled:opacity-50"
+                aria-label="Close modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+            </div>
+
+            {/* MODAL BODY */}
+
+            <div className="p-6">
+
+              <div className="p-4 rounded-xl bg-[#f8fbff] border border-[#e2edfa]">
+
+                <p className="text-sm text-slate-500">
+                  Employee
+                </p>
+
+                <p className="font-bold text-slate-900 mt-1">
+                  {selectedRequest.name}
+                </p>
+
+                <p className="text-sm text-slate-500 mt-1">
+                  {selectedRequest.type} · {selectedRequest.subType}
+                </p>
+
+              </div>
+
+              <label className="block mt-5 text-sm font-bold text-slate-700">
+                Decision Note <span className="text-rose-600">*</span>
+              </label>
+
+              <textarea
+                value={decisionNote}
+                onChange={(event) =>
+                  setDecisionNote(event.target.value)
+                }
+                rows={4}
+                maxLength={1000}
+                placeholder={
+                  decisionAction === "APPROVE"
+                    ? "Enter the reason for approving this request..."
+                    : "Enter the reason for rejecting this request..."
+                }
+                className="w-full mt-2 p-4 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0284c7] focus:border-transparent resize-none"
+              />
+
+              <div className="flex items-center justify-between mt-2">
+                <p className="text-xs text-slate-400">
+                  A decision note is required.
+                </p>
+
+                <p className="text-xs text-slate-400">
+                  {decisionNote.length}/1000
+                </p>
+              </div>
+
+              {decisionError && (
+                <div className="mt-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-sm text-rose-700">
+                  {decisionError}
+                </div>
+              )}
+
+            </div>
+
+            {/* MODAL FOOTER */}
+
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
+
+              <button
+                onClick={closeDecisionModal}
+                disabled={deciding}
+                className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 font-semibold hover:bg-slate-100 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={handleDecision}
+                disabled={deciding || !decisionNote.trim()}
+                className={`px-5 py-2.5 rounded-xl text-white font-bold flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                  decisionAction === "APPROVE"
+                    ? "bg-[#0284c7] hover:bg-[#0369a1]"
+                    : "bg-rose-600 hover:bg-rose-700"
+                }`}
+              >
+
+                {deciding ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    {decisionAction === "APPROVE" ? (
+                      <Check className="w-4 h-4" />
+                    ) : (
+                      <X className="w-4 h-4" />
+                    )}
+
+                    Confirm{" "}
+                    {decisionAction === "APPROVE"
+                      ? "Approval"
+                      : "Rejection"}
+                  </>
+                )}
+
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      )}
 
     </div>
   );

@@ -1,7 +1,7 @@
 
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   ShieldCheck,
   FileText,
@@ -10,7 +10,11 @@ import {
 } from "lucide-react";
 
 export default function Footer() {
-  const year = new Date().getFullYear();
+  const [year, setYear] = useState<number | null>(null);
+
+  useEffect(() => {
+    setYear(new Date().getFullYear());
+  }, []);
 
   return (
     <footer className="relative bg-white border-t border-[#d6e5fb] overflow-hidden">
@@ -93,7 +97,7 @@ export default function Footer() {
         <div className="mt-5 pt-4 border-t border-[#edf3fb] flex flex-col sm:flex-row items-center justify-between gap-2">
 
           <p className="text-[10px] text-slate-400 font-medium">
-            © {year} NANDGATE-IT SERVICES PVT LTD. All rights reserved.
+            © {year ?? "2026"} NANDGATE-IT SERVICES PVT LTD. All rights reserved.
           </p>
 
         </div>
