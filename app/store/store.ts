@@ -3,15 +3,14 @@ import { combineReducers } from "redux";
 import authReducer from "../store/auth/authSlice"
 import requestsReducer from "./requests/requestSlice";
 import attendanceReducer from "../store/attendance/attendanceSlice";
-
-
-
+import employeeReducer from "../store/employee/employeeSlice";
 
 // Combined reducers
 const rootReducer = combineReducers({
   auth: authReducer,
   requests: requestsReducer,
-  attendance: attendanceReducer
+  attendance: attendanceReducer,
+  employees: employeeReducer,
 });
 
 export const store = configureStore({
