@@ -2,7 +2,7 @@ import { configureStore } from '@reduxjs/toolkit'
 import { combineReducers } from "redux";
 import authReducer from "../store/auth/authSlice"
 import requestsReducer from "./requests/requestSlice";
-
+import attendanceReducer from "../store/attendance/attendanceSlice";
 
 
 
@@ -11,7 +11,7 @@ import requestsReducer from "./requests/requestSlice";
 const rootReducer = combineReducers({
   auth: authReducer,
   requests: requestsReducer,
-  
+  attendance: attendanceReducer
 });
 
 export const store = configureStore({
