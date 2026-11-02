@@ -46,6 +46,10 @@ export interface UpdateEmployeePayload {
   status: Employee["status"];
 }
 
+export interface FetchEmployeeByIdPayload {
+  id: number;
+}
+
 interface ApiError {
   message: string;
   errors?: Record<string, string>;
@@ -72,6 +76,7 @@ const API_URL = (
 ).replace(/\/+$/, "");
 
 const EMPLOYEE_API = `${API_URL}/api/v1/employees`;
+const EMPLOYEE_RESOURCE_API = `${EMPLOYEE_API}/employees`;
 const ADMIN_EMPLOYEE_API = `${API_URL}/api/v1/admin/employees`;
 
 const getAuthHeaders = (token: string) => ({
@@ -104,7 +109,9 @@ const parseEmployee = (value: unknown): Employee | null => {
     (typeof value.phone !== "string" &&
       value.phone !== null &&
       value.phone !== undefined) ||
-    typeof value.designation !== "string" ||
+    (typeof value.designation !== "string" &&
+      value.designation !== null &&
+      value.designation !== undefined) ||
     typeof value.date_of_joining !== "string" ||
     (value.status !== "ACTIVE" && value.status !== "INACTIVE")
   ) {
@@ -117,7 +124,8 @@ const parseEmployee = (value: unknown): Employee | null => {
     name: value.name,
     email: value.email,
     phone: typeof value.phone === "string" ? value.phone : "",
-    designation: value.designation,
+    designation:
+      typeof value.designation === "string" ? value.designation : "",
     date_of_joining: value.date_of_joining,
     status: value.status,
   };
@@ -154,6 +162,71 @@ const getEmployeeFromResponse = (result: unknown): Employee | null => {
 
   return parseEmployee(employee);
 };
+
+// --------------------------------------------------
+// Fetch Employee By ID
+// GET /api/v1/employees/employees/:id
+// --------------------------------------------------
+
+export const fetchEmployeeById = createAsyncThunk<
+  Employee,
+  FetchEmployeeByIdPayload,
+  {
+    state: RootState;
+    rejectValue: ApiError;
+  }
+>(
+  "employees/fetchEmployeeById",
+  async ({ id }, { getState, rejectWithValue }) => {
+    try {
+      const token = getState().auth.token;
+
+      if (!token) {
+        return rejectWithValue({
+          message: "Authentication token not found. Please log in again.",
+        });
+      }
+
+      const response = await fetch(`${EMPLOYEE_RESOURCE_API}/${id}`, {
+        method: "GET",
+        headers: {
+          ...getAuthHeaders(token),
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || result?.success === false) {
+        return rejectWithValue({
+          message:
+            result?.message ||
+            `Employee lookup failed (${response.status} ${response.statusText}).`,
+        });
+      }
+
+      const employee = getEmployeeFromResponse(result);
+
+      if (!employee) {
+        return rejectWithValue({
+          message: "Employee lookup returned an unexpected response format.",
+        });
+      }
+
+      return employee;
+    } catch (error) {
+      console.error("Fetch employee by ID error:", error);
+
+      return rejectWithValue({
+        message:
+          error instanceof Error
+            ? error.message
+            : "Something went wrong while fetching employee details.",
+      });
+    }
+  }
+);
 
 // --------------------------------------------------
 // Fetch All Employees
@@ -245,7 +318,7 @@ export const createEmployee = createAsyncThunk<
       }
 
       const response = await fetch(
-        ADMIN_EMPLOYEE_API,
+        EMPLOYEE_RESOURCE_API,
         {
           method: "POST",
           headers: {
@@ -298,7 +371,7 @@ export const createEmployee = createAsyncThunk<
 // --------------------------------------------------
 
 export const updateEmployee = createAsyncThunk<
-  Employee,
+  UpdateEmployeePayload,
   UpdateEmployeePayload,
   {
     state: RootState;
@@ -338,16 +411,7 @@ export const updateEmployee = createAsyncThunk<
         });
       }
 
-      const employee = getEmployeeFromResponse(result);
-
-      if (!employee) {
-        return rejectWithValue({
-          message:
-            "Employee was updated, but the API response format was unexpected. Refresh the employee list.",
-        });
-      }
-
-      return employee;
+      return { id, ...employeeData };
     } catch (error) {
       console.error("Update employee error:", error);
 

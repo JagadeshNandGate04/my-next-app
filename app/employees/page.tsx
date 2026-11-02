@@ -21,6 +21,7 @@ import Sidebar from "../components/SideBar";
 import type { AppDispatch, RootState } from "@/app/store/store";
 import {
   fetchEmployees,
+  fetchEmployeeById,
   createEmployee,
   updateEmployee,
   clearEmployeeMessages,
@@ -180,6 +181,9 @@ export default function EmployeeDirectoryPage() {
   const [payrollFilter, setPayrollFilter] = useState<PayrollFilter>("ALL");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [viewingEmployee, setViewingEmployee] = useState<Employee | null>(null);
+  const [detailLoadingId, setDetailLoadingId] = useState<number | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState<EmployeeFormData>(emptyForm());
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
@@ -438,6 +442,28 @@ export default function EmployeeDirectoryPage() {
     setIsModalOpen(true);
   };
 
+  const handleViewEmployee = async (id: number) => {
+    setDetailLoadingId(id);
+    setDetailError(null);
+    setViewingEmployee(null);
+
+    try {
+      const employee = await dispatch(fetchEmployeeById({ id })).unwrap();
+      setViewingEmployee(employee);
+    } catch (error) {
+      setDetailError(
+        error &&
+          typeof error === "object" &&
+          "message" in error &&
+          typeof error.message === "string"
+          ? error.message
+          : "Unable to load employee details."
+      );
+    } finally {
+      setDetailLoadingId(null);
+    }
+  };
+
   const handleExportCSV = () => {
     const headers = [
       "EMP Code",
@@ -555,13 +581,6 @@ export default function EmployeeDirectoryPage() {
             <div className="flex items-start gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
               <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
               <span>{error}</span>
-            </div>
-          )}
-
-          {successMessage && (
-            <div className="flex items-start gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-              <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
-              <span>{successMessage}</span>
             </div>
           )}
 
@@ -744,12 +763,12 @@ export default function EmployeeDirectoryPage() {
                 </span>
               </div>
 
-              <div className="text-xs font-mono font-bold text-slate-400">
+              {/* <div className="text-xs font-mono font-bold text-slate-400">
                 GET{" "}
                 <span className="text-[#1b64da]">
                   /api/v1/employees/all-employees
                 </span>
-              </div>
+              </div> */}
             </div>
 
             <div className="overflow-x-auto">
@@ -888,11 +907,17 @@ export default function EmployeeDirectoryPage() {
                           <div className="flex items-center justify-end gap-1.5">
                             <button
                               type="button"
-                              title="View salary structure"
-                              disabled={!employee.salary_structure_id}
-                              className="p-2 rounded-xl text-slate-500 hover:text-[#1b64da] hover:bg-[#eef4fa] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                              title={`View ${employee.name}`}
+                              aria-label={`View ${employee.name}`}
+                              onClick={() => handleViewEmployee(employee.id)}
+                              disabled={detailLoadingId === employee.id}
+                              className="p-2 rounded-xl text-slate-500 hover:text-[#1b64da] hover:bg-[#eef4fa] transition-colors disabled:opacity-50 disabled:cursor-wait"
                             >
-                              <ExternalLink className="w-4 h-4" />
+                              {detailLoadingId === employee.id ? (
+                                <RefreshCw className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <ExternalLink className="w-4 h-4" />
+                              )}
                             </button>
                             <button
                               type="button"
@@ -937,6 +962,80 @@ export default function EmployeeDirectoryPage() {
           </div>
         </div>
       </main>
+
+      {(viewingEmployee || detailError) && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto"
+          role="presentation"
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="employee-details-title"
+            className="bg-white border border-[#d5dbe1] rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl relative my-8"
+          >
+            <div className="flex items-center justify-between pb-4 border-b border-[#e2e8f0]">
+              <div>
+                <h2
+                  id="employee-details-title"
+                  className="font-black text-xl text-[#0f172a]"
+                >
+                  Employee Details
+                </h2>
+                {viewingEmployee && (
+                  <p className="text-xs text-[#64748b] mt-1">
+                    {viewingEmployee.emp_code}
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setViewingEmployee(null);
+                  setDetailError(null);
+                }}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-[#eef4fa]"
+                aria-label="Close employee details"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {detailError ? (
+              <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-700">
+                {detailError}
+              </div>
+            ) : viewingEmployee ? (
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
+                {[
+                  ["Name", viewingEmployee.name],
+                  ["Employee Code", viewingEmployee.emp_code],
+                  ["Email", viewingEmployee.email],
+                  ["Phone", viewingEmployee.phone || "—"],
+                  ["Designation", viewingEmployee.designation || "—"],
+                  [
+                    "Joining Date",
+                    formatDate(viewingEmployee.date_of_joining),
+                  ],
+                  ["Status", viewingEmployee.status],
+                ].map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="rounded-xl bg-[#f8fafc] border border-[#e2e8f0] p-3"
+                  >
+                    <dt className="text-[11px] font-bold uppercase tracking-wider text-[#64748b]">
+                      {label}
+                    </dt>
+                    <dd className="mt-1 text-sm font-semibold text-[#0f172a] break-words">
+                      {value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            ) : null}
+          </section>
+        </div>
+      )}
 
       {/* Create or edit employee modal */}
       {isModalOpen && (
@@ -1217,6 +1316,42 @@ export default function EmployeeDirectoryPage() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {successMessage && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"
+          onClick={() => dispatch(clearEmployeeMessages())}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="employee-success-title"
+            className="w-full max-w-sm rounded-3xl border border-emerald-100 bg-white p-7 text-center shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+              <CheckCircle2 className="h-8 w-8" aria-hidden="true" />
+            </div>
+            <h2
+              id="employee-success-title"
+              className="mt-4 text-xl font-black text-[#0f172a]"
+            >
+              Success
+            </h2>
+            <p className="mt-2 text-sm font-medium text-[#475569]">
+              {successMessage}
+            </p>
+            <button
+              type="button"
+              autoFocus
+              onClick={() => dispatch(clearEmployeeMessages())}
+              className="mt-6 w-full rounded-xl bg-[#1b64da] px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-[#1552b5] focus:outline-none focus:ring-2 focus:ring-[#7BBDE8] focus:ring-offset-2"
+            >
+              Close
+            </button>
+          </section>
         </div>
       )}
     </div>
