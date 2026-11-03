@@ -207,7 +207,7 @@ function TimePill({
 }) {
   if (!value) {
     return (
-      <span className="inline-flex items-center rounded-full bg-slate-100 px-4 py-2.5 font-mono text-sm font-bold text-slate-400 whitespace-nowrap">
+      <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-2 font-mono text-xs font-bold text-slate-400 whitespace-nowrap">
         --:--:--
       </span>
     );
@@ -227,9 +227,9 @@ function TimePill({
 
   return (
     <span
-      className={`inline-flex items-center gap-2 rounded-full border px-4 py-2.5 font-mono text-sm font-bold whitespace-nowrap ${wrapper}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-2 font-mono text-xs font-bold whitespace-nowrap ${wrapper}`}
     >
-      <Clock className={`w-4 h-4 shrink-0 ${icon}`} />
+      <Clock className={`w-3.5 h-3.5 shrink-0 ${icon}`} />
       {formatClock12(value) ?? formatPunchTime(value)}
     </span>
   );
@@ -971,17 +971,26 @@ export default function AdminAttendanceOperationsPage() {
                 )}
 
                 {!dailyLoading && !dailyError && (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+                  <div className="w-full">
+                    <table className="w-full table-fixed text-left border-collapse">
+                      <colgroup>
+                        <col className="w-[22%]" />
+                        <col className="w-[15%]" />
+                        <col className="w-[10%]" />
+                        <col className="w-[12%]" />
+                        <col className="w-[14%]" />
+                        <col className="w-[15%]" />
+                        <col className="w-[12%]" />
+                      </colgroup>
                       <thead>
                         <tr className="bg-[#eef1f6] border-b border-[#e3e8f0] text-xs font-bold text-slate-600 uppercase tracking-wider">
-                          <th className="py-5 px-6">Employee</th>
-                          <th className="py-5 px-6">Status & Live Feed</th>
-                          <th className="py-5 px-6">First In</th>
-                          <th className="py-5 px-6">Last Out</th>
-                          <th className="py-5 px-6">Work Duration</th>
-                          <th className="py-5 px-6">Audit Flags</th>
-                          <th className="py-5 px-6 text-right">Operations</th>
+                          <th className="py-4 px-3">Employee</th>
+                          <th className="py-4 px-3">Status & Live Feed</th>
+                          <th className="py-4 px-3">First In</th>
+                          <th className="py-4 px-3">Last Out</th>
+                          <th className="py-4 px-3">Work Duration</th>
+                          <th className="py-4 px-3">Audit Flags</th>
+                          <th className="py-4 px-3 text-right">Operations</th>
                         </tr>
                       </thead>
 
@@ -1023,25 +1032,25 @@ export default function AdminAttendanceOperationsPage() {
                                 className="bg-white hover:bg-[#f8faff] transition-colors"
                               >
                                 {/* EMPLOYEE */}
-                                <td className="py-5 px-6">
-                                  <div className="flex items-center gap-3.5 min-w-[240px]">
+                                <td className="py-4 px-3">
+                                  <div className="flex min-w-0 items-center gap-2">
                                     <div
-                                      className={`w-12 h-12 shrink-0 rounded-2xl bg-gradient-to-br ${getAvatarGradient(
+                                      className={`w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br ${getAvatarGradient(
                                         employee.user_id
                                       )} text-white font-black flex items-center justify-center text-base shadow-sm`}
                                     >
                                       {employee.name.slice(0, 2).toUpperCase()}
                                     </div>
 
-                                    <div>
-                                      <div className="font-bold text-slate-900 flex items-center gap-2 flex-wrap text-[15px]">
-                                        <span>{employee.name}</span>
-                                        <span className="text-xs font-bold text-blue-700 bg-[#dbe5ff] px-2.5 py-0.5 rounded-full">
+                                    <div className="min-w-0">
+                                      <div className="font-bold text-slate-900 flex items-center gap-1.5 flex-wrap text-sm">
+                                        <span className="truncate">{employee.name}</span>
+                                        <span className="text-[10px] font-bold text-blue-700 bg-[#dbe5ff] px-2 py-0.5 rounded-full whitespace-nowrap">
                                           {employee.emp_code}
                                         </span>
                                       </div>
 
-                                      <div className="text-sm text-slate-600 font-medium mt-1">
+                                      <div className="text-xs text-slate-600 font-medium mt-1 truncate">
                                         {employee.designation}
                                       </div>
                                     </div>
@@ -1049,11 +1058,11 @@ export default function AdminAttendanceOperationsPage() {
                                 </td>
 
                                 {/* STATUS & LIVE FEED */}
-                                <td className="py-5 px-6">
+                                <td className="py-4 px-3">
                                   {isLive ? (
-                                    <span className="inline-flex items-center gap-2.5 px-4 py-2 rounded-3xl bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">
+                                    <span className="inline-flex items-center gap-2 px-2.5 py-2 rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-200">
                                       <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                      <span className="text-sm leading-tight">
+                                      <span className="text-xs leading-tight">
                                         <span className="block font-bold">IN OFFICE</span>
                                         {formatShort12(employee.first_in) && (
                                           <span className="block font-semibold">
@@ -1063,17 +1072,17 @@ export default function AdminAttendanceOperationsPage() {
                                       </span>
                                     </span>
                                   ) : noPunch ? (
-                                    <span className="inline-flex items-center gap-2.5 px-4 py-2 rounded-3xl bg-rose-50 text-rose-600 border border-rose-200 whitespace-nowrap">
+                                    <span className="inline-flex items-center gap-2 px-2.5 py-2 rounded-2xl bg-rose-50 text-rose-600 border border-rose-200">
                                       <span className="w-2 h-2 rounded-full bg-rose-500" />
-                                      <span className="text-sm leading-tight font-bold">
+                                      <span className="text-xs leading-tight font-bold">
                                         <span className="block">NO PUNCH</span>
                                         <span className="block">RECORDED</span>
                                       </span>
                                     </span>
                                   ) : (
-                                    <span className="inline-flex items-center gap-2.5 px-4 py-2 rounded-3xl bg-slate-100 text-slate-600 border border-slate-200 whitespace-nowrap">
+                                    <span className="inline-flex items-center gap-2 px-2.5 py-2 rounded-2xl bg-slate-100 text-slate-600 border border-slate-200">
                                       <span className="w-2 h-2 rounded-full bg-slate-500" />
-                                      <span className="text-sm leading-tight">
+                                      <span className="text-xs leading-tight">
                                         {employee.last_out ? (
                                           <>
                                             <span className="block font-semibold">LOGGED OUT</span>
@@ -1092,7 +1101,7 @@ export default function AdminAttendanceOperationsPage() {
                                 </td>
 
                                 {/* FIRST IN */}
-                                <td className="py-5 px-6">
+                                <td className="py-4 px-3">
                                   <TimePill
                                     value={employee.first_in}
                                     tone={isLate ? "late" : isLive ? "live" : "plain"}
@@ -1100,9 +1109,9 @@ export default function AdminAttendanceOperationsPage() {
                                 </td>
 
                                 {/* LAST OUT */}
-                                <td className="py-5 px-6">
+                                <td className="py-4 px-3">
                                   {isLive ? (
-                                    <span className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#e8f1fb] text-blue-900 text-sm font-semibold whitespace-nowrap">
+                                    <span className="inline-flex items-center gap-2 px-2.5 py-2 rounded-full bg-[#e8f1fb] text-blue-900 text-xs font-semibold">
                                       <span className="w-2 h-2 rounded-full bg-teal-700" />
                                       Active on floor
                                     </span>
@@ -1112,17 +1121,17 @@ export default function AdminAttendanceOperationsPage() {
                                 </td>
 
                                 {/* WORK DURATION */}
-                                <td className="py-5 px-6">
-                                  <div className="min-w-[170px]">
-                                    <div className="flex items-center justify-between gap-3">
+                                <td className="py-4 px-3">
+                                  <div className="min-w-0">
+                                    <div className="flex items-center justify-between gap-1 flex-wrap">
                                       <span
-                                        className={`font-bold text-lg whitespace-nowrap ${durationText}`}
+                                        className={`font-bold text-base whitespace-nowrap ${durationText}`}
                                       >
                                         {formatDuration(employee.work_min)}
                                       </span>
 
                                       {isHalfDay ? (
-                                        <span className="px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-bold whitespace-nowrap">
+                                        <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold whitespace-nowrap">
                                           Half Day
                                         </span>
                                       ) : (
@@ -1146,25 +1155,25 @@ export default function AdminAttendanceOperationsPage() {
                                 </td>
 
                                 {/* AUDIT FLAGS */}
-                                <td className="py-5 px-6">
-                                  <div className="flex items-center gap-2 flex-wrap">
+                                <td className="py-4 px-3">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
                                     {employee.flags.is_late && (
-                                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-100 border border-amber-300 text-amber-900 font-bold text-xs whitespace-nowrap">
-                                        <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
+                                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-100 border border-amber-300 text-amber-900 font-bold text-[10px] whitespace-nowrap">
+                                        <AlertTriangle className="w-3 h-3 text-amber-600" />
                                         Late
                                       </span>
                                     )}
 
                                     {employee.flags.excess_break && (
-                                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-50 border border-rose-200 text-rose-600 font-bold text-xs whitespace-nowrap">
-                                        <TimerOff className="w-3.5 h-3.5" />
+                                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-600 font-bold text-[10px] whitespace-nowrap">
+                                        <TimerOff className="w-3 h-3" />
                                         Excess Break
                                       </span>
                                     )}
 
                                     {employee.flags.needs_regularization && (
-                                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#e0e8ff] border border-blue-200 text-blue-800 font-bold text-xs whitespace-nowrap">
-                                        <Flag className="w-3.5 h-3.5" />
+                                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#e0e8ff] border border-blue-200 text-blue-800 font-bold text-[10px]">
+                                        <Flag className="w-3 h-3 shrink-0" />
                                         Needs Regularization
                                       </span>
                                     )}
@@ -1173,15 +1182,15 @@ export default function AdminAttendanceOperationsPage() {
                                       !employee.flags.excess_break &&
                                       !employee.flags.needs_regularization &&
                                       employee.status === "PRESENT" && (
-                                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-300 text-slate-600 font-bold text-xs whitespace-nowrap">
-                                          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-50 border border-slate-300 text-slate-600 font-bold text-[10px] whitespace-nowrap">
+                                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                                           Compliant
                                         </span>
                                       )}
 
                                     {employee.is_locked && (
-                                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 border border-slate-200 text-slate-600 font-bold text-xs whitespace-nowrap">
-                                        <Lock className="w-3.5 h-3.5" />
+                                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-600 font-bold text-[10px] whitespace-nowrap">
+                                        <Lock className="w-3 h-3" />
                                         Locked
                                       </span>
                                     )}
@@ -1189,13 +1198,13 @@ export default function AdminAttendanceOperationsPage() {
                                 </td>
 
                                 {/* OPERATIONS */}
-                                <td className="py-5 px-6">
-                                  <div className="flex items-center justify-end gap-3">
+                                <td className="py-4 px-3">
+                                  <div className="flex items-center justify-end gap-1">
                                     {employee.flags.needs_regularization ? (
                                       <button
                                         type="button"
                                         onClick={() => openCorrectionForEmployee(employee)}
-                                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#0a47b3] hover:bg-[#083a91] text-white font-bold text-sm whitespace-nowrap shadow-sm transition-colors"
+                                        className="inline-flex items-center justify-center gap-1 px-2 py-2 rounded-full bg-[#0a47b3] hover:bg-[#083a91] text-white font-bold text-xs text-center leading-tight shadow-sm transition-colors"
                                       >
                                         <ClipboardCheck className="w-4 h-4" />
                                         Manual In/Out
@@ -1204,7 +1213,7 @@ export default function AdminAttendanceOperationsPage() {
                                       <button
                                         type="button"
                                         onClick={() => openCorrectionForEmployee(employee)}
-                                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#1b64da] hover:bg-[#1552b5] text-white font-bold text-sm whitespace-nowrap shadow-sm transition-colors"
+                                        className="inline-flex items-center justify-center gap-1 px-2 py-2 rounded-full bg-[#1b64da] hover:bg-[#1552b5] text-white font-bold text-xs text-center leading-tight shadow-sm transition-colors"
                                       >
                                         <PlusCircle className="w-4 h-4" />
                                         Correction
@@ -1213,7 +1222,7 @@ export default function AdminAttendanceOperationsPage() {
                                       <button
                                         type="button"
                                         onClick={() => openCorrectionForEmployee(employee)}
-                                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-900 font-bold text-sm whitespace-nowrap transition-colors"
+                                        className="inline-flex items-center justify-center gap-1 px-2 py-2 rounded-full bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-900 font-bold text-xs text-center leading-tight transition-colors"
                                       >
                                         <Pencil className="w-4 h-4" />
                                         Correct Punch
@@ -1222,7 +1231,7 @@ export default function AdminAttendanceOperationsPage() {
                                       <button
                                         type="button"
                                         onClick={() => openCorrectionForEmployee(employee)}
-                                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#dbe7ff] hover:bg-[#c9d9ff] text-blue-700 font-bold text-sm whitespace-nowrap transition-colors"
+                                        className="inline-flex items-center justify-center gap-1 px-2 py-2 rounded-full bg-[#dbe7ff] hover:bg-[#c9d9ff] text-blue-700 font-bold text-xs text-center leading-tight transition-colors"
                                       >
                                         <Plus className="w-4 h-4" />
                                         Punch
@@ -1233,9 +1242,9 @@ export default function AdminAttendanceOperationsPage() {
                                       type="button"
                                       aria-label="Audit history"
                                       title="Audit history (endpoint not connected yet)"
-                                      className="p-2 rounded-full text-slate-700 hover:bg-slate-100 transition-colors"
+                                      className="shrink-0 p-1.5 rounded-full text-slate-700 hover:bg-slate-100 transition-colors"
                                     >
-                                      <History className="w-5 h-5" />
+                                      <History className="w-4 h-4" />
                                     </button>
                                   </div>
                                 </td>

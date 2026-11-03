@@ -328,32 +328,7 @@ const authSlice = createSlice({
 
     // LOGOUT
 
-    logout: (state) => {
-      state.user = null;
-      state.token = null;
-      state.refreshToken = null;
-      state.expiresIn = null;
-      state.isAuthenticated = false;
-      state.loading = false;
-      state.error = null;
-
-      state.changingPassword = false;
-      state.passwordError = null;
-      state.passwordSuccess = null;
-
-      state.forgotPasswordLoading = false;
-      state.forgotPasswordError = null;
-      state.forgotPasswordMessage = null;
-
-      state.verifyingResetOtp = false;
-      state.otpError = null;
-      state.resetToken = null;
-      state.resetTokenExpiresIn = null;
-
-      state.resettingPassword = false;
-      state.resetPasswordError = null;
-      state.resetPasswordSuccess = null;
-    },
+    logout: () => initialState,
 
     // CHANGE PASSWORD
 
@@ -709,7 +684,6 @@ export const refreshAuthToken =
 
 // --------------------------------------------------
 // CHANGE PASSWORD
-// POST /api/v1/auth/changepassword
 // --------------------------------------------------
 
 export const changePassword =
@@ -728,7 +702,7 @@ export const changePassword =
       }
 
       const response = await fetch(
-        `${getApiUrl()}/api/v1/auth/changepassword`,
+        `${getApiUrl()}/api/v1/auth/admin/changepassword`,
         {
           method: "POST",
           headers: {
@@ -773,9 +747,9 @@ export const changePassword =
     }
   };
 
+
 // --------------------------------------------------
 // FORGOT PASSWORD
-// POST /api/v1/auth/forgot-password
 // --------------------------------------------------
 
 export const forgotPassword =
@@ -831,7 +805,6 @@ export const forgotPassword =
 
 // --------------------------------------------------
 // VERIFY RESET OTP
-// POST /api/v1/auth/verify-reset-otp
 // --------------------------------------------------
 
 export const verifyResetOtp =
@@ -890,7 +863,6 @@ export const verifyResetOtp =
 
 // --------------------------------------------------
 // RESET PASSWORD
-// POST /api/v1/auth/reset-password
 // --------------------------------------------------
 
 export const resetPassword =
@@ -945,7 +917,6 @@ export const resetPassword =
 
 // --------------------------------------------------
 // SAVE FCM TOKEN
-// POST /api/v1/auth/fcm-token
 // --------------------------------------------------
 
 export const saveFcmToken =
@@ -993,8 +964,7 @@ export const saveFcmToken =
   };
 
 // --------------------------------------------------
-// LOGOUT
-// Local logout (backend logout route is not available)
+// Local logout; the application does not have a logout API.
 // --------------------------------------------------
 
 export const performLogout =

@@ -345,7 +345,6 @@ export default function SystemSettingsHub() {
 
   // ----------------------------------------------------------
   // CHANGE YEAR AND FETCH HOLIDAYS
-  // GET /getHolidays?year=
   // ----------------------------------------------------------
 
   const handleYearChange = (year: number) => {
@@ -355,7 +354,6 @@ export default function SystemSettingsHub() {
 
   // ----------------------------------------------------------
   // CREATE HOLIDAY
-  // POST /createHoliday
   // ----------------------------------------------------------
 
   const handleCreateHoliday = async (
@@ -398,7 +396,6 @@ export default function SystemSettingsHub() {
 
   // ----------------------------------------------------------
   // DELETE HOLIDAY
-  // DELETE /deleteHoliday/:id
   // ----------------------------------------------------------
 
   const handleDeleteHoliday = async (
@@ -1062,9 +1059,9 @@ export default function SystemSettingsHub() {
                     </strong>
                   </span>
 
-                  <span className="text-xs text-slate-400">
+                  {/* <span className="text-xs text-slate-400">
                     Backend synced
-                  </span>
+                  </span> */}
                 </div>
 
                 {/* YEAR SELECTOR */}
