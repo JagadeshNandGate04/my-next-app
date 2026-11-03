@@ -2,6 +2,8 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useDispatch } from 'react-redux';
 import {
   Search,
   Bell,
@@ -16,6 +18,8 @@ import {
   X,
 } from 'lucide-react';
 import Sidebar from '../components/SideBar';
+import { performLogout } from '../store/auth/authSlice';
+import type { AppDispatch } from '../store/store';
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL || 'http://192.168.1.88:5001';
@@ -175,6 +179,8 @@ function formatDate(dateString: string, period: Period): string {
 }
 
 export default function NandgateDashboard() {
+  const router = useRouter();
+  const dispatch = useDispatch<AppDispatch>();
   const [timeFilter, setTimeFilter] = useState<Period>('week');
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -195,9 +201,9 @@ export default function NandgateDashboard() {
       const token = getAuthToken();
 
       if (!token) {
-        throw new Error(
-          'Authentication token not found. Please log in again.'
-        );
+        dispatch(performLogout());
+        router.push('/login');
+        return;
       }
 
       const response = await fetch(
@@ -211,6 +217,12 @@ export default function NandgateDashboard() {
           cache: 'no-store',
         }
       );
+
+      if (response.status === 401) {
+        dispatch(performLogout());
+        router.push('/login');
+        return;
+      }
 
       const result: DashboardResponse = await response.json();
 
@@ -232,10 +244,14 @@ export default function NandgateDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [timeFilter]);
+  }, [dispatch, router, timeFilter]);
 
   useEffect(() => {
-    fetchDashboard();
+    const timerId = window.setTimeout(() => {
+      void fetchDashboard();
+    }, 0);
+
+    return () => window.clearTimeout(timerId);
   }, [fetchDashboard]);
 
   // DASHBOARD DATA

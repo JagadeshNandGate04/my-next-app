@@ -270,6 +270,7 @@ const saveSession = (session: StoredSession): void => {
 const removeSession = (): void => {
   if (typeof window !== "undefined") {
     localStorage.removeItem(AUTH_STORAGE_KEY);
+    localStorage.removeItem("token");
   }
 };
 
