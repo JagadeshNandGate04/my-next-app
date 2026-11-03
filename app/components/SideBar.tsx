@@ -21,7 +21,7 @@ const NAV_ITEMS = [
   { name: 'Attendance', href: '/attendance', icon: Clock, badge: null },
   { name: 'Employees', href: '/employees', icon: Users, badge: null },
   { name: 'Payroll', href: '/payroll', icon: Wallet, badge: null },
-  { name: 'Audit Log', href: '/audit-log', icon: FileText, badge: null },
+  { name: 'Audit Log', href: '/audit', icon: FileText, badge: null },
   { name: 'Settings', href: '/settings', icon: Settings, badge: null },
 ];
 

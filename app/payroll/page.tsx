@@ -590,20 +590,20 @@ export default function PayrollProcessingHub() {
                   Payroll Processing & Run Management
                 </h1>
 
-                <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#eef4fa] text-[#1b64da] border border-[#d6e5fb] tracking-wider uppercase">
+                {/* <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#eef4fa] text-[#1b64da] border border-[#d6e5fb] tracking-wider uppercase">
                   Active Cycle:{" "}
                   {activeRun
                     ? `${getMonthName(activeRun.month)} ${activeRun.year} (${activeRun.status})`
                     : "No run selected"}
-                </span>
+                </span> */}
               </div>
 
-              <p className="text-sm font-medium text-[#64748b] mt-1.5 max-w-3xl">
+              {/* <p className="text-sm font-medium text-[#64748b] mt-1.5 max-w-3xl">
                 Automated attendance-linked salary disbursement engine.
                 Recompute LOP deductions, manage custom earning and
                 deduction line items, finalize runs, and publish PDF
                 payslips across NANDGATE-IT personnel.
-              </p>
+              </p> */}
             </div>
 
             <div className="flex items-center gap-2.5 flex-wrap">
