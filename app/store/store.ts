@@ -6,6 +6,7 @@ import attendanceReducer from "../store/attendance/attendanceSlice";
 import employeeReducer from "../store/employee/employeeSlice";
 import payrollReducer from "../store/payroll/payrollSlice";
 import auditReducer from "../store/audit/auditSlice";
+import settingsReducer from "../store/settings/settingsSlice";
 
 // Combined reducers
 const rootReducer = combineReducers({
@@ -15,6 +16,7 @@ const rootReducer = combineReducers({
   employees: employeeReducer,
   payroll: payrollReducer,
   audit: auditReducer,
+  settings: settingsReducer,
 });
 
 export const store = configureStore({
