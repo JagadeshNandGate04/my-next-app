@@ -1,5 +1,6 @@
 
-import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import type { AppDispatch } from "../store";
 import type { RootState } from "../store";
 
 // --------------------------------------------------
@@ -163,28 +164,125 @@ const getEmployeeFromResponse = (result: unknown): Employee | null => {
   return parseEmployee(employee);
 };
 
+const initialState: EmployeeState = {
+  employees: [],
+  loading: false,
+  createLoading: false,
+  updateLoading: false,
+  error: null,
+  createError: null,
+  updateError: null,
+  validationErrors: {},
+  successMessage: null,
+};
+
+const employeeSlice = createSlice({
+  name: "employees",
+  initialState,
+  reducers: {
+    fetchEmployeesStart: (state) => {
+      state.loading = true;
+      state.error = null;
+    },
+    fetchEmployeesSuccess: (state, action: PayloadAction<Employee[]>) => {
+      state.loading = false;
+      state.employees = action.payload;
+      state.error = null;
+    },
+    fetchEmployeesFailure: (state, action: PayloadAction<string>) => {
+      state.loading = false;
+      state.error = action.payload;
+    },
+    createEmployeeStart: (state) => {
+      state.createLoading = true;
+      state.createError = null;
+      state.validationErrors = {};
+      state.successMessage = null;
+    },
+    createEmployeeSuccess: (state, action: PayloadAction<Employee>) => {
+      state.createLoading = false;
+      state.employees.push(action.payload);
+      state.employees.sort((a, b) => a.name.localeCompare(b.name));
+      state.successMessage = "Employee created successfully";
+      state.createError = null;
+      state.validationErrors = {};
+    },
+    createEmployeeFailure: (state, action: PayloadAction<ApiError>) => {
+      state.createLoading = false;
+      state.createError = action.payload.message;
+      state.validationErrors = action.payload.errors || {};
+    },
+    updateEmployeeStart: (state) => {
+      state.updateLoading = true;
+      state.updateError = null;
+      state.validationErrors = {};
+      state.successMessage = null;
+    },
+    updateEmployeeSuccess: (
+      state,
+      action: PayloadAction<UpdateEmployeePayload>
+    ) => {
+      state.updateLoading = false;
+      const index = state.employees.findIndex(
+        (employee) => employee.id === action.payload.id
+      );
+      if (index !== -1) {
+        state.employees[index] = {
+          ...state.employees[index],
+          ...action.payload,
+        };
+      }
+      state.successMessage = "Employee updated successfully";
+      state.updateError = null;
+      state.validationErrors = {};
+    },
+    updateEmployeeFailure: (state, action: PayloadAction<ApiError>) => {
+      state.updateLoading = false;
+      state.updateError = action.payload.message;
+      state.validationErrors = action.payload.errors || {};
+    },
+    clearEmployeeMessages: (state) => {
+      state.error = null;
+      state.createError = null;
+      state.updateError = null;
+      state.validationErrors = {};
+      state.successMessage = null;
+    },
+    clearEmployeeValidationErrors: (state) => {
+      state.validationErrors = {};
+    },
+  },
+});
+
+export const {
+  clearEmployeeMessages,
+  clearEmployeeValidationErrors,
+  fetchEmployeesStart,
+  fetchEmployeesSuccess,
+  fetchEmployeesFailure,
+  createEmployeeStart,
+  createEmployeeSuccess,
+  createEmployeeFailure,
+  updateEmployeeStart,
+  updateEmployeeSuccess,
+  updateEmployeeFailure,
+} = employeeSlice.actions;
+
+export default employeeSlice.reducer;
+
 // --------------------------------------------------
 // Fetch Employee By ID
 // GET /api/v1/employees/employees/:id
 // --------------------------------------------------
 
-export const fetchEmployeeById = createAsyncThunk<
-  Employee,
-  FetchEmployeeByIdPayload,
-  {
-    state: RootState;
-    rejectValue: ApiError;
-  }
->(
-  "employees/fetchEmployeeById",
-  async ({ id }, { getState, rejectWithValue }) => {
+export const fetchEmployeeById =
+  ({ id }: FetchEmployeeByIdPayload) =>
+  async (_dispatch: AppDispatch, getState: () => RootState): Promise<Employee> => {
     try {
       const token = getState().auth.token;
 
       if (!token) {
-        return rejectWithValue({
-          message: "Authentication token not found. Please log in again.",
-        });
+        throw new Error("Authentication token not found. Please log in again.");
       }
 
       const response = await fetch(`${EMPLOYEE_RESOURCE_API}/${id}`, {
@@ -199,54 +297,43 @@ export const fetchEmployeeById = createAsyncThunk<
       const result = await response.json();
 
       if (!response.ok || result?.success === false) {
-        return rejectWithValue({
-          message:
-            result?.message ||
-            `Employee lookup failed (${response.status} ${response.statusText}).`,
-        });
+        throw new Error(
+          result?.message ||
+          `Employee lookup failed (${response.status} ${response.statusText}).`
+        );
       }
 
       const employee = getEmployeeFromResponse(result);
 
       if (!employee) {
-        return rejectWithValue({
-          message: "Employee lookup returned an unexpected response format.",
-        });
+        throw new Error("Employee lookup returned an unexpected response format.");
       }
 
       return employee;
     } catch (error) {
       console.error("Fetch employee by ID error:", error);
-
-      return rejectWithValue({
-        message:
-          error instanceof Error
-            ? error.message
-            : "Something went wrong while fetching employee details.",
-      });
+      throw new Error(
+        error instanceof Error
+          ? error.message
+          : "Something went wrong while fetching employee details."
+      );
     }
-  }
-);
+  };
 
 // --------------------------------------------------
 // Fetch All Employees
 // --------------------------------------------------
 
-export const fetchEmployees = createAsyncThunk<
-  Employee[],
-  void,
-  {
-    state: RootState;
-    rejectValue: string;
-  }
->(
-  "employees/fetchEmployees",
-  async (_, { getState, rejectWithValue }) => {
+export const fetchEmployees =
+  () =>
+  async (dispatch: AppDispatch, getState: () => RootState): Promise<Employee[] | null> => {
+    dispatch(fetchEmployeesStart());
+
     try {
       const token = getState().auth.token;
 
       if (!token) {
-        return rejectWithValue("Authentication token not found. Please log in again.");
+        throw new Error("Authentication token not found. Please log in again.");
       }
 
       const requestUrl = `${EMPLOYEE_API}/all-employees`;
@@ -268,7 +355,7 @@ export const fetchEmployees = createAsyncThunk<
       console.log("Employee API status:", response.status);
 
       if (!response.ok || result?.success === false) {
-        return rejectWithValue(
+        throw new Error(
           result?.message || `Failed to fetch employees (${response.status})`
         );
       }
@@ -276,45 +363,37 @@ export const fetchEmployees = createAsyncThunk<
       const employees = getEmployeesFromResponse(result);
 
       if (!employees) {
-        return rejectWithValue(
+        throw new Error(
           "Employee API returned an unexpected response format. Check the browser console."
         );
       }
 
+      dispatch(fetchEmployeesSuccess(employees));
       return employees;
     } catch (error) {
       console.error("Fetch employees error:", error);
-
-      return rejectWithValue(
-        error instanceof Error
-          ? error.message
-          : "Something went wrong while fetching employees."
-      );
+      const message = error instanceof Error
+        ? error.message
+        : "Something went wrong while fetching employees.";
+      dispatch(fetchEmployeesFailure(message));
+      return null;
     }
-  }
-);
+  };
 
 // --------------------------------------------------
 // Create Employee
 // --------------------------------------------------
 
-export const createEmployee = createAsyncThunk<
-  Employee,
-  CreateEmployeePayload,
-  {
-    state: RootState;
-    rejectValue: ApiError;
-  }
->(
-  "employees/createEmployee",
-  async (employeeData, { getState, rejectWithValue }) => {
+export const createEmployee =
+  (employeeData: CreateEmployeePayload) =>
+  async (dispatch: AppDispatch, getState: () => RootState): Promise<Employee> => {
+    dispatch(createEmployeeStart());
+
     try {
       const token = getState().auth.token;
 
       if (!token) {
-        return rejectWithValue({
-          message: "Authentication token not found. Please log in again.",
-        });
+        throw new Error("Authentication token not found. Please log in again.");
       }
 
       const response = await fetch(
@@ -334,59 +413,63 @@ export const createEmployee = createAsyncThunk<
       console.log("Create employee API response:", result);
 
       if (!response.ok || result?.success === false) {
-        return rejectWithValue({
-          message:
+        const error = Object.assign(
+          new Error(
             result?.message ||
             (response.ok
               ? "The employee API rejected the request."
-              : `Employee request failed (${response.status} ${response.statusText}).`),
-          errors: result?.errors || {},
-        });
+              : `Employee request failed (${response.status} ${response.statusText}).`)
+          ),
+          {
+            errors: result?.errors || {},
+          }
+        );
+        throw error;
       }
 
       const employee = getEmployeeFromResponse(result);
 
       if (!employee) {
-        return rejectWithValue({
-          message: "Employee was created, but the API response format was unexpected. Refresh the employee list.",
-        });
+        throw new Error(
+          "Employee was created, but the API response format was unexpected. Refresh the employee list."
+        );
       }
 
+      dispatch(createEmployeeSuccess(employee));
       return employee;
     } catch (error) {
       console.error("Create employee error:", error);
-
-      return rejectWithValue({
-        message:
-          error instanceof Error
-            ? error.message
-            : "Something went wrong while creating employee.",
-      });
+      const apiError: ApiError = {
+        message: error instanceof Error
+          ? error.message
+          : "Something went wrong while creating employee.",
+        errors:
+          typeof error === "object" && error !== null && "errors" in error
+            ? (error.errors as Record<string, string>)
+            : {},
+      };
+      dispatch(createEmployeeFailure(apiError));
+      throw new Error(apiError.message);
     }
-  }
-);
+  };
 
 // --------------------------------------------------
 // Update Employee
 // --------------------------------------------------
 
-export const updateEmployee = createAsyncThunk<
-  UpdateEmployeePayload,
-  UpdateEmployeePayload,
-  {
-    state: RootState;
-    rejectValue: ApiError;
-  }
->(
-  "employees/updateEmployee",
-  async ({ id, ...employeeData }, { getState, rejectWithValue }) => {
+export const updateEmployee =
+  ({ id, ...employeeData }: UpdateEmployeePayload) =>
+  async (
+    dispatch: AppDispatch,
+    getState: () => RootState
+  ): Promise<UpdateEmployeePayload> => {
+    dispatch(updateEmployeeStart());
+
     try {
       const token = getState().auth.token;
 
       if (!token) {
-        return rejectWithValue({
-          message: "Authentication token not found. Please log in again.",
-        });
+        throw new Error("Authentication token not found. Please log in again.");
       }
 
       const response = await fetch(`${ADMIN_EMPLOYEE_API}/${id}`, {
@@ -401,167 +484,33 @@ export const updateEmployee = createAsyncThunk<
       const result = await response.json();
 
       if (!response.ok || result?.success === false) {
-        return rejectWithValue({
-          message:
+        const error = Object.assign(
+          new Error(
             result?.message ||
             (response.ok
               ? "The employee API rejected the update."
-              : `Employee update failed (${response.status} ${response.statusText}).`),
-          errors: result?.errors || {},
-        });
+              : `Employee update failed (${response.status} ${response.statusText}).`)
+          ),
+          { errors: result?.errors || {} }
+        );
+        throw error;
       }
 
-      return { id, ...employeeData };
+      const updatedEmployee = { id, ...employeeData };
+      dispatch(updateEmployeeSuccess(updatedEmployee));
+      return updatedEmployee;
     } catch (error) {
       console.error("Update employee error:", error);
-
-      return rejectWithValue({
-        message:
-          error instanceof Error
-            ? error.message
-            : "Something went wrong while updating employee.",
-      });
+      const apiError: ApiError = {
+        message: error instanceof Error
+          ? error.message
+          : "Something went wrong while updating employee.",
+        errors:
+          typeof error === "object" && error !== null && "errors" in error
+            ? (error.errors as Record<string, string>)
+            : {},
+      };
+      dispatch(updateEmployeeFailure(apiError));
+      throw new Error(apiError.message);
     }
-  }
-);
-
-// --------------------------------------------------
-// Initial State
-// --------------------------------------------------
-
-const initialState: EmployeeState = {
-  employees: [],
-  loading: false,
-  createLoading: false,
-  updateLoading: false,
-  error: null,
-  createError: null,
-  updateError: null,
-  validationErrors: {},
-  successMessage: null,
-};
-
-// --------------------------------------------------
-// Employee Slice
-// --------------------------------------------------
-
-const employeeSlice = createSlice({
-  name: "employees",
-  initialState,
-
-  reducers: {
-    clearEmployeeMessages: (state) => {
-      state.error = null;
-      state.createError = null;
-      state.updateError = null;
-      state.validationErrors = {};
-      state.successMessage = null;
-    },
-
-    clearEmployeeValidationErrors: (state) => {
-      state.validationErrors = {};
-    },
-  },
-
-  extraReducers: (builder) => {
-    builder
-      // Fetch pending
-      .addCase(fetchEmployees.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-
-      // Fetch successful
-      .addCase(fetchEmployees.fulfilled, (state, action) => {
-        state.loading = false;
-        state.employees = action.payload;
-        state.error = null;
-      })
-
-      // Fetch failed
-      .addCase(fetchEmployees.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload || "Failed to fetch employees";
-      })
-
-      // Create pending
-      .addCase(createEmployee.pending, (state) => {
-        state.createLoading = true;
-        state.createError = null;
-        state.validationErrors = {};
-        state.successMessage = null;
-      })
-
-      // Create successful
-      .addCase(createEmployee.fulfilled, (state, action) => {
-        state.createLoading = false;
-
-        state.employees.push(action.payload);
-
-        state.employees.sort((a, b) =>
-          a.name.localeCompare(b.name)
-        );
-
-        state.successMessage = "Employee created successfully";
-        state.createError = null;
-        state.validationErrors = {};
-      })
-
-      // Create failed
-      .addCase(createEmployee.rejected, (state, action) => {
-        state.createLoading = false;
-
-        state.createError =
-          action.payload?.message || "Failed to create employee";
-
-        state.validationErrors =
-          action.payload?.errors || {};
-      })
-
-      // Update pending
-      .addCase(updateEmployee.pending, (state) => {
-        state.updateLoading = true;
-        state.updateError = null;
-        state.validationErrors = {};
-        state.successMessage = null;
-      })
-
-      // Update successful
-      .addCase(updateEmployee.fulfilled, (state, action) => {
-        state.updateLoading = false;
-        const index = state.employees.findIndex(
-          (employee) => employee.id === action.payload.id
-        );
-
-        if (index !== -1) {
-          state.employees[index] = {
-            ...state.employees[index],
-            ...action.payload,
-          };
-        }
-
-        state.successMessage = "Employee updated successfully";
-        state.updateError = null;
-        state.validationErrors = {};
-      })
-
-      // Update failed
-      .addCase(updateEmployee.rejected, (state, action) => {
-        state.updateLoading = false;
-        state.updateError =
-          action.payload?.message || "Failed to update employee";
-        state.validationErrors = action.payload?.errors || {};
-      });
-  },
-});
-
-// --------------------------------------------------
-// Exports
-// --------------------------------------------------
-
-export const {
-  clearEmployeeMessages,
-  clearEmployeeValidationErrors,
-} = employeeSlice.actions;
-
-export default employeeSlice.reducer;
+  };

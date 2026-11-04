@@ -375,7 +375,7 @@ export default function SystemSettingsHub() {
         updateSettings({
           settings: { ...settings },
         }),
-      ).unwrap();
+      );
 
       console.log("Settings updated:", result);
     } catch (err) {
@@ -437,7 +437,7 @@ export default function SystemSettingsHub() {
           holiday_date: newHolidayDate,
           name: newHolidayName.trim(),
         }),
-      ).unwrap();
+      );
 
       console.log("Holiday created:", result);
 
@@ -469,7 +469,7 @@ export default function SystemSettingsHub() {
     dispatch(clearSettingsError());
 
     try {
-      const result = await dispatch(deleteHoliday(id)).unwrap();
+      const result = await dispatch(deleteHoliday(id));
 
       console.log("Holiday deleted:", result);
     } catch (err) {

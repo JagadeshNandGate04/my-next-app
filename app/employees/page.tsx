@@ -391,7 +391,7 @@ export default function EmployeeDirectoryPage() {
             date_of_joining: formData.date_of_joining,
             status: formData.status,
           })
-        ).unwrap();
+        );
       } else {
         await dispatch(
           createEmployee({
@@ -405,7 +405,7 @@ export default function EmployeeDirectoryPage() {
             hra: Number(formData.hra),
             special_allowance: Number(formData.special_allowance),
           })
-        ).unwrap();
+        );
       }
 
       setIsModalOpen(false);
@@ -453,7 +453,7 @@ export default function EmployeeDirectoryPage() {
     setViewingEmployee(null);
 
     try {
-      const employee = await dispatch(fetchEmployeeById({ id })).unwrap();
+      const employee = await dispatch(fetchEmployeeById({ id }));
       setViewingEmployee(employee);
     } catch (error) {
       setDetailError(

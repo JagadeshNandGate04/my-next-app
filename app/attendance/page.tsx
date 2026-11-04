@@ -9,6 +9,8 @@ import {
   fetchMonthlyAttendance,
   addAttendanceCorrection,
   clearMonthlyAttendance,
+  type AttendanceDay,
+  type EmployeeAttendance,
 } from "@/app/store/attendance/attendanceSlice";
 
 import {
@@ -325,7 +327,7 @@ export default function AdminAttendanceOperationsPage() {
   // EMPLOYEE DATA
   // --------------------------------------------------
 
-  const employees = dailyAttendance?.employees || [];
+  const employees: EmployeeAttendance[] = dailyAttendance?.employees ?? [];
 
   const totalEmployees = dailyAttendance?.total ?? employees.length;
 
@@ -505,11 +507,11 @@ export default function AdminAttendanceOperationsPage() {
     setSelectedYear(now.getFullYear());
   };
 
-  const monthlyDays = monthlyAttendance?.days || [];
+  const monthlyDays: AttendanceDay[] = monthlyAttendance?.days ?? [];
   const monthlyTotals = monthlyAttendance?.totals;
 
   const monthlyDayMap = useMemo(() => {
-    const map = new Map<string, any>();
+    const map = new Map<string, AttendanceDay>();
 
     monthlyDays.forEach((day) => {
       map.set(day.date, day);
@@ -555,7 +557,7 @@ export default function AdminAttendanceOperationsPage() {
           direction: newCorrection.direction,
           reason: newCorrection.reason.trim(),
         })
-      ).unwrap();
+      );
 
       setIsAddCorrectionOpen(false);
 

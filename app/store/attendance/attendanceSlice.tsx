@@ -1,5 +1,6 @@
 
-import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import type { AppDispatch } from "../store";
 import type { RootState } from "@/app/store/store";
 
 // --------------------------------------------------
@@ -149,22 +150,159 @@ const getErrorMessage = async (response: Response): Promise<string> => {
 };
 
 // --------------------------------------------------
+// REDUX STATE AND ACTIONS
+// --------------------------------------------------
+
+interface AttendanceState {
+  dailyAttendance: DailyAttendanceData | null;
+  monthlyAttendance: MonthlyAttendanceData | null;
+  dailyLoading: boolean;
+  monthlyLoading: boolean;
+  correctionLoading: boolean;
+  voidLoading: boolean;
+  dailyError: string | null;
+  monthlyError: string | null;
+  correctionError: string | null;
+  voidError: string | null;
+  correctionSuccess: string | null;
+  voidSuccess: string | null;
+}
+
+const initialState: AttendanceState = {
+  dailyAttendance: null,
+  monthlyAttendance: null,
+  dailyLoading: false,
+  monthlyLoading: false,
+  correctionLoading: false,
+  voidLoading: false,
+  dailyError: null,
+  monthlyError: null,
+  correctionError: null,
+  voidError: null,
+  correctionSuccess: null,
+  voidSuccess: null,
+};
+
+const attendanceSlice = createSlice({
+  name: "attendance",
+  initialState,
+  reducers: {
+    fetchDailyAttendanceStart: (state) => {
+      state.dailyLoading = true;
+      state.dailyError = null;
+    },
+    fetchDailyAttendanceSuccess: (
+      state,
+      action: PayloadAction<DailyAttendanceData>
+    ) => {
+      state.dailyLoading = false;
+      state.dailyAttendance = action.payload;
+    },
+    fetchDailyAttendanceFailure: (state, action: PayloadAction<string>) => {
+      state.dailyLoading = false;
+      state.dailyError = action.payload;
+    },
+    fetchMonthlyAttendanceStart: (state) => {
+      state.monthlyLoading = true;
+      state.monthlyError = null;
+    },
+    fetchMonthlyAttendanceSuccess: (
+      state,
+      action: PayloadAction<MonthlyAttendanceData>
+    ) => {
+      state.monthlyLoading = false;
+      state.monthlyAttendance = action.payload;
+    },
+    fetchMonthlyAttendanceFailure: (state, action: PayloadAction<string>) => {
+      state.monthlyLoading = false;
+      state.monthlyError = action.payload;
+    },
+    addAttendanceCorrectionStart: (state) => {
+      state.correctionLoading = true;
+      state.correctionError = null;
+      state.correctionSuccess = null;
+    },
+    addAttendanceCorrectionSuccess: (
+      state,
+      action: PayloadAction<{ message?: string }>
+    ) => {
+      state.correctionLoading = false;
+      state.correctionSuccess =
+        action.payload.message || "Attendance correction added successfully";
+    },
+    addAttendanceCorrectionFailure: (state, action: PayloadAction<string>) => {
+      state.correctionLoading = false;
+      state.correctionError = action.payload;
+    },
+    voidAttendanceCorrectionStart: (state) => {
+      state.voidLoading = true;
+      state.voidError = null;
+      state.voidSuccess = null;
+    },
+    voidAttendanceCorrectionSuccess: (
+      state,
+      action: PayloadAction<{ message?: string }>
+    ) => {
+      state.voidLoading = false;
+      state.voidSuccess =
+        action.payload.message || "Attendance correction voided successfully";
+    },
+    voidAttendanceCorrectionFailure: (state, action: PayloadAction<string>) => {
+      state.voidLoading = false;
+      state.voidError = action.payload;
+    },
+    clearAttendanceErrors: (state) => {
+      state.dailyError = null;
+      state.monthlyError = null;
+      state.correctionError = null;
+      state.voidError = null;
+    },
+    clearAttendanceMessages: (state) => {
+      state.correctionSuccess = null;
+      state.voidSuccess = null;
+    },
+    clearMonthlyAttendance: (state) => {
+      state.monthlyAttendance = null;
+    },
+  },
+});
+
+export const {
+  clearAttendanceErrors,
+  clearAttendanceMessages,
+  clearMonthlyAttendance,
+  fetchDailyAttendanceStart,
+  fetchDailyAttendanceSuccess,
+  fetchDailyAttendanceFailure,
+  fetchMonthlyAttendanceStart,
+  fetchMonthlyAttendanceSuccess,
+  fetchMonthlyAttendanceFailure,
+  addAttendanceCorrectionStart,
+  addAttendanceCorrectionSuccess,
+  addAttendanceCorrectionFailure,
+  voidAttendanceCorrectionStart,
+  voidAttendanceCorrectionSuccess,
+  voidAttendanceCorrectionFailure,
+} = attendanceSlice.actions;
+
+export default attendanceSlice.reducer;
+
+// --------------------------------------------------
 // 1. GET ADMIN DAILY ATTENDANCE
 // --------------------------------------------------
 
-export const fetchDailyAttendance = createAsyncThunk<
-  DailyAttendanceData,
-  string,
-  { state: RootState; rejectValue: string }
->(
-  "attendance/fetchDailyAttendance",
-  async (date, { getState, rejectWithValue }) => {
+export const fetchDailyAttendance =
+  (date: string) =>
+  async (
+    dispatch: AppDispatch,
+    getState: () => RootState
+  ): Promise<DailyAttendanceData | null> => {
+    dispatch(fetchDailyAttendanceStart());
+
     try {
       const token = getState().auth.token;
 
-      if (!token) {
-        return rejectWithValue("Authentication token not found");
-      }
+      if (!token) throw new Error("Authentication token not found");
 
       const response = await fetch(
         `${ATTENDANCE_API}/admin/daily?date=${encodeURIComponent(date)}`,
@@ -175,41 +313,36 @@ export const fetchDailyAttendance = createAsyncThunk<
         }
       );
 
-      if (!response.ok) {
-        return rejectWithValue(await getErrorMessage(response));
-      }
+      if (!response.ok) throw new Error(await getErrorMessage(response));
 
-      const result: ApiResponse<DailyAttendanceData> =
-        await response.json();
-
+      const result: ApiResponse<DailyAttendanceData> = await response.json();
+      dispatch(fetchDailyAttendanceSuccess(result.data));
       return result.data;
     } catch (error) {
-      return rejectWithValue(
-        error instanceof Error
-          ? error.message
-          : "Unable to fetch daily attendance"
-      );
+      const message = error instanceof Error
+        ? error.message
+        : "Unable to fetch daily attendance";
+      dispatch(fetchDailyAttendanceFailure(message));
+      return null;
     }
-  }
-);
+  };
 
 // --------------------------------------------------
 // 2. GET ADMIN MONTHLY ATTENDANCE
 // --------------------------------------------------
 
-export const fetchMonthlyAttendance = createAsyncThunk<
-  MonthlyAttendanceData,
-  MonthlyAttendanceParams,
-  { state: RootState; rejectValue: string }
->(
-  "attendance/fetchMonthlyAttendance",
-  async ({ user_id, month, year }, { getState, rejectWithValue }) => {
+export const fetchMonthlyAttendance =
+  ({ user_id, month, year }: MonthlyAttendanceParams) =>
+  async (
+    dispatch: AppDispatch,
+    getState: () => RootState
+  ): Promise<MonthlyAttendanceData | null> => {
+    dispatch(fetchMonthlyAttendanceStart());
+
     try {
       const token = getState().auth.token;
 
-      if (!token) {
-        return rejectWithValue("Authentication token not found");
-      }
+      if (!token) throw new Error("Authentication token not found");
 
       const query = new URLSearchParams({
         user_id: String(user_id),
@@ -226,278 +359,97 @@ export const fetchMonthlyAttendance = createAsyncThunk<
         }
       );
 
-      if (!response.ok) {
-        return rejectWithValue(await getErrorMessage(response));
-      }
+      if (!response.ok) throw new Error(await getErrorMessage(response));
 
-      const result: ApiResponse<MonthlyAttendanceData> =
-        await response.json();
-
+      const result: ApiResponse<MonthlyAttendanceData> = await response.json();
+      dispatch(fetchMonthlyAttendanceSuccess(result.data));
       return result.data;
     } catch (error) {
-      return rejectWithValue(
-        error instanceof Error
-          ? error.message
-          : "Unable to fetch monthly attendance"
-      );
+      const message = error instanceof Error
+        ? error.message
+        : "Unable to fetch monthly attendance";
+      dispatch(fetchMonthlyAttendanceFailure(message));
+      return null;
     }
-  }
-);
+  };
 
 // --------------------------------------------------
 // 3. ADD MANUAL ATTENDANCE CORRECTION
 // --------------------------------------------------
 
-export const addAttendanceCorrection = createAsyncThunk<
-  unknown,
-  AddCorrectionPayload,
-  {
-    state: RootState;
-    dispatch: any;
-    rejectValue: string;
-  }
->(
-  "attendance/addAttendanceCorrection",
-  async (payload, { getState, dispatch, rejectWithValue }) => {
+export const addAttendanceCorrection =
+  (payload: AddCorrectionPayload) =>
+  async (
+    dispatch: AppDispatch,
+    getState: () => RootState
+  ): Promise<{ message?: string }> => {
+    dispatch(addAttendanceCorrectionStart());
+
     try {
       const token = getState().auth.token;
 
-      if (!token) {
-        return rejectWithValue("Authentication token not found");
-      }
+      if (!token) throw new Error("Authentication token not found");
 
-      const response = await fetch(
-        `${ATTENDANCE_API}/admin/correction`,
-        {
-          method: "POST",
-          headers: getAuthHeaders(token),
-          body: JSON.stringify(payload),
-        }
-      );
+      const response = await fetch(`${ATTENDANCE_API}/admin/correction`, {
+        method: "POST",
+        headers: getAuthHeaders(token),
+        body: JSON.stringify(payload),
+      });
 
-      if (!response.ok) {
-        return rejectWithValue(await getErrorMessage(response));
-      }
+      if (!response.ok) throw new Error(await getErrorMessage(response));
 
-      const result = await response.json();
+      const result: { message?: string } = await response.json();
+      dispatch(addAttendanceCorrectionSuccess(result));
 
-      // Refresh the daily attendance for the punch date.
       const punchDate = payload.punched_at.slice(0, 10);
-
       dispatch(fetchDailyAttendance(punchDate));
 
       return result;
     } catch (error) {
-      return rejectWithValue(
-        error instanceof Error
-          ? error.message
-          : "Unable to add attendance correction"
-      );
+      const message = error instanceof Error
+        ? error.message
+        : "Unable to add attendance correction";
+      dispatch(addAttendanceCorrectionFailure(message));
+      throw new Error(message);
     }
-  }
-);
-
+  };
 // --------------------------------------------------
 // 4. VOID ATTENDANCE CORRECTION
 // --------------------------------------------------
 
-export const voidAttendanceCorrection = createAsyncThunk<
-  unknown,
-  VoidCorrectionPayload,
-  {
-    state: RootState;
-    dispatch: any;
-    rejectValue: string;
-  }
->(
-  "attendance/voidAttendanceCorrection",
-  async ({ id, reason }, { getState, dispatch, rejectWithValue }) => {
+export const voidAttendanceCorrection =
+  ({ id, reason }: VoidCorrectionPayload) =>
+  async (
+    dispatch: AppDispatch,
+    getState: () => RootState
+  ): Promise<{ message?: string }> => {
+    dispatch(voidAttendanceCorrectionStart());
+
     try {
       const token = getState().auth.token;
 
-      if (!token) {
-        return rejectWithValue("Authentication token not found");
-      }
+      if (!token) throw new Error("Authentication token not found");
 
-      const response = await fetch(
-        `${ATTENDANCE_API}/admin/correction/${id}/void`,
-        {
-          method: "POST",
-          headers: getAuthHeaders(token),
-          body: JSON.stringify({ reason }),
-        }
-      );
+      const response = await fetch(`${ATTENDANCE_API}/admin/correction/${id}/void`, {
+        method: "POST",
+        headers: getAuthHeaders(token),
+        body: JSON.stringify({ reason }),
+      });
 
-      if (!response.ok) {
-        return rejectWithValue(await getErrorMessage(response));
-      }
+      if (!response.ok) throw new Error(await getErrorMessage(response));
 
-      const result = await response.json();
+      const result: { message?: string } = await response.json();
+      dispatch(voidAttendanceCorrectionSuccess(result));
 
-      // Refresh the currently displayed attendance date.
       const currentDate = getState().attendance.dailyAttendance?.date;
-
-      if (currentDate) {
-        dispatch(fetchDailyAttendance(currentDate));
-      }
+      if (currentDate) dispatch(fetchDailyAttendance(currentDate));
 
       return result;
     } catch (error) {
-      return rejectWithValue(
-        error instanceof Error
-          ? error.message
-          : "Unable to void attendance correction"
-      );
+      const message = error instanceof Error
+        ? error.message
+        : "Unable to void attendance correction";
+      dispatch(voidAttendanceCorrectionFailure(message));
+      throw new Error(message);
     }
-  }
-);
-
-// --------------------------------------------------
-// REDUX STATE
-// --------------------------------------------------
-
-interface AttendanceState {
-  dailyAttendance: DailyAttendanceData | null;
-  monthlyAttendance: MonthlyAttendanceData | null;
-
-  dailyLoading: boolean;
-  monthlyLoading: boolean;
-  correctionLoading: boolean;
-  voidLoading: boolean;
-
-  dailyError: string | null;
-  monthlyError: string | null;
-  correctionError: string | null;
-  voidError: string | null;
-
-  correctionSuccess: string | null;
-  voidSuccess: string | null;
-}
-
-const initialState: AttendanceState = {
-  dailyAttendance: null,
-  monthlyAttendance: null,
-
-  dailyLoading: false,
-  monthlyLoading: false,
-  correctionLoading: false,
-  voidLoading: false,
-
-  dailyError: null,
-  monthlyError: null,
-  correctionError: null,
-  voidError: null,
-
-  correctionSuccess: null,
-  voidSuccess: null,
-};
-
-// --------------------------------------------------
-// ATTENDANCE SLICE
-// --------------------------------------------------
-
-const attendanceSlice = createSlice({
-  name: "attendance",
-  initialState,
-  reducers: {
-    clearAttendanceErrors: (state) => {
-      state.dailyError = null;
-      state.monthlyError = null;
-      state.correctionError = null;
-      state.voidError = null;
-    },
-
-    clearAttendanceMessages: (state) => {
-      state.correctionSuccess = null;
-      state.voidSuccess = null;
-    },
-
-    clearMonthlyAttendance: (state) => {
-      state.monthlyAttendance = null;
-    },
-  },
-
-  extraReducers: (builder) => {
-    // DAILY ATTENDANCE
-
-    builder
-      .addCase(fetchDailyAttendance.pending, (state) => {
-        state.dailyLoading = true;
-        state.dailyError = null;
-      })
-      .addCase(fetchDailyAttendance.fulfilled, (state, action) => {
-        state.dailyLoading = false;
-        state.dailyAttendance = action.payload;
-      })
-      .addCase(fetchDailyAttendance.rejected, (state, action) => {
-        state.dailyLoading = false;
-        state.dailyError =
-          action.payload || "Failed to fetch daily attendance";
-      });
-
-    // MONTHLY ATTENDANCE
-
-    builder
-      .addCase(fetchMonthlyAttendance.pending, (state) => {
-        state.monthlyLoading = true;
-        state.monthlyError = null;
-      })
-      .addCase(fetchMonthlyAttendance.fulfilled, (state, action) => {
-        state.monthlyLoading = false;
-        state.monthlyAttendance = action.payload;
-      })
-      .addCase(fetchMonthlyAttendance.rejected, (state, action) => {
-        state.monthlyLoading = false;
-        state.monthlyError =
-          action.payload || "Failed to fetch monthly attendance";
-      });
-
-    // ADD CORRECTION
-
-    builder
-      .addCase(addAttendanceCorrection.pending, (state) => {
-        state.correctionLoading = true;
-        state.correctionError = null;
-        state.correctionSuccess = null;
-      })
-      .addCase(addAttendanceCorrection.fulfilled, (state, action) => {
-        state.correctionLoading = false;
-        state.correctionSuccess =
-          (action.payload as { message?: string })?.message ||
-          "Attendance correction added successfully";
-      })
-      .addCase(addAttendanceCorrection.rejected, (state, action) => {
-        state.correctionLoading = false;
-        state.correctionError =
-          action.payload || "Failed to add attendance correction";
-      });
-
-    // VOID CORRECTION
-
-    builder
-      .addCase(voidAttendanceCorrection.pending, (state) => {
-        state.voidLoading = true;
-        state.voidError = null;
-        state.voidSuccess = null;
-      })
-      .addCase(voidAttendanceCorrection.fulfilled, (state, action) => {
-        state.voidLoading = false;
-        state.voidSuccess =
-          (action.payload as { message?: string })?.message ||
-          "Attendance correction voided successfully";
-      })
-      .addCase(voidAttendanceCorrection.rejected, (state, action) => {
-        state.voidLoading = false;
-        state.voidError =
-          action.payload || "Failed to void attendance correction";
-      });
-  },
-});
-
-export const {
-  clearAttendanceErrors,
-  clearAttendanceMessages,
-  clearMonthlyAttendance,
-} = attendanceSlice.actions;
-
-export default attendanceSlice.reducer;
+  };
