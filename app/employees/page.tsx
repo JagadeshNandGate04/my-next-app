@@ -1,4 +1,4 @@
- "use client";
+"use client";
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -17,7 +17,6 @@ import {
   CheckCircle2,
 } from "lucide-react";
 
-import Sidebar from "../components/SideBar";
 import type { AppDispatch, RootState } from "@/app/store/store";
 import {
   fetchEmployees,
@@ -42,6 +41,12 @@ interface EmployeeFormData {
   hra: string;
   special_allowance: string;
 }
+
+// THEME COLOURS (same three blues as the dashboard)
+const SKY = "#7BBDE8";
+const SKY_LIGHT = "#bfe0f5";
+const BLUE = "#1b64da";
+const INK = "#0f172a";
 
 const DESIGNATIONS = [
   "Senior Frontend Dev",
@@ -133,15 +138,15 @@ const calculateTenure = (
 
 const getAvatarGradient = (name: string) => {
   const gradients = [
-    "from-[#1b64da] to-[#0d3b82]",
-    "from-[#0284c7] to-[#0369a1]",
-    "from-[#7c3aed] to-[#5b21b6]",
-    "from-[#059669] to-[#047857]",
-    "from-[#d97706] to-[#b45309]",
-    "from-[#e11d48] to-[#9f1239]",
-    "from-[#0891b2] to-[#155e75]",
-    "from-[#4f46e5] to-[#3730a3]",
-    "from-[#c026d3] to-[#86198f]",
+    "from-[#7BBDE8] to-[#1b64da]",
+    "from-[#1b64da] to-[#0a47b3]",
+    "from-[#a9d6f2] to-[#4aa3df]",
+    "from-[#5aa6e3] to-[#2f78e6]",
+    "from-[#6fb5e6] to-[#0a47b3]",
+    "from-[#8cc8ec] to-[#3b82e8]",
+    "from-[#4aa3df] to-[#0a47b3]",
+    "from-[#74b9e8] to-[#1b64da]",
+    "from-[#68b0e4] to-[#2f78e6]",
   ];
 
   let hash = 0;
@@ -520,9 +525,7 @@ export default function EmployeeDirectoryPage() {
     formErrors[field] || validationErrors[field];
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-[#f5faff] text-[#1e293b] font-sans antialiased">
-      <Sidebar />
-
+    <div className="min-h-screen bg-[#f0f6fa] text-[#1e293b] font-sans antialiased">
       <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">
         <div className="max-w-[1440px] mx-auto space-y-6">
           {/* Page heading */}
@@ -584,78 +587,90 @@ export default function EmployeeDirectoryPage() {
             </div>
           )}
 
-          {/* KPI cards */}
+          {/* KPI cards (three blues, same as the dashboard cards) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white border border-[#d5dbe1] rounded-3xl p-6 shadow-sm flex items-center justify-between">
+            <div
+              className="rounded-3xl p-6 shadow-sm flex items-center justify-between"
+              style={{ backgroundColor: SKY_LIGHT, color: INK }}
+            >
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-[#64748b]">
+                <span className="text-xs font-bold uppercase tracking-wider opacity-70">
                   Total Active Headcount
                 </span>
                 <div className="flex items-baseline gap-2 mt-2">
-                  <span className="text-4xl font-black text-[#0f172a] tracking-tight">
+                  <span className="text-4xl font-black tracking-tight">
                     {loading ? "—" : totalHeadcount}
                   </span>
-                  <span className="text-xs font-bold text-[#64748b]">
+                  <span className="text-xs font-bold opacity-60">
                     active employees
                   </span>
                 </div>
               </div>
-              <div className="w-12 h-12 rounded-2xl bg-[#eef4fa] border border-[#d6e5fb] flex items-center justify-center text-[#1b64da]">
+              <div className="w-12 h-12 rounded-2xl bg-white/70 flex items-center justify-center text-[#1b64da]">
                 <Users className="w-6 h-6" />
               </div>
             </div>
 
-            <div className="bg-white border border-[#d5dbe1] rounded-3xl p-6 shadow-sm flex items-center justify-between">
+            <div
+              className="rounded-3xl p-6 shadow-sm flex items-center justify-between"
+              style={{ backgroundColor: SKY, color: INK }}
+            >
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-[#64748b]">
+                <span className="text-xs font-bold uppercase tracking-wider opacity-70">
                   New Joiners (This Quarter)
                 </span>
                 <div className="flex items-baseline gap-2 mt-2">
-                  <span className="text-4xl font-black text-[#1b64da] tracking-tight">
+                  <span className="text-4xl font-black tracking-tight">
                     {currentQuarterJoiners}
                   </span>
-                  <span className="text-xs font-bold text-[#64748b]">
+                  <span className="text-xs font-bold opacity-60">
                     this quarter
                   </span>
                 </div>
               </div>
-              <div className="w-12 h-12 rounded-2xl bg-[#eef4fa] border border-[#d6e5fb] flex items-center justify-center text-[#1b64da]">
+              <div className="w-12 h-12 rounded-2xl bg-white/70 flex items-center justify-center text-[#1b64da]">
                 <UserPlus className="w-6 h-6" />
               </div>
             </div>
 
-            <div className="bg-white border border-[#d5dbe1] rounded-3xl p-6 shadow-sm flex items-center justify-between">
+            <div
+              className="rounded-3xl p-6 shadow-sm flex items-center justify-between"
+              style={{ backgroundColor: BLUE, color: "#ffffff" }}
+            >
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-[#64748b]">
+                <span className="text-xs font-bold uppercase tracking-wider opacity-70">
                   Current Gross Payroll
                 </span>
                 <div className="flex items-baseline gap-1 mt-2">
-                  <span className="text-2xl font-black text-[#0f172a]">₹</span>
-                  <span className="text-3xl font-black text-[#0f172a] tracking-tight">
+                  <span className="text-2xl font-black">₹</span>
+                  <span className="text-3xl font-black tracking-tight">
                     {new Intl.NumberFormat("en-IN").format(totalGrossPayroll)}
                   </span>
                 </div>
               </div>
-              <div className="w-12 h-12 rounded-2xl bg-[#eef4fa] border border-[#d6e5fb] flex items-center justify-center text-[#1b64da]">
+              <div className="w-12 h-12 rounded-2xl bg-white/70 flex items-center justify-center text-[#1b64da]">
                 <IndianRupee className="w-6 h-6" />
               </div>
             </div>
 
-            <div className="bg-white border border-[#d5dbe1] rounded-3xl p-6 shadow-sm flex items-center justify-between">
+            <div
+              className="rounded-3xl p-6 shadow-sm flex items-center justify-between"
+              style={{ backgroundColor: SKY_LIGHT, color: INK }}
+            >
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-[#64748b]">
+                <span className="text-xs font-bold uppercase tracking-wider opacity-70">
                   Active Designations
                 </span>
                 <div className="flex items-baseline gap-2 mt-2">
-                  <span className="text-4xl font-black text-[#0f172a] tracking-tight">
+                  <span className="text-4xl font-black tracking-tight">
                     {distinctDesignations.length}
                   </span>
-                  <span className="text-xs font-bold text-[#64748b]">
+                  <span className="text-xs font-bold opacity-60">
                     role groups
                   </span>
                 </div>
               </div>
-              <div className="w-12 h-12 rounded-2xl bg-[#eef4fa] border border-[#d6e5fb] flex items-center justify-center text-[#1b64da]">
+              <div className="w-12 h-12 rounded-2xl bg-white/70 flex items-center justify-center text-[#1b64da]">
                 <Briefcase className="w-6 h-6" />
               </div>
             </div>
@@ -707,7 +722,7 @@ export default function EmployeeDirectoryPage() {
                     className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
                       payrollFilter === pill.key
                         ? "bg-[#1b64da] text-white shadow-sm"
-                        : "bg-[#eef4fa] text-[#475569] hover:bg-[#e2e8f0]"
+                        : "bg-[#eaf4fc] text-slate-600 hover:bg-[#dcecf9]"
                     }`}
                   >
                     {pill.label}
@@ -727,7 +742,7 @@ export default function EmployeeDirectoryPage() {
                 className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 ${
                   selectedDesignation === "All"
                     ? "bg-[#1b64da] text-white"
-                    : "bg-[#eef4fa] text-[#475569] hover:bg-[#dbeafe]"
+                    : "bg-[#eaf4fc] text-slate-600 hover:bg-[#dcecf9]"
                 }`}
               >
                 All ({employees.length})
@@ -741,7 +756,7 @@ export default function EmployeeDirectoryPage() {
                   className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 ${
                     selectedDesignation === designation
                       ? "bg-[#1b64da] text-white"
-                      : "bg-[#eef4fa] text-[#475569] hover:bg-[#dbeafe]"
+                      : "bg-[#eaf4fc] text-slate-600 hover:bg-[#dcecf9]"
                   }`}
                 >
                   {designation} ({designationCounts[designation] || 0})
@@ -758,7 +773,7 @@ export default function EmployeeDirectoryPage() {
                 <h2 className="text-lg font-black text-[#0f172a] tracking-tight">
                   Employee Roster & Salary Structure
                 </h2>
-                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#eef4fa] text-[#1b64da] border border-[#d6e5fb]">
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#eaf4fc] text-[#1b64da] border border-[#d6e8f7]">
                   Showing {filteredEmployees.length} records
                 </span>
               </div>
@@ -774,7 +789,7 @@ export default function EmployeeDirectoryPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-[#f1f6fc] border-b border-[#d6e5fb] text-xs font-bold text-[#475569] uppercase tracking-wider">
+                  <tr className="bg-[#eaf4fc] border-b border-[#d6e8f7] text-xs font-bold text-slate-600 uppercase tracking-wider">
                     <th className="py-4 px-6">Employee</th>
                     <th className="py-4 px-6">Emp Code</th>
                     <th className="py-4 px-6">Designation</th>
@@ -803,7 +818,7 @@ export default function EmployeeDirectoryPage() {
                     filteredEmployees.map((employee) => (
                       <tr
                         key={employee.id}
-                        className="hover:bg-[#f0f6ff]/80 transition-all duration-150 group"
+                        className="hover:bg-[#f5faff] transition-all duration-150 group"
                       >
                         <td className="py-4 px-6">
                           <div className="flex items-center gap-3.5 min-w-[200px]">
@@ -826,13 +841,13 @@ export default function EmployeeDirectoryPage() {
                         </td>
 
                         <td className="py-4 px-6 whitespace-nowrap">
-                          <span className="px-2.5 py-1 rounded-lg bg-[#eef4fa] border border-[#d6e5fb] font-mono font-bold text-xs text-[#1b64da]">
+                          <span className="px-2.5 py-1 rounded-lg bg-[#eaf4fc] border border-[#d6e8f7] font-mono font-bold text-xs text-[#1b64da]">
                             {employee.emp_code}
                           </span>
                         </td>
 
                         <td className="py-4 px-6">
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-[#eef4fa] text-[#1b64da] border border-[#d6e5fb] whitespace-nowrap">
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-[#eaf4fc] text-[#1b64da] border border-[#d6e8f7] whitespace-nowrap">
                             {employee.designation}
                           </span>
                         </td>
@@ -878,7 +893,7 @@ export default function EmployeeDirectoryPage() {
                               </div>
                             </div>
                           ) : (
-                            <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                            <span className="text-xs font-bold text-[#0a47b3] bg-[#bfe0f5] px-2 py-0.5 rounded-full border border-[#7BBDE8]">
                               Structure Pending
                             </span>
                           )}
@@ -888,14 +903,14 @@ export default function EmployeeDirectoryPage() {
                           <span
                             className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-xs border shadow-sm ${
                               employee.status === "ACTIVE"
-                                ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                                ? "bg-[#e1f1fb] text-[#0a47b3] border-[#7BBDE8]"
                                 : "bg-slate-100 text-slate-700 border-slate-200"
                             }`}
                           >
                             <span
                               className={`w-2 h-2 rounded-full ${
                                 employee.status === "ACTIVE"
-                                  ? "bg-emerald-500"
+                                  ? "bg-[#1b64da]"
                                   : "bg-slate-400"
                               }`}
                             />
@@ -911,7 +926,7 @@ export default function EmployeeDirectoryPage() {
                               aria-label={`View ${employee.name}`}
                               onClick={() => handleViewEmployee(employee.id)}
                               disabled={detailLoadingId === employee.id}
-                              className="p-2 rounded-xl text-slate-500 hover:text-[#1b64da] hover:bg-[#eef4fa] transition-colors disabled:opacity-50 disabled:cursor-wait"
+                              className="p-2 rounded-xl text-slate-500 hover:text-[#1b64da] hover:bg-[#eaf4fc] transition-colors disabled:opacity-50 disabled:cursor-wait"
                             >
                               {detailLoadingId === employee.id ? (
                                 <RefreshCw className="w-4 h-4 animate-spin" />
@@ -923,7 +938,7 @@ export default function EmployeeDirectoryPage() {
                               type="button"
                               title={`Edit ${employee.name}`}
                               onClick={() => openEditModal(employee)}
-                              className="p-2 rounded-xl text-slate-500 hover:text-[#1b64da] hover:bg-[#eef4fa] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                              className="p-2 rounded-xl text-slate-500 hover:text-[#1b64da] hover:bg-[#eaf4fc] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                             >
                               <Edit3 className="w-4 h-4" />
                             </button>
@@ -947,7 +962,7 @@ export default function EmployeeDirectoryPage() {
               </table>
             </div>
 
-            <div className="p-4 bg-[#f8fafc] border-t border-[#e2e8f0] flex flex-col sm:flex-row items-center justify-between text-xs text-[#64748b] gap-2">
+            <div className="p-4 bg-[#f7f9fd] border-t border-[#e2e8f0] flex flex-col sm:flex-row items-center justify-between text-xs text-[#64748b] gap-2">
               <span>
                 Showing {filteredEmployees.length} of {employees.length}{" "}
                 employees
@@ -994,7 +1009,7 @@ export default function EmployeeDirectoryPage() {
                   setViewingEmployee(null);
                   setDetailError(null);
                 }}
-                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-[#eef4fa]"
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-[#eaf4fc]"
                 aria-label="Close employee details"
               >
                 <X className="w-5 h-5" />
@@ -1021,7 +1036,7 @@ export default function EmployeeDirectoryPage() {
                 ].map(([label, value]) => (
                   <div
                     key={label}
-                    className="rounded-xl bg-[#f8fafc] border border-[#e2e8f0] p-3"
+                    className="rounded-xl bg-[#f5faff] border border-[#d6e8f7] p-3"
                   >
                     <dt className="text-[11px] font-bold uppercase tracking-wider text-[#64748b]">
                       {label}
@@ -1043,7 +1058,7 @@ export default function EmployeeDirectoryPage() {
           <div className="bg-white border border-[#d5dbe1] rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl relative my-8">
             <div className="flex items-center justify-between pb-4 border-b border-[#e2e8f0]">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-[#eef4fa] border border-[#d6e5fb] flex items-center justify-center text-[#1b64da]">
+                <div className="w-10 h-10 rounded-2xl bg-[#eaf4fc] border border-[#d6e8f7] flex items-center justify-center text-[#1b64da]">
                   <UserPlus className="w-5 h-5" />
                 </div>
                 <div>
@@ -1069,7 +1084,7 @@ export default function EmployeeDirectoryPage() {
                 type="button"
                 onClick={closeModal}
                 disabled={isSaving}
-                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-[#eef4fa] disabled:opacity-50"
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-[#eaf4fc] disabled:opacity-50"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1291,7 +1306,7 @@ export default function EmployeeDirectoryPage() {
                   type="button"
                   onClick={closeModal}
                   disabled={isSaving}
-                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-[#64748b] hover:bg-[#eef4fa] transition-colors disabled:opacity-50"
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-[#64748b] hover:bg-[#eaf4fc] transition-colors disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -1328,10 +1343,10 @@ export default function EmployeeDirectoryPage() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="employee-success-title"
-            className="w-full max-w-sm rounded-3xl border border-emerald-100 bg-white p-7 text-center shadow-2xl"
+            className="w-full max-w-sm rounded-3xl border border-[#d6e8f7] bg-white p-7 text-center shadow-2xl"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#e1f1fb] text-[#1b64da]">
               <CheckCircle2 className="h-8 w-8" aria-hidden="true" />
             </div>
             <h2

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -6,18 +5,14 @@ import { useRouter } from 'next/navigation';
 import { useDispatch } from 'react-redux';
 import {
   Search,
-  Bell,
   HelpCircle,
   AlertCircle,
   Clock,
-  Users,
-  Settings,
   Calendar,
   UserCheck,
   RefreshCw,
   X,
 } from 'lucide-react';
-import Sidebar from '../components/SideBar';
 import { performLogout } from '../store/auth/authSlice';
 import type { AppDispatch } from '../store/store';
 
@@ -129,6 +124,12 @@ const AVATAR_COLORS = [
   'bg-fuchsia-500',
 ];
 
+// THEME COLOURS (same family as the sidebar #7BBDE8)
+const SKY = '#7BBDE8';
+const SKY_LIGHT = '#bfe0f5';
+const BLUE = '#1b64da';
+const INK = '#0f172a';
+
 function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;
 
@@ -176,6 +177,118 @@ function formatDate(dateString: string, period: Period): string {
     weekday: 'short',
     day: '2-digit',
   });
+}
+
+// ---------- display-only helpers for the new design ----------
+
+function getInitials(name?: string): string {
+  return name?.trim()
+    ? name
+        .trim()
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((word) => word.charAt(0))
+        .join('')
+        .toUpperCase()
+    : '?';
+}
+
+// ---------- design pieces ----------
+
+function AttendanceProgress({ percent }: { percent: number }) {
+  const safe = Math.max(0, Math.min(100, percent));
+  const radius = 46;
+  const circumference = 2 * Math.PI * radius;
+
+  return (
+    <div
+      className="relative flex h-[112px] w-[112px] items-center justify-center"
+      role="progressbar"
+      aria-label="Attendance today"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={safe}
+    >
+      <svg viewBox="0 0 112 112" className="absolute inset-0 h-full w-full -rotate-90" aria-hidden="true">
+        <circle
+          cx="56"
+          cy="56"
+          r={radius}
+          fill="none"
+          stroke="#dcebf7"
+          strokeWidth="10"
+        />
+        <circle
+          cx="56"
+          cy="56"
+          r={radius}
+          fill="none"
+          stroke={SKY}
+          strokeWidth="10"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference * (1 - safe / 100)}
+        />
+      </svg>
+      <UserCheck className="h-10 w-10 text-[#1b64da]" aria-hidden="true" />
+    </div>
+  );
+}
+
+const bubbles: [number, number, number, string][] = [
+  [53, 40, 17, '#7BBDE8'],
+  [17, 79, 14, '#a9d6f2'],
+  [14, 29, 12, '#8cc8ec'],
+  [40, 66, 9, '#1b64da'],
+  [100, 46, 11, '#3b82e8'],
+  [80, 63, 8, '#bfe0f5'],
+  [58, 91, 8, '#bfe0f5'],
+  [44, 96, 7, '#d7ebf9'],
+  [72, 79, 6, '#5aa6e3'],
+  [32, 14, 7, '#6fb5e6'],
+  [50, 9, 5, '#9cd0f0'],
+  [67, 8, 5, '#c8e4f6'],
+  [82, 16, 6, '#86c2ea'],
+  [93, 25, 5, '#b5daf3'],
+  [74, 36, 4, '#bfe0f5'],
+  [86, 55, 5, '#2f78e6'],
+  [62, 58, 4, '#0a47b3'],
+  [32, 48, 5, '#74b9e8'],
+  [27, 66, 4, '#68b0e4'],
+  [96, 70, 4, '#a3cff0'],
+];
+
+function BubbleCluster() {
+  return (
+    <svg viewBox="0 0 116 108" className="h-[108px] w-[116px]" aria-hidden="true">
+      {bubbles.map(([cx, cy, r, fill], i) => (
+        <circle key={i} cx={cx} cy={cy} r={r} fill={fill} />
+      ))}
+    </svg>
+  );
+}
+
+// circle that grows with its value
+function CountBubble({
+  value,
+  color,
+  text = INK,
+}: {
+  value: number;
+  color: string;
+  text?: string;
+}) {
+  const size = Math.min(84, Math.round(30 + value * 3));
+  const fs = size >= 56 ? 'text-lg' : 'text-sm';
+
+  return (
+    <span
+      className={`flex items-center justify-center rounded-full font-extrabold ${fs}`}
+      style={{ width: size, height: size, backgroundColor: color, color: text }}
+    >
+      {value}
+    </span>
+  );
 }
 
 export default function NandgateDashboard() {
@@ -391,11 +504,125 @@ export default function NandgateDashboard() {
         ? 'Last Week'
         : 'Last Month';
 
-  return (
-    <div className="min-h-screen w-full bg-[#f0f6fa] font-sans antialiased text-slate-800 selection:bg-[#7BBDE8]/30 flex">
-      <Sidebar />
+  // ---------- derived values for the new design (no extra API calls) ----------
+  const totalCount = counts?.total_employees || totalEmployees || 0;
 
-      <main className="flex-1 min-w-0 p-5 lg:p-10 flex flex-col space-y-8 overflow-y-auto">
+  const pctOf = (value: number) =>
+    totalCount > 0 ? Math.round((value / totalCount) * 100) : 0;
+
+  const presentToday = (counts?.in ?? 0) + (counts?.out ?? 0);
+  const presentPct = pctOf(presentToday);
+
+  const segments = [
+    {
+      key: 'in',
+      label: 'In Office',
+      count: counts?.in ?? 0,
+      note: 'Currently IN',
+      color: SKY,
+      text: INK,
+      muted: 'text-black/40',
+      sample: dashboard?.today.employees.in?.[0],
+      Icon: UserCheck,
+    },
+    {
+      key: 'wait',
+      label: 'Not Yet In',
+      count: counts?.no_punch_yet ?? 0,
+      note: 'Awaiting punch',
+      color: SKY_LIGHT,
+      text: INK,
+      muted: 'text-black/40',
+      sample: dashboard?.today.employees.no_punch_yet?.[0],
+      Icon: Clock,
+    },
+    {
+      key: 'absent',
+      label: 'Absent',
+      count: counts?.absent ?? 0,
+      note: `${dashboard?.unregularized_days_this_month ?? 0} unregularized`,
+      color: BLUE,
+      text: '#ffffff',
+      muted: 'text-white/60',
+      sample: dashboard?.today.employees.absent?.[0],
+      Icon: AlertCircle,
+    },
+  ];
+
+  // Cards for details NOT already shown in the three coloured cards above
+  const detailCards = [
+    {
+      key: 'leave',
+      label: 'On Leave',
+      value: counts?.on_leave ?? 0,
+      line: `${pctOf(counts?.on_leave ?? 0)}% of workforce`,
+      note: `${dashboard?.pending_requests.leave ?? 0} pending leave requests`,
+      color: SKY_LIGHT,
+      text: INK,
+      muted: 'text-black/40',
+      Icon: Calendar,
+    },
+    {
+      key: 'out',
+      label: 'Checked Out',
+      value: counts?.out ?? 0,
+      line: `${pctOf(counts?.out ?? 0)}% of workforce`,
+      note: 'Left for the day',
+      color: SKY,
+      text: INK,
+      muted: 'text-black/40',
+      Icon: UserCheck,
+    },
+    {
+      key: 'late',
+      label: 'Late Arrivals',
+      value: dashboard?.attendance_summary.late_count ?? 0,
+      line: periodLabel,
+      note: 'Late punch-ins',
+      color: BLUE,
+      text: '#ffffff',
+      muted: 'text-white/60',
+      Icon: Clock,
+    },
+    {
+      key: 'insufficient',
+      label: 'Insufficient',
+      value: counts?.insufficient ?? 0,
+      line: `${pctOf(counts?.insufficient ?? 0)}% of workforce`,
+      note: 'Short working hours',
+      color: SKY_LIGHT,
+      text: INK,
+      muted: 'text-black/40',
+      Icon: AlertCircle,
+    },
+    {
+      key: 'weekly',
+      label: 'Weekly Off',
+      value: counts?.weekly_off ?? 0,
+      line: `${pctOf(counts?.weekly_off ?? 0)}% of workforce`,
+      note: 'Scheduled day off',
+      color: SKY,
+      text: INK,
+      muted: 'text-black/40',
+      Icon: Calendar,
+    },
+    {
+      key: 'unreg',
+      label: 'Unregularized',
+      value: dashboard?.unregularized_days_this_month ?? 0,
+      line: 'This month',
+      note: 'Days needing action',
+      color: BLUE,
+      text: '#ffffff',
+      muted: 'text-white/60',
+      Icon: AlertCircle,
+    },
+  ];
+
+  return (
+    <div className="min-h-screen w-full bg-white font-sans antialiased text-slate-800 selection:bg-[#7BBDE8]/30 flex flex-col">
+      <main className="flex-1 rounded-t-[40px] bg-[#f0f6fa]">
+        <div className="mx-auto flex w-full max-w-[1440px] flex-col space-y-8 px-5 py-8 lg:px-10 lg:py-10">
 
         {/* HEADER */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -420,7 +647,7 @@ export default function NandgateDashboard() {
               }}
               placeholder="Search employee, shift, report..."
               autoComplete="off"
-              className="w-full pl-14 pr-12 py-4 bg-white rounded-2xl text-base text-slate-700 placeholder-slate-400 border border-slate-200/80 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]/40"
+              className="w-full pl-14 pr-12 py-4 bg-white rounded-full text-base text-slate-700 placeholder-slate-400 border border-slate-200/80 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]/40"
             />
 
             {searchQuery && (
@@ -461,15 +688,7 @@ export default function NandgateDashboard() {
                               AVATAR_COLORS[index % AVATAR_COLORS.length]
                             }`}
                           >
-                            {employee.name?.trim()
-                              ? employee.name
-                                  .trim()
-                                  .split(/\s+/)
-                                  .slice(0, 2)
-                                  .map((word) => word.charAt(0))
-                                  .join('')
-                                  .toUpperCase()
-                              : '?'}
+                            {getInitials(employee.name)}
                           </div>
 
                           <div className="min-w-0 flex-1">
@@ -597,33 +816,9 @@ export default function NandgateDashboard() {
               </div>
             )}
           </div>
-
-          <div className="flex items-center gap-3 self-end md:self-auto">
-            <button className="w-12 h-12 rounded-full bg-white border border-slate-200/80 shadow-sm flex items-center justify-center text-slate-500 hover:text-slate-800">
-              <Users className="w-5 h-5" />
-            </button>
-
-            <button className="w-12 h-12 rounded-full bg-white border border-slate-200/80 shadow-sm flex items-center justify-center text-slate-500 hover:text-slate-800">
-              <Bell className="w-5 h-5" />
-            </button>
-
-            <button className="w-12 h-12 rounded-full bg-white border border-slate-200/80 shadow-sm flex items-center justify-center text-slate-500 hover:text-slate-800">
-              <Settings className="w-5 h-5" />
-            </button>
-
-            <div className="flex items-center gap-3 pl-4 py-1.5 pr-1.5 bg-white border border-slate-200/80 rounded-full shadow-sm">
-              <span className="text-sm font-semibold text-slate-700">
-                Admin
-              </span>
-
-              <div className="w-9 h-9 rounded-full bg-[#7BBDE8] text-white font-bold text-sm flex items-center justify-center">
-                A
-              </div>
-            </div>
-          </div>
         </header>
 
-        {/* WELCOME AND FILTER */}
+        {/* WELCOME, AVATAR GROUP AND FILTER */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-2">
           <div>
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight">
@@ -634,6 +829,34 @@ export default function NandgateDashboard() {
             <p className="text-base text-slate-500 mt-2">
               Welcome back to NANDGATE-IT workforce management overview.
             </p>
+
+            {/* ACTIVE EMPLOYEE AVATAR GROUP */}
+            <div className="flex items-center gap-3 mt-4">
+              <div className="flex items-center">
+                {activeEmployees.slice(0, 5).map((employee, index) => (
+                  <div
+                    key={employee.id}
+                    title={employee.name}
+                    aria-label={employee.name}
+                    className={`w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ring-[#f0f6fa] ${
+                      index > 0 ? '-ml-2' : ''
+                    } ${AVATAR_COLORS[index % AVATAR_COLORS.length]}`}
+                  >
+                    {getInitials(employee.name)}
+                  </div>
+                ))}
+
+                {activeEmployees.length > 5 && (
+                  <div className="-ml-2 h-9 min-w-9 px-2 rounded-full bg-white flex items-center justify-center text-[11px] font-bold text-slate-500 ring-2 ring-[#f0f6fa]">
+                    +{activeEmployees.length - 5}
+                  </div>
+                )}
+              </div>
+
+              <span className="text-sm font-semibold text-slate-500">
+                {loading ? 'Loading employees...' : `${totalEmployees} Total Employees`}
+              </span>
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
@@ -689,132 +912,127 @@ export default function NandgateDashboard() {
           </div>
         )}
 
-        {/* PRIMARY METRIC CARDS */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* ================= STATS ROW ================= */}
+        <section className="grid gap-6 xl:grid-cols-2">
 
-          {/* TOTAL EMPLOYEES */}
-          <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 flex flex-col justify-between">
-            <div>
-              <div className="flex items-baseline justify-between mb-8">
-                <div className="flex items-baseline gap-4">
-                  <span className="text-5xl lg:text-6xl font-black text-slate-900">
-                    {loading ? '—' : totalEmployees}
-                  </span>
+          {/* ATTENDANCE TODAY + HOURS WORKED */}
+          <div className="grid grid-cols-1 gap-8 rounded-[32px] border border-[#e6edf4] bg-white p-8 shadow-sm sm:grid-cols-2">
 
-                  <span className="text-base font-semibold text-slate-500">
-                    Total Employees
-                  </span>
+            {/* Attendance today */}
+            <div className="flex justify-between gap-2">
+              <div className="flex flex-col justify-between">
+                <div>
+                  <p className="text-[15px] font-bold leading-tight text-slate-900">
+                    Attendance
+                    <br />
+                    Today
+                  </p>
+                  <p className="mt-1 text-[44px] font-black leading-none text-slate-900">
+                    {loading ? '—' : `${presentPct}%`}
+                  </p>
                 </div>
 
-                <span className="text-sm font-bold text-[#3b82f6] bg-[#3b82f6]/10 px-4 py-1.5 rounded-full">
-                  Active
-                </span>
+                <div className="mt-6">
+                  <p className="text-[11px] font-medium text-slate-400">
+                    In office now
+                  </p>
+                  <p className="text-xs font-semibold text-slate-800">
+                    {loading ? '—' : `${counts?.in ?? 0} of ${totalCount}`}
+                  </p>
+                </div>
               </div>
 
-              {/* ACTIVE EMPLOYEE AVATARS ONLY */}
-              <div className="my-4">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-base text-slate-500 font-medium">
-                    Active employees in your workforce
-                  </span>
+              <div className="self-end">
+                <AttendanceProgress percent={presentPct} />
+              </div>
+            </div>
 
-                  <span className="text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
-                    {activeEmployees.length}
-                  </span>
+            {/* Total hours worked */}
+            <div className="flex justify-between gap-2">
+              <div className="flex flex-col justify-between">
+                <div>
+                  <p className="text-[15px] font-bold leading-tight text-slate-900">
+                    Hours
+                    <br />
+                    Worked
+                  </p>
+                  <p className="mt-1 text-[44px] font-black leading-none text-slate-900">
+                    {loading
+                      ? '—'
+                      : totalHours.toLocaleString('en-IN', {
+                          maximumFractionDigits: 1,
+                        })}
+                    <span className="ml-1 text-lg font-bold">hrs</span>
+                  </p>
                 </div>
 
-                {loading && !dashboard ? (
-                  <p className="text-sm text-slate-400 py-3">
-                    Loading employees...
+                <div className="mt-6">
+                  <p className="text-[11px] font-medium text-slate-400">
+                    Selected period
                   </p>
-                ) : activeEmployees.length > 0 ? (
-                  <div className="flex flex-wrap items-center gap-3 max-h-64 overflow-y-auto pr-2 py-1">
-                    {activeEmployees.map((employee, index) => (
-                      <div
-                        key={employee.id}
-                        title={employee.name}
-                        aria-label={employee.name}
-                        className={`w-11 h-11 shrink-0 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-sm border-2 border-white ${AVATAR_COLORS[index % AVATAR_COLORS.length]}`}
-                      >
-                        {employee.name?.trim()
-                          ? employee.name
-                              .trim()
-                              .split(/\s+/)
-                              .slice(0, 2)
-                              .map((word) => word.charAt(0))
-                              .join('')
-                              .toUpperCase()
-                          : '?'}
-                      </div>
-                    ))}
-                  </div>
+                  <p className="text-xs font-semibold text-slate-800">
+                    {periodLabel}
+                  </p>
+                </div>
+              </div>
+
+              <div className="self-center">
+                <BubbleCluster />
+              </div>
+            </div>
+          </div>
+
+          {/* In office / Not yet in / Absent – width follows % of workforce */}
+          <div className="flex min-h-[215px]">
+            {segments.map((seg, index) => (
+              <div
+                key={seg.key}
+                className="relative flex flex-col justify-end rounded-[32px] p-5 sm:p-6"
+                style={{
+                  flexGrow: Math.max(pctOf(seg.count), 14),
+                  flexBasis: 0,
+                  backgroundColor: seg.color,
+                  color: seg.text,
+                }}
+              >
+                <p className="absolute left-5 top-5 text-[13px] font-bold sm:left-6 sm:top-6">
+                  {seg.label}
+                </p>
+
+                {seg.sample ? (
+                  <span
+                    title={seg.sample.name}
+                    className={`absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold text-white ring-4 ring-white/80 ${
+                      AVATAR_COLORS[(index * 4) % AVATAR_COLORS.length]
+                    }`}
+                  >
+                    {getInitials(seg.sample.name)}
+                  </span>
                 ) : (
-                  <p className="text-sm text-slate-400 py-3">
-                    No active employees found.
-                  </p>
+                  <span className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/70 text-slate-500 ring-4 ring-white/60">
+                    <seg.Icon className="h-4 w-4" />
+                  </span>
                 )}
-              </div>
-            </div>
 
-            <div className="flex items-center justify-between pt-6 border-t border-slate-50 text-base font-bold mt-4">
-              <span className="text-slate-600">
-                Workforce Overview
-              </span>
+                <p className="text-[44px] font-black leading-none">
+                  {loading ? '—' : seg.count}
+                </p>
 
-              <span className="text-emerald-700 bg-emerald-100/70 px-4 py-1.5 rounded-full text-sm">
-                {loading ? 'Loading...' : `${totalEmployees} Active`}
-              </span>
-            </div>
-          </div>
-
-          {/* TOTAL HOURS */}
-          <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-100 flex flex-col justify-between">
-            <div>
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-5">
-                  <div className="w-14 h-14 rounded-full bg-sky-100 flex items-center justify-center text-[#7BBDE8]">
-                    <Clock className="w-7 h-7" />
-                  </div>
-
-                  <div>
-                    <div className="text-5xl lg:text-6xl font-black text-slate-900 tracking-tight">
-                      {loading ? '—' : totalHours.toLocaleString('en-IN', {
-                        maximumFractionDigits: 2,
-                      })}{' '}
-                      <span className="text-3xl font-bold">hrs</span>
-                    </div>
-
-                    <div className="text-base font-semibold text-slate-500 mt-2">
-                      Total Hours Worked (All Employees)
-                    </div>
-
-                    <p className="text-xs text-slate-400 mt-1">
-                      {periodLabel}
-                    </p>
-                  </div>
+                <div className="mt-4 text-[11px] font-bold leading-snug">
+                  <p>{pctOf(seg.count)}%</p>
+                  <p>of workforce</p>
+                  <p className={`font-medium ${seg.muted}`}>{seg.note}</p>
                 </div>
-
-                <HelpCircle className="w-6 h-6 text-slate-300" />
               </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-6 border-t border-slate-50 text-base font-bold mt-8">
-              <span className="text-slate-600">
-                Selected Period
-              </span>
-
-              <span className="text-emerald-700 bg-emerald-100/70 px-4 py-1.5 rounded-full text-sm">
-                {filterLabel}
-              </span>
-            </div>
+            ))}
           </div>
-        </div>
+        </section>
 
         {/* CHARTS */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
           {/* ATTENDANCE CHART */}
-          <div className="lg:col-span-8 bg-white rounded-3xl p-8 shadow-sm border border-slate-100 flex flex-col">
+          <div className="lg:col-span-8 bg-white rounded-[32px] p-8 shadow-sm border border-[#e6edf4] flex flex-col">
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h3 className="font-bold text-xl text-slate-900">
@@ -944,7 +1162,7 @@ export default function NandgateDashboard() {
           </div>
 
           {/* WORKFORCE STATUS */}
-          <div className="lg:col-span-4 bg-white rounded-3xl p-8 shadow-sm border border-slate-100 flex flex-col justify-between">
+          <div className="lg:col-span-4 bg-white rounded-[32px] p-8 shadow-sm border border-[#e6edf4] flex flex-col justify-between">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="font-bold text-xl text-slate-900">
@@ -1037,198 +1255,99 @@ export default function NandgateDashboard() {
           </div>
         </div>
 
-        {/* BOTTOM ATTENDANCE CARDS */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 pb-4">
+        {/* ATTENDANCE BREAKDOWN (only details not shown in the cards above) */}
+        <section>
+          <div className="flex items-end justify-between">
+            <h2 className="text-[22px] font-extrabold tracking-tight text-slate-900">
+              Attendance Breakdown
+            </h2>
 
-          {/* IN OFFICE */}
-          <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-5">
-                <div className="w-12 h-12 rounded-full bg-sky-50 flex items-center justify-center text-[#7BBDE8]">
-                  <UserCheck className="w-6 h-6" />
-                </div>
+            <span className="text-xs font-semibold text-slate-400">
+              {totalCount} Total Employees
+            </span>
+          </div>
 
-                <span className="text-4xl font-black text-slate-900">
-                  {loading ? '—' : counts?.in ?? 0}
+          <div className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+            {detailCards.map((card) => (
+              <div
+                key={card.key}
+                className="relative flex min-h-[180px] flex-col justify-end rounded-[32px] p-5"
+                style={{ backgroundColor: card.color, color: card.text }}
+              >
+                <p className="absolute left-5 top-5 max-w-[60%] text-[13px] font-bold leading-tight">
+                  {card.label}
+                </p>
+
+                <span className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/70 text-slate-600 ring-4 ring-white/60">
+                  <card.Icon className="h-4 w-4" />
                 </span>
-              </div>
 
-              <h4 className="text-base font-bold text-slate-600">
-                In Office Now
-              </h4>
-            </div>
+                <p className="text-[40px] font-black leading-none">
+                  {loading ? '—' : card.value}
+                </p>
 
-            <div className="flex items-center justify-between text-sm font-semibold text-slate-400 pt-5 border-t border-slate-50 mt-5">
-              <span className="text-sky-600 bg-sky-50 px-2.5 py-1 rounded-md">
-                Currently IN
-              </span>
-
-              <span>
-                {counts?.total_employees ?? 0} Employees
-              </span>
-            </div>
-          </div>
-
-          {/* NOT YET IN */}
-          <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-5">
-                <div className="w-12 h-12 rounded-full bg-amber-50 flex items-center justify-center text-amber-500">
-                  <Clock className="w-6 h-6" />
+                <div className="mt-4 text-[11px] font-bold leading-snug">
+                  <p>{card.line}</p>
+                  <p className={`font-medium ${card.muted}`}>{card.note}</p>
                 </div>
-
-                <span className="text-4xl font-black text-slate-900">
-                  {loading ? '—' : counts?.no_punch_yet ?? 0}
-                </span>
               </div>
-
-              <h4 className="text-base font-bold text-slate-600">
-                Not Yet In
-              </h4>
-            </div>
-
-            <div className="flex items-center justify-between text-sm font-semibold text-slate-400 pt-5 border-t border-slate-50 mt-5">
-              <span className="text-amber-600 bg-amber-50 px-2.5 py-1 rounded-md">
-                No Punch
-              </span>
-
-              <span>Awaiting Punch</span>
-            </div>
+            ))}
           </div>
+        </section>
 
-          {/* ON LEAVE */}
-          <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-5">
-                <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
-                  <Calendar className="w-6 h-6" />
-                </div>
-
-                <span className="text-4xl font-black text-slate-900">
-                  {loading ? '—' : counts?.on_leave ?? 0}
-                </span>
-              </div>
-
-              <h4 className="text-base font-bold text-slate-600">
-                On Leave
-              </h4>
-            </div>
-
-            <div className="flex items-center justify-between text-sm font-semibold text-slate-400 pt-5 border-t border-slate-50 mt-5">
-              <span className="font-bold text-slate-700">
-                {dashboard?.pending_requests.leave ?? 0} Req
-              </span>
-
-              <span>Pending Leave</span>
-            </div>
-          </div>
-
-          {/* ABSENT */}
-          <div className="bg-white rounded-3xl p-6 shadow-sm border border-rose-100 relative overflow-hidden flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-5">
-                <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center text-rose-500">
-                  <AlertCircle className="w-6 h-6" />
-                </div>
-
-                <span className="text-4xl font-black text-slate-900">
-                  {loading ? '—' : counts?.absent ?? 0}
-                </span>
-              </div>
-
-              <h4 className="text-base font-bold text-slate-600">
-                Absent
-              </h4>
-            </div>
-
-            <div className="pt-5 border-t border-slate-50 mt-5 flex items-center justify-between">
-              <span className="text-xs font-extrabold uppercase bg-rose-600 text-white px-3 py-1.5 rounded-lg">
-                Action
-              </span>
-
-              <span className="text-sm font-bold text-rose-500">
-                {dashboard?.unregularized_days_this_month ?? 0} Unregularized
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* ADDITIONAL ATTENDANCE COUNTS */}
-        <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-          <h3 className="font-bold text-lg text-slate-900 mb-5">
-            Other Attendance Details
-          </h3>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-            <div>
-              <p className="text-sm text-slate-400">Checked Out</p>
-              <p className="text-2xl font-bold text-slate-800 mt-1">
-                {counts?.out ?? 0}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-sm text-slate-400">Weekly Off</p>
-              <p className="text-2xl font-bold text-slate-800 mt-1">
-                {counts?.weekly_off ?? 0}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-sm text-slate-400">Insufficient</p>
-              <p className="text-2xl font-bold text-slate-800 mt-1">
-                {counts?.insufficient ?? 0}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-sm text-slate-400">Late Arrivals</p>
-              <p className="text-2xl font-bold text-slate-800 mt-1">
-                {dashboard?.attendance_summary.late_count ?? 0}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* PENDING REQUESTS AND DEVICE HEALTH */}
+        {/* PENDING REQUESTS (bubbles) AND DEVICE HEALTH */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-8">
-          <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-            <h3 className="font-bold text-lg text-slate-900 mb-5">
-              Pending Requests
-            </h3>
+          <div className="bg-white rounded-[32px] p-6 shadow-sm border border-[#e6edf4]">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="font-bold text-lg text-slate-900">
+                Pending Requests
+              </h3>
 
-            <div className="grid grid-cols-2 gap-5">
-              <div>
-                <p className="text-sm text-slate-400">Leave</p>
-                <p className="text-2xl font-bold text-slate-800">
-                  {dashboard?.pending_requests.leave ?? 0}
-                </p>
-              </div>
+              <span className="text-sm font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">
+                {dashboard?.pending_requests.total ?? 0} Total
+              </span>
+            </div>
 
-              <div>
-                <p className="text-sm text-slate-400">Permission</p>
-                <p className="text-2xl font-bold text-slate-800">
-                  {dashboard?.pending_requests.permission ?? 0}
-                </p>
-              </div>
+            <div className="grid grid-cols-3 items-end gap-4 py-2">
+              {[
+                {
+                  label: 'Leave',
+                  value: dashboard?.pending_requests.leave ?? 0,
+                  color: BLUE,
+                  text: '#ffffff',
+                },
+                {
+                  label: 'Permission',
+                  value: dashboard?.pending_requests.permission ?? 0,
+                  color: SKY,
+                  text: INK,
+                },
+                {
+                  label: 'Regularization',
+                  value: dashboard?.pending_requests.regularization ?? 0,
+                  color: SKY_LIGHT,
+                  text: INK,
+                },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  className="flex flex-col items-center gap-3"
+                >
+                  <CountBubble
+                    value={item.value}
+                    color={item.color}
+                    text={item.text}
+                  />
 
-              <div>
-                <p className="text-sm text-slate-400">Regularization</p>
-                <p className="text-2xl font-bold text-slate-800">
-                  {dashboard?.pending_requests.regularization ?? 0}
-                </p>
-              </div>
-
-              <div>
-                <p className="text-sm text-slate-400">Total Pending</p>
-                <p className="text-2xl font-bold text-blue-600">
-                  {dashboard?.pending_requests.total ?? 0}
-                </p>
-              </div>
+                  <span className="text-xs font-semibold text-slate-500">
+                    {item.label}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
 
-          <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+          <div className="bg-white rounded-[32px] p-6 shadow-sm border border-[#e6edf4]">
             <h3 className="font-bold text-lg text-slate-900 mb-5">
               Device Health
             </h3>
@@ -1265,7 +1384,9 @@ export default function NandgateDashboard() {
           </div>
         </div>
 
+        </div>
       </main>
+
     </div>
   );
 }

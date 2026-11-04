@@ -29,7 +29,13 @@ import {
   TrendingDown,
 } from "lucide-react";
 
-import Sidebar from "../components/SideBar";
+// ============================================================
+// THEME (same three colours as the dashboard)
+//   SKY       #7BBDE8
+//   SKY LIGHT #bfe0f5
+//   BLUE      #1b64da
+//   INK       #0f172a (text)
+// ============================================================
 
 // ============================================================
 // TYPES
@@ -97,12 +103,7 @@ const formatINR = (value: number, showDecimals = false) => {
 const getAvatarBg = (name: string) => {
   const colors = [
     "bg-[#1b64da]",
-    "bg-[#0284c7]",
-    "bg-[#7c3aed]",
-    "bg-[#059669]",
-    "bg-[#d97706]",
-    "bg-[#e11d48]",
-    "bg-[#4f46e5]",
+    "bg-[#7BBDE8]",
   ];
 
   let sum = 0;
@@ -119,6 +120,56 @@ const getMonthName = (month: number, style: "long" | "short" = "long") => {
     month: style,
   });
 };
+
+// ============================================================
+// FILLED COUNT CARD (same look as dashboard cards)
+// ============================================================
+
+const SKY = "#7BBDE8";
+const SKY_LIGHT = "#bfe0f5";
+const BLUE = "#1b64da";
+const INK = "#0f172a";
+
+function CountCard({
+  label,
+  value,
+  note,
+  color,
+  text,
+  muted,
+  Icon,
+}: {
+  label: string;
+  value: React.ReactNode;
+  note: string;
+  color: string;
+  text: string;
+  muted: string;
+  Icon: React.ComponentType<{ className?: string }>;
+}) {
+  return (
+    <div
+      className="relative flex min-h-[170px] flex-col justify-end rounded-[32px] p-5 shadow-sm"
+      style={{ backgroundColor: color, color: text }}
+    >
+      <p className="absolute left-5 top-5 max-w-[65%] text-[13px] font-bold leading-tight">
+        {label}
+      </p>
+
+      <span className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/70 text-slate-600 ring-4 ring-white/60">
+        <Icon className="h-4 w-4" />
+      </span>
+
+      <p className="text-[30px] font-black leading-none tracking-tight">
+        {value}
+      </p>
+
+      <p className={`mt-3 text-[11px] font-bold leading-snug ${muted}`}>
+        {note}
+      </p>
+    </div>
+  );
+}
 
 // ============================================================
 // MAIN COMPONENT
@@ -573,9 +624,7 @@ export default function PayrollProcessingHub() {
   // ==========================================================
 
   return (
-    <div className="min-h-screen bg-[#f5faff] text-[#1e293b] font-sans antialiased lg:flex">
-      <Sidebar />
-
+    <div className="min-h-screen bg-[#f0f6fa] text-[#0f172a] font-sans antialiased selection:bg-[#7BBDE8]/30">
       <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">
         <div className="max-w-[1440px] mx-auto space-y-6">
 
@@ -584,26 +633,12 @@ export default function PayrollProcessingHub() {
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-3 flex-wrap">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#1b64da]" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#7BBDE8]" />
 
                 <h1 className="text-3xl lg:text-4xl font-black text-[#0f172a] tracking-tight">
                   Payroll Processing & Run Management
                 </h1>
-
-                {/* <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#eef4fa] text-[#1b64da] border border-[#d6e5fb] tracking-wider uppercase">
-                  Active Cycle:{" "}
-                  {activeRun
-                    ? `${getMonthName(activeRun.month)} ${activeRun.year} (${activeRun.status})`
-                    : "No run selected"}
-                </span> */}
               </div>
-
-              {/* <p className="text-sm font-medium text-[#64748b] mt-1.5 max-w-3xl">
-                Automated attendance-linked salary disbursement engine.
-                Recompute LOP deductions, manage custom earning and
-                deduction line items, finalize runs, and publish PDF
-                payslips across NANDGATE-IT personnel.
-              </p> */}
             </div>
 
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -616,7 +651,7 @@ export default function PayrollProcessingHub() {
                   activeRun.status === "FINALIZED" ||
                   actionLoading
                 }
-                className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-white border border-[#d5dbe1] text-xs font-bold text-[#475569] hover:bg-[#f1f6fc] shadow-sm transition-all disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-full bg-white border border-[#bfe0f5] text-xs font-bold text-[#0f172a] hover:bg-[#bfe0f5]/40 shadow-sm transition-all disabled:opacity-50"
               >
                 <RefreshCw className="w-3.5 h-3.5 text-[#1b64da]" />
                 Recompute LOP
@@ -626,9 +661,9 @@ export default function PayrollProcessingHub() {
                 type="button"
                 onClick={handleExport}
                 disabled={!activeRun || actionLoading}
-                className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-white border border-[#d5dbe1] text-xs font-bold text-[#475569] hover:bg-[#f1f6fc] shadow-sm transition-all disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-full bg-white border border-[#bfe0f5] text-xs font-bold text-[#0f172a] hover:bg-[#bfe0f5]/40 shadow-sm transition-all disabled:opacity-50"
               >
-                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                <FileSpreadsheet className="w-3.5 h-3.5 text-[#1b64da]" />
                 Export Register (.xlsx)
               </button>
 
@@ -640,16 +675,16 @@ export default function PayrollProcessingHub() {
                   activeRun.status === "FINALIZED" ||
                   actionLoading
                 }
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white border border-emerald-300 text-xs font-bold text-emerald-700 hover:bg-emerald-50 shadow-sm transition-all disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#7BBDE8] border border-[#7BBDE8] text-xs font-bold text-[#0f172a] hover:bg-[#6ab0df] shadow-sm transition-all disabled:opacity-50"
               >
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-[#0f172a]" />
                 Finalize & Publish Slips
               </button>
 
               <button
                 type="button"
                 onClick={() => setIsCreateModalOpen(true)}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#1b64da] hover:bg-[#1552b5] text-white text-xs font-bold shadow-md shadow-blue-500/20 hover:shadow-lg transition-all"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#1b64da] hover:bg-[#1552b5] text-white text-xs font-bold shadow-md shadow-[#1b64da]/20 hover:shadow-lg transition-all"
               >
                 <Plus className="w-4 h-4" />
                 New Payroll Run
@@ -657,106 +692,57 @@ export default function PayrollProcessingHub() {
             </div>
           </div>
 
-          {/* KPI METRICS */}
+          {/* KPI METRICS (filled like the dashboard) */}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
-            {/* NET PAY */}
+            <CountCard
+              label="Total Net Disbursement"
+              value={formatINR(totalNet)}
+              note={`${items.length} employees payable`}
+              color={SKY}
+              text={INK}
+              muted="text-black/50"
+              Icon={IndianRupee}
+            />
 
-            <div className="bg-white border border-[#d5dbe1] rounded-3xl p-6 shadow-sm flex items-center justify-between">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-[#64748b]">
-                  Total Net Disbursement
-                </span>
+            <CountCard
+              label="Scheduled Gross Base"
+              value={formatINR(totalGross)}
+              note="Calendar days based on selected payroll run"
+              color={SKY_LIGHT}
+              text={INK}
+              muted="text-black/50"
+              Icon={Calculator}
+            />
 
-                <div className="text-3xl font-black text-[#0f172a] tracking-tight mt-2">
-                  {formatINR(totalNet)}
-                </div>
+            <CountCard
+              label="Total LOP Deduction"
+              value={formatINR(totalLop)}
+              note={`${totalLopDays} Total Unpaid / LOP Days`}
+              color={BLUE}
+              text="#ffffff"
+              muted="text-white/70"
+              Icon={TrendingDown}
+            />
 
-                <p className="text-xs font-bold text-emerald-600 mt-1">
-                  {items.length} employees payable
-                </p>
-              </div>
-
-              <div className="w-12 h-12 rounded-2xl bg-[#eef4fa] border border-[#d6e5fb] flex items-center justify-center text-[#1b64da]">
-                <IndianRupee className="w-6 h-6" />
-              </div>
-            </div>
-
-            {/* GROSS */}
-
-            <div className="bg-white border border-[#d5dbe1] rounded-3xl p-6 shadow-sm flex items-center justify-between">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-[#64748b]">
-                  Scheduled Gross Base
-                </span>
-
-                <div className="text-3xl font-black text-[#1b64da] tracking-tight mt-2">
-                  {formatINR(totalGross)}
-                </div>
-
-                <p className="text-xs font-medium text-[#64748b] mt-1">
-                  Calendar days based on selected payroll run
-                </p>
-              </div>
-
-              <div className="w-12 h-12 rounded-2xl bg-[#eef4fa] border border-[#d6e5fb] flex items-center justify-center text-[#1b64da]">
-                <Calculator className="w-6 h-6" />
-              </div>
-            </div>
-
-            {/* LOP */}
-
-            <div className="bg-white border border-[#d5dbe1] rounded-3xl p-6 shadow-sm flex items-center justify-between">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-[#64748b]">
-                  Total LOP Deduction
-                </span>
-
-                <div className="text-3xl font-black text-rose-600 tracking-tight mt-2">
-                  {formatINR(totalLop)}
-                </div>
-
-                <p className="text-xs font-bold text-rose-600 mt-1">
-                  {totalLopDays} Total Unpaid / LOP Days
-                </p>
-              </div>
-
-              <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600">
-                <TrendingDown className="w-6 h-6" />
-              </div>
-            </div>
-
-            {/* MANUAL ADJUSTMENTS */}
-
-            <div className="bg-white border border-[#d5dbe1] rounded-3xl p-6 shadow-sm flex items-center justify-between">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-[#64748b]">
-                  Manual Adjustments
-                </span>
-
-                <div className="text-3xl font-black text-[#0f172a] tracking-tight mt-2">
-                  {formatINR(totalBonus - totalDeductionsSum)}
-                </div>
-
-                <p className="text-xs font-medium text-[#64748b] mt-1">
-                  +{formatINR(totalBonus)} bonus / -
-                  {formatINR(totalDeductionsSum)} deductions
-                </p>
-              </div>
-
-              <div className="w-12 h-12 rounded-2xl bg-[#eef4fa] border border-[#d6e5fb] flex items-center justify-center text-[#1b64da]">
-                <SlidersHorizontal className="w-6 h-6" />
-              </div>
-            </div>
+            <CountCard
+              label="Manual Adjustments"
+              value={formatINR(totalBonus - totalDeductionsSum)}
+              note={`+${formatINR(totalBonus)} bonus / -${formatINR(totalDeductionsSum)} deductions`}
+              color={SKY}
+              text={INK}
+              muted="text-black/50"
+              Icon={SlidersHorizontal}
+            />
           </div>
 
           {/* YEAR AND RUN SELECTOR */}
 
-          <div className="bg-white border border-[#d5dbe1] rounded-3xl p-4 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="bg-white border border-[#e6edf4] rounded-[32px] p-4 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="flex items-center gap-2 flex-wrap">
 
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#eef4fa] border border-[#d6e5fb] text-xs font-bold text-[#1b64da]">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#bfe0f5] text-xs font-bold text-[#1b64da]">
                 <span>YEAR:</span>
 
                 <select
@@ -777,16 +763,16 @@ export default function PayrollProcessingHub() {
                   key={run.id}
                   type="button"
                   onClick={() => setActiveRunId(Number(run.id))}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
                     Number(activeRunId) === Number(run.id)
                       ? "bg-[#1b64da] text-white shadow-sm"
-                      : "bg-[#eef4fa] text-[#475569] hover:bg-[#e2e8f0]"
+                      : "bg-[#f0f6fa] text-[#0f172a] hover:bg-[#bfe0f5]"
                   }`}
                 >
                   {getMonthName(run.month, "short")} {run.year}
 
                   {run.status === "FINALIZED" && (
-                    <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 ml-1" />
+                    <span className="inline-block w-2 h-2 rounded-full bg-[#7BBDE8] ml-1" />
                   )}
                 </button>
               ))}
@@ -808,7 +794,7 @@ export default function PayrollProcessingHub() {
                 placeholder="Search by employee, EMP code, designation..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 rounded-xl bg-[#f8fafc] border border-[#d5dbe1] text-xs font-medium text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]"
+                className="w-full pl-10 pr-4 py-2.5 rounded-full bg-white border border-slate-200/80 text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]/40"
               />
             </div>
           </div>
@@ -816,34 +802,34 @@ export default function PayrollProcessingHub() {
           {/* LOADING / ERROR / SUCCESS */}
 
           {loading && (
-            <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+            <div className="rounded-2xl border border-[#7BBDE8] bg-[#bfe0f5]/40 px-4 py-3 text-sm text-[#1b64da]">
               Loading payroll data...
             </div>
           )}
 
           {error && (
-            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            <div className="rounded-2xl border border-[#1b64da] bg-[#1b64da] px-4 py-3 text-sm text-white">
               {String(error)}
             </div>
           )}
 
           {message && (
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            <div className="rounded-2xl border border-[#7BBDE8] bg-[#bfe0f5] px-4 py-3 text-sm text-[#0f172a]">
               {String(message)}
             </div>
           )}
 
           {!activeRun && !loading && (
-            <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-sm text-slate-500">
+            <div className="rounded-[32px] border border-dashed border-[#7BBDE8] bg-white p-10 text-center text-sm text-slate-500">
               No payroll run found for {selectedYear ?? "this year"}. Create a new payroll run to get started.
             </div>
           )}
 
           {/* RUN STATUS */}
 
-          <div className="px-4 py-2.5 rounded-2xl bg-white/60 border border-[#e2e8f0] flex flex-col sm:flex-row sm:items-center justify-between text-xs text-[#64748b] gap-2">
+          <div className="px-4 py-2.5 rounded-full bg-white/60 border border-[#e6edf4] flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-500 gap-2">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="w-2 h-2 rounded-full bg-[#1b64da]" />
+              <span className="w-2 h-2 rounded-full bg-[#7BBDE8]" />
 
               <span>
                 Viewing Payroll Run ID:{" "}
@@ -859,10 +845,10 @@ export default function PayrollProcessingHub() {
               <span>
                 Status:{" "}
                 <strong
-                  className={`px-2 py-0.5 rounded border ${
+                  className={`px-2 py-0.5 rounded-full border ${
                     activeRun?.status === "FINALIZED"
-                      ? "text-emerald-700 bg-emerald-50 border-emerald-200"
-                      : "text-amber-700 bg-amber-50 border-amber-200"
+                      ? "text-white bg-[#1b64da] border-[#1b64da]"
+                      : "text-[#0f172a] bg-[#bfe0f5] border-[#7BBDE8]"
                   }`}
                 >
                   {activeRun?.status || "NO RUN"}
@@ -879,16 +865,16 @@ export default function PayrollProcessingHub() {
 
           {/* PAYROLL TABLE */}
 
-          <div className="bg-white border border-[#d5dbe1] rounded-3xl shadow-sm overflow-hidden">
-            <div className="p-5 lg:p-6 border-b border-[#e2e8f0] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="bg-white border border-[#e6edf4] rounded-[32px] shadow-sm overflow-hidden">
+            <div className="p-5 lg:p-6 border-b border-[#e6edf4] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#1b64da]" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#7BBDE8]" />
 
                 <h2 className="text-lg font-black text-[#0f172a] tracking-tight">
                   Payroll Items & Line-Item Adjustments
                 </h2>
 
-                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#eef4fa] text-[#1b64da] border border-[#d6e5fb]">
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#bfe0f5] text-[#1b64da]">
                   {items.length} Personnel Processed
                 </span>
               </div>
@@ -904,7 +890,7 @@ export default function PayrollProcessingHub() {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-[#f1f6fc] border-b border-[#d6e5fb] text-xs font-bold text-[#475569] uppercase tracking-wider">
+                  <tr className="bg-[#f0f6fa] border-b border-[#bfe0f5] text-xs font-bold text-[#0f172a] uppercase tracking-wider">
                     <th className="py-4 px-6">Employee</th>
                     <th className="py-4 px-6">Emp Code</th>
                     <th className="py-4 px-6">Gross (₹)</th>
@@ -918,18 +904,18 @@ export default function PayrollProcessingHub() {
                   </tr>
                 </thead>
 
-                <tbody className="divide-y divide-[#e2e8f0] text-sm">
+                <tbody className="divide-y divide-[#e6edf4] text-sm">
                   {filteredItems.map((item) => (
                     <tr
                       key={item.id}
-                      className="hover:bg-[#f0f6ff]/80 transition-all duration-150"
+                      className="hover:bg-[#bfe0f5]/20 transition-all duration-150"
                     >
                       {/* EMPLOYEE */}
 
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-3 min-w-[200px]">
                           <div
-                            className={`w-10 h-10 shrink-0 rounded-2xl ${getAvatarBg(
+                            className={`w-10 h-10 shrink-0 rounded-full ${getAvatarBg(
                               item.name || item.emp_code || "Employee"
                             )} text-white font-bold flex items-center justify-center text-xs shadow-sm`}
                           >
@@ -944,7 +930,7 @@ export default function PayrollProcessingHub() {
                               {item.name}
                             </div>
 
-                            <div className="text-xs text-[#64748b]">
+                            <div className="text-xs text-slate-500">
                               {item.designation}
                             </div>
                           </div>
@@ -976,11 +962,11 @@ export default function PayrollProcessingHub() {
 
                       <td className="py-4 px-6 whitespace-nowrap">
                         {Number(item.lop_days) > 0 ? (
-                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#1b64da] text-white">
                             • {item.lop_days} d LOP
                           </span>
                         ) : (
-                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#bfe0f5] text-[#0f172a]">
                             0.0 d
                           </span>
                         )}
@@ -996,7 +982,7 @@ export default function PayrollProcessingHub() {
 
                       <td className="py-4 px-6 whitespace-nowrap font-mono text-xs">
                         {Number(item.lop_amount) > 0 ? (
-                          <span className="text-rose-600 font-bold">
+                          <span className="text-[#1b64da] font-bold">
                             - ₹ {Number(item.lop_amount).toFixed(2)}
                           </span>
                         ) : (
@@ -1010,15 +996,15 @@ export default function PayrollProcessingHub() {
 
                       <td className="py-4 px-6 whitespace-nowrap">
                         {(item.other_earnings || []).length > 0 ? (
-                          <span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#7BBDE8] text-[#0f172a]">
                             Earnings
                           </span>
                         ) : (item.other_deductions || []).length > 0 ? (
-                          <span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#1b64da] text-white">
                             Deductions
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-lg text-xs font-medium text-slate-500 bg-slate-100">
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-medium text-slate-500 bg-[#f0f6fa]">
                             Standard
                           </span>
                         )}
@@ -1049,7 +1035,7 @@ export default function PayrollProcessingHub() {
                                 : `View or edit payroll details for ${item.name}`
                             }
                             onClick={() => handleSelectItemForEdit(item)}
-                            className="inline-flex items-center justify-center p-2 rounded-xl text-slate-400 hover:text-[#1b64da] hover:bg-[#eef4fa] transition-colors focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]"
+                            className="inline-flex items-center justify-center p-2 rounded-full text-slate-400 hover:text-[#1b64da] hover:bg-[#bfe0f5]/60 transition-colors focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
@@ -1074,13 +1060,13 @@ export default function PayrollProcessingHub() {
               </table>
             </div>
 
-            <div className="p-4 bg-[#f8fafc] border-t border-[#e2e8f0] flex flex-col sm:flex-row items-center justify-between text-xs text-[#64748b] gap-2">
+            <div className="p-4 bg-[#f0f6fa] border-t border-[#e6edf4] flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
               <span>
                 Displaying {filteredItems.length} of {items.length} employees
                 • Auto-locked on Finalize (Day Summaries `is_locked: true`)
               </span>
 
-              <span className="font-semibold">
+              <span className="font-semibold text-[#1b64da]">
                 {activeRun?.status || "No run selected"}
               </span>
             </div>
@@ -1089,10 +1075,10 @@ export default function PayrollProcessingHub() {
           {/* LINE ITEM EDITOR / BREAKDOWN */}
 
           {editingItem && (
-            <div className="bg-white border border-[#d5dbe1] rounded-3xl p-6 shadow-sm space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#e2e8f0] gap-2">
+            <div className="bg-white border border-[#e6edf4] rounded-[32px] p-6 shadow-sm space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#e6edf4] gap-2">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-[#eef4fa] border border-[#d6e5fb] flex items-center justify-center text-[#1b64da]">
+                  <div className="w-10 h-10 rounded-full bg-[#bfe0f5] flex items-center justify-center text-[#1b64da]">
                     {isFinalized ? (
                       <Eye className="w-5 h-5" />
                     ) : (
@@ -1106,10 +1092,10 @@ export default function PayrollProcessingHub() {
                       {editingItem.emp_code})
                     </h3>
 
-                    <p className="text-xs text-[#64748b]">
+                    <p className="text-xs text-slate-500">
                       {isFinalized ? (
                         <>
-                          <span className="font-semibold text-emerald-700">
+                          <span className="font-semibold text-[#1b64da]">
                             Read-only payroll breakdown
                           </span>
                           {" "}• This payroll run has been finalized.
@@ -1127,7 +1113,7 @@ export default function PayrollProcessingHub() {
                   </div>
                 </div>
 
-                <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-[#eef4fa] text-[#1b64da] border border-[#d6e5fb] self-start sm:self-auto">
+                <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-[#bfe0f5] text-[#1b64da] self-start sm:self-auto">
                   Item #{editingItem.id}
                 </span>
               </div>
@@ -1136,8 +1122,8 @@ export default function PayrollProcessingHub() {
 
                 {/* ATTENDANCE / LOP */}
 
-                <div className="bg-[#f8fafc] border border-[#e2e8f0] rounded-2xl p-5 space-y-3">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-[#64748b]">
+                <div className="bg-[#f0f6fa] border border-[#e6edf4] rounded-3xl p-5 space-y-3">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
                     Attendance & LOP Base
                   </h4>
 
@@ -1172,12 +1158,12 @@ export default function PayrollProcessingHub() {
                       </span>
                     </div>
 
-                    <div className="flex justify-between pt-2 border-t border-slate-200">
-                      <span className="text-rose-600 font-bold">
+                    <div className="flex justify-between pt-2 border-t border-[#bfe0f5]">
+                      <span className="text-[#1b64da] font-bold">
                         Unpaid LOP ({editingItem.lop_days} Days)
                       </span>
 
-                      <span className="font-mono font-bold text-rose-600">
+                      <span className="font-mono font-bold text-[#1b64da]">
                         - ₹ {Number(editingItem.lop_amount || 0).toFixed(2)}
                       </span>
                     </div>
@@ -1197,8 +1183,8 @@ export default function PayrollProcessingHub() {
 
                   {editingItem.lop_dates &&
                     editingItem.lop_dates.length > 0 && (
-                      <div className="pt-3 border-t border-slate-200">
-                        <h5 className="text-[11px] font-bold uppercase tracking-wider text-rose-600 mb-2">
+                      <div className="pt-3 border-t border-[#bfe0f5]">
+                        <h5 className="text-[11px] font-bold uppercase tracking-wider text-[#1b64da] mb-2">
                           LOP Dates
                         </h5>
 
@@ -1223,7 +1209,7 @@ export default function PayrollProcessingHub() {
                                   {dateLabel}
                                 </span>
 
-                                <span className="font-semibold text-rose-600">
+                                <span className="font-semibold text-[#1b64da]">
                                   {dateStatus}
                                 </span>
                               </div>
@@ -1236,9 +1222,9 @@ export default function PayrollProcessingHub() {
 
                 {/* OTHER EARNINGS */}
 
-                <div className="bg-[#f8fafc] border border-[#e2e8f0] rounded-2xl p-5 space-y-3">
+                <div className="bg-[#f0f6fa] border border-[#e6edf4] rounded-3xl p-5 space-y-3">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-700">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-[#1b64da]">
                       + Other Earnings
                     </h4>
 
@@ -1271,7 +1257,7 @@ export default function PayrollProcessingHub() {
                             copy[index].label = e.target.value;
                             setTempEarnings(copy);
                           }}
-                          className="w-2/3 px-3 py-1.5 rounded-xl bg-white border border-[#d5dbe1] text-xs font-medium disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
+                          className="w-2/3 px-3 py-1.5 rounded-xl bg-white border border-[#bfe0f5] text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]/40 disabled:bg-[#f0f6fa] disabled:text-slate-500 disabled:cursor-not-allowed"
                         />
 
                         <input
@@ -1285,7 +1271,7 @@ export default function PayrollProcessingHub() {
                               Number(e.target.value) || 0;
                             setTempEarnings(copy);
                           }}
-                          className="w-1/3 px-3 py-1.5 rounded-xl bg-white border border-[#d5dbe1] text-xs font-mono font-bold text-emerald-700 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
+                          className="w-1/3 px-3 py-1.5 rounded-xl bg-white border border-[#bfe0f5] text-xs font-mono font-bold text-[#1b64da] focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]/40 disabled:bg-[#f0f6fa] disabled:text-slate-500 disabled:cursor-not-allowed"
                         />
 
                         {!isFinalized && (
@@ -1297,7 +1283,7 @@ export default function PayrollProcessingHub() {
                                 tempEarnings.filter((_, i) => i !== index)
                               )
                             }
-                            className="text-rose-500 text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="text-[#1b64da] text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                             title="Remove earning"
                           >
                             <X className="w-4 h-4" />
@@ -1311,7 +1297,7 @@ export default function PayrollProcessingHub() {
                     </p>
                   )}
 
-                  <p className="text-xs font-bold text-emerald-600 pt-2">
+                  <p className="text-xs font-bold text-[#1b64da] pt-2">
                     Total Additional Earnings: +
                     {formatINR(
                       tempEarnings.reduce(
@@ -1325,9 +1311,9 @@ export default function PayrollProcessingHub() {
 
                 {/* OTHER DEDUCTIONS */}
 
-                <div className="bg-[#f8fafc] border border-[#e2e8f0] rounded-2xl p-5 space-y-3">
+                <div className="bg-[#f0f6fa] border border-[#e6edf4] rounded-3xl p-5 space-y-3">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-rose-700">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-[#0f172a]">
                       - Other Deductions
                     </h4>
 
@@ -1341,7 +1327,7 @@ export default function PayrollProcessingHub() {
                             { label: "Deduction", amount: 1000 },
                           ])
                         }
-                        className="text-xs font-bold text-rose-600 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="text-xs font-bold text-[#1b64da] hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         + Add Deduction
                       </button>
@@ -1360,7 +1346,7 @@ export default function PayrollProcessingHub() {
                             copy[index].label = e.target.value;
                             setTempDeductions(copy);
                           }}
-                          className="w-2/3 px-3 py-1.5 rounded-xl bg-white border border-[#d5dbe1] text-xs font-medium disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
+                          className="w-2/3 px-3 py-1.5 rounded-xl bg-white border border-[#bfe0f5] text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]/40 disabled:bg-[#f0f6fa] disabled:text-slate-500 disabled:cursor-not-allowed"
                         />
 
                         <input
@@ -1374,7 +1360,7 @@ export default function PayrollProcessingHub() {
                               Number(e.target.value) || 0;
                             setTempDeductions(copy);
                           }}
-                          className="w-1/3 px-3 py-1.5 rounded-xl bg-white border border-[#d5dbe1] text-xs font-mono font-bold text-rose-600 disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
+                          className="w-1/3 px-3 py-1.5 rounded-xl bg-white border border-[#bfe0f5] text-xs font-mono font-bold text-[#1b64da] focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]/40 disabled:bg-[#f0f6fa] disabled:text-slate-500 disabled:cursor-not-allowed"
                         />
 
                         {!isFinalized && (
@@ -1386,7 +1372,7 @@ export default function PayrollProcessingHub() {
                                 tempDeductions.filter((_, i) => i !== index)
                               )
                             }
-                            className="text-rose-500 text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="text-[#1b64da] text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                             title="Remove deduction"
                           >
                             <X className="w-4 h-4" />
@@ -1411,7 +1397,7 @@ export default function PayrollProcessingHub() {
                       disabled={isFinalized}
                       placeholder="Audit reason for adjustment"
                       onChange={(e) => setTempRemarks(e.target.value)}
-                      className="w-full px-3 py-1.5 rounded-xl bg-white border border-[#d5dbe1] text-xs disabled:bg-slate-100 disabled:text-slate-500 disabled:cursor-not-allowed"
+                      className="w-full px-3 py-1.5 rounded-xl bg-white border border-[#bfe0f5] text-xs focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]/40 disabled:bg-[#f0f6fa] disabled:text-slate-500 disabled:cursor-not-allowed"
                     />
                   </div>
                 </div>
@@ -1419,9 +1405,9 @@ export default function PayrollProcessingHub() {
 
               {/* COMPUTED NET PAY */}
 
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-4 border-t border-[#e2e8f0] gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pt-4 border-t border-[#e6edf4] gap-4">
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-[#64748b]">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
                     Computed Net Pay:
                   </span>
 
@@ -1438,7 +1424,7 @@ export default function PayrollProcessingHub() {
                   <button
                     type="button"
                     onClick={() => setEditingItem(null)}
-                    className="px-4 py-2.5 rounded-xl text-xs font-bold text-[#64748b] hover:bg-[#eef4fa] transition-colors"
+                    className="px-4 py-2.5 rounded-full text-xs font-bold text-slate-500 hover:bg-[#bfe0f5]/50 transition-colors"
                   >
                     Close
                   </button>
@@ -1448,7 +1434,7 @@ export default function PayrollProcessingHub() {
                       type="button"
                       onClick={handleSaveItemAdjustment}
                       disabled={actionLoading}
-                      className="px-6 py-2.5 rounded-xl text-xs font-bold bg-[#1b64da] hover:bg-[#1552b5] text-white shadow-md transition-all disabled:opacity-50"
+                      className="px-6 py-2.5 rounded-full text-xs font-bold bg-[#1b64da] hover:bg-[#1552b5] text-white shadow-md shadow-[#1b64da]/20 transition-all disabled:opacity-50"
                     >
                       Update Line Item & Audit
                     </button>
@@ -1459,7 +1445,7 @@ export default function PayrollProcessingHub() {
               {/* FINALIZED READ-ONLY MESSAGE */}
 
               {isFinalized && (
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-700">
+                <div className="rounded-2xl border border-[#7BBDE8] bg-[#bfe0f5]/50 px-4 py-3 text-xs font-semibold text-[#1b64da]">
                   This payroll run is FINALIZED. Employee payroll details
                   are available in read-only mode. Editing and adjustments
                   are disabled.
@@ -1472,11 +1458,11 @@ export default function PayrollProcessingHub() {
 
           {isCreateModalOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-              <div className="bg-white border border-[#d5dbe1] rounded-3xl max-w-md w-full p-6 shadow-2xl">
+              <div className="bg-white border border-[#e6edf4] rounded-[32px] max-w-md w-full p-6 shadow-2xl">
 
-                <div className="flex items-center justify-between pb-4 border-b border-[#e2e8f0]">
+                <div className="flex items-center justify-between pb-4 border-b border-[#e6edf4]">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-[#eef4fa] border border-[#d6e5fb] flex items-center justify-center text-[#1b64da]">
+                    <div className="w-10 h-10 rounded-full bg-[#bfe0f5] flex items-center justify-center text-[#1b64da]">
                       <Calendar className="w-5 h-5" />
                     </div>
 
@@ -1485,7 +1471,7 @@ export default function PayrollProcessingHub() {
                         Create Payroll Run
                       </h3>
 
-                      <p className="text-xs text-[#64748b]">
+                      <p className="text-xs text-slate-500">
                         Maps to:{" "}
                         <span className="font-mono text-[#1b64da]">
                           POST /payroll/runs
@@ -1497,7 +1483,7 @@ export default function PayrollProcessingHub() {
                   <button
                     type="button"
                     onClick={() => setIsCreateModalOpen(false)}
-                    className="p-2 rounded-xl text-slate-400 hover:text-slate-700"
+                    className="p-2 rounded-full text-slate-400 hover:text-[#1b64da] hover:bg-[#bfe0f5]/50"
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -1505,7 +1491,7 @@ export default function PayrollProcessingHub() {
 
                 <div className="mt-5 space-y-4">
                   <div>
-                    <label className="block text-xs font-bold text-[#475569] mb-1.5 uppercase tracking-wider">
+                    <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">
                       Payroll Month
                     </label>
 
@@ -1514,7 +1500,7 @@ export default function PayrollProcessingHub() {
                       onChange={(e) =>
                         setNewRunMonth(Number(e.target.value))
                       }
-                      className="w-full px-4 py-2.5 rounded-xl bg-[#f8fafc] border border-[#d5dbe1] text-sm font-medium"
+                      className="w-full px-4 py-2.5 rounded-xl bg-[#f0f6fa] border border-[#bfe0f5] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]/40"
                     >
                       <option value={1}>January (01)</option>
                       <option value={2}>February (02)</option>
@@ -1532,7 +1518,7 @@ export default function PayrollProcessingHub() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-[#475569] mb-1.5 uppercase tracking-wider">
+                    <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">
                       Payroll Year
                     </label>
 
@@ -1544,20 +1530,20 @@ export default function PayrollProcessingHub() {
                       onChange={(e) =>
                         setNewRunYear(Number(e.target.value))
                       }
-                      className="w-full px-4 py-2.5 rounded-xl bg-[#f8fafc] border border-[#d5dbe1] text-sm font-medium"
+                      className="w-full px-4 py-2.5 rounded-xl bg-[#f0f6fa] border border-[#bfe0f5] text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]/40"
                     />
                   </div>
 
-                  <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-800">
+                  <div className="p-3 bg-[#bfe0f5]/50 rounded-2xl border border-[#7BBDE8] text-xs text-[#0f172a]">
                     <strong>Warning check:</strong> Ensures previous month
                     payroll run is finalized before locking.
                   </div>
 
-                  <div className="pt-3 flex items-center justify-end gap-3 border-t border-slate-100">
+                  <div className="pt-3 flex items-center justify-end gap-3 border-t border-[#e6edf4]">
                     <button
                       type="button"
                       onClick={() => setIsCreateModalOpen(false)}
-                      className="px-4 py-2 rounded-xl text-xs font-bold text-[#64748b]"
+                      className="px-4 py-2 rounded-full text-xs font-bold text-slate-500 hover:bg-[#bfe0f5]/50"
                     >
                       Cancel
                     </button>
@@ -1566,7 +1552,7 @@ export default function PayrollProcessingHub() {
                       type="button"
                       onClick={handleCreateRun}
                       disabled={actionLoading}
-                      className="px-5 py-2.5 rounded-xl text-xs font-bold bg-[#1b64da] hover:bg-[#1552b5] text-white shadow-md disabled:opacity-50"
+                      className="px-5 py-2.5 rounded-full text-xs font-bold bg-[#1b64da] hover:bg-[#1552b5] text-white shadow-md shadow-[#1b64da]/20 disabled:opacity-50"
                     >
                       Initialize Draft Run
                     </button>

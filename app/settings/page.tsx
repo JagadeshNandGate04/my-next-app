@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -34,7 +33,18 @@ import {
   setSelectedYear,
 } from "@/app/store/settings/settingsSlice";
 
-import Sidebar from "../components/SideBar";
+// ============================================================
+// THEME (same colours as the dashboard)
+//   SKY       #7BBDE8
+//   SKY LIGHT #bfe0f5
+//   BLUE      #1b64da
+//   INK       #0f172a
+// ============================================================
+
+const SKY = "#7BBDE8";
+const SKY_LIGHT = "#bfe0f5";
+const BLUE = "#1b64da";
+const INK = "#0f172a";
 
 // ============================================================
 // TYPES
@@ -106,6 +116,53 @@ const DAYS_OF_WEEK = [
 ];
 
 // ============================================================
+// FILLED COUNT CARD (same look as dashboard cards)
+// ============================================================
+
+interface CountCardProps {
+  label: string;
+  value: React.ReactNode;
+  note: string;
+  color: string;
+  text: string;
+  muted: string;
+  Icon: React.ComponentType<{ className?: string }>;
+}
+
+function CountCard({
+  label,
+  value,
+  note,
+  color,
+  text,
+  muted,
+  Icon,
+}: CountCardProps) {
+  return (
+    <div
+      className="relative flex min-h-[170px] flex-col justify-end rounded-[32px] p-5 shadow-sm"
+      style={{ backgroundColor: color, color: text }}
+    >
+      <p className="absolute left-5 top-5 max-w-[65%] text-[12px] font-bold font-mono uppercase leading-tight tracking-wide">
+        {label}
+      </p>
+
+      <span className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/70 text-slate-600 ring-4 ring-white/60">
+        <Icon className="h-4 w-4" />
+      </span>
+
+      <p className="text-xl sm:text-2xl font-black leading-tight tracking-tight">
+        {value}
+      </p>
+
+      <p className={`mt-2 text-[11px] font-semibold leading-snug ${muted}`}>
+        {note}
+      </p>
+    </div>
+  );
+}
+
+// ============================================================
 // REUSABLE INPUT CARD
 // ============================================================
 
@@ -129,13 +186,13 @@ function NumberField({
   onChange,
 }: NumberFieldProps) {
   return (
-    <div className="bg-[#f8fafc] border border-[#d5dbe1] rounded-2xl p-4">
-      <div className="flex items-center justify-between text-xs text-[#64748b] mb-1.5 font-bold gap-2">
+    <div className="bg-[#f0f6fa] border border-[#bfe0f5] rounded-3xl p-4">
+      <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5 font-bold gap-2">
         <span>{label}</span>
         <span className="font-mono text-[11px]">{settingKey}</span>
       </div>
 
-      <div className="flex items-center justify-between bg-white border border-[#d5dbe1] rounded-xl px-3 py-2">
+      <div className="flex items-center justify-between bg-white border border-[#bfe0f5] rounded-xl px-3 py-2 focus-within:ring-2 focus-within:ring-[#7BBDE8]/40">
         <input
           type="number"
           min="0"
@@ -454,9 +511,7 @@ export default function SystemSettingsHub() {
 
   if (settingsLoading && Object.keys(savedSettings).length === 0) {
     return (
-      <div className="min-h-screen bg-[#f5faff] lg:flex">
-        <Sidebar />
-
+      <div className="min-h-screen bg-[#f0f6fa]">
         <main className="flex-1 flex items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="w-8 h-8 text-[#1b64da] animate-spin" />
@@ -474,9 +529,7 @@ export default function SystemSettingsHub() {
   // ============================================================
 
   return (
-    <div className="min-h-screen bg-[#f5faff] text-[#1e293b] font-sans antialiased lg:flex">
-      <Sidebar />
-
+    <div className="min-h-screen bg-[#f0f6fa] text-[#0f172a] font-sans antialiased selection:bg-[#7BBDE8]/30">
       <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">
         <div className="max-w-[1440px] mx-auto space-y-6">
 
@@ -487,14 +540,14 @@ export default function SystemSettingsHub() {
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-3">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#1b64da] animate-pulse" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#7BBDE8] animate-pulse" />
 
                 <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#0f172a] tracking-tight">
                   System Settings & Policy Controls
                 </h1>
               </div>
 
-              <p className="text-sm font-medium text-[#64748b] mt-1.5 max-w-3xl">
+              <p className="text-sm font-medium text-slate-500 mt-1.5 max-w-3xl">
                 Configure global enterprise shift hours, attendance
                 tolerance windows, leave accruals, and managed annual
                 holiday schedules across NANDGATE-IT operations.
@@ -506,7 +559,7 @@ export default function SystemSettingsHub() {
                 type="button"
                 onClick={handleResetDefaults}
                 disabled={settingsUpdating}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white border border-[#d5dbe1] text-xs font-bold text-[#475569] hover:bg-[#f1f6fc] shadow-sm transition-all disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white border border-[#bfe0f5] text-xs font-bold text-[#0f172a] hover:bg-[#bfe0f5]/40 shadow-sm transition-all disabled:opacity-50"
               >
                 <RotateCcw className="w-3.5 h-3.5 text-[#1b64da]" />
                 Reset to Defaults
@@ -516,7 +569,7 @@ export default function SystemSettingsHub() {
                 type="button"
                 onClick={handleSaveSettings}
                 disabled={settingsUpdating}
-                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-[#1b64da] hover:bg-[#1552b5] text-white text-xs font-bold shadow-md shadow-blue-500/20 transition-all disabled:opacity-60"
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#1b64da] hover:bg-[#1552b5] text-white text-xs font-bold shadow-md shadow-[#1b64da]/20 transition-all disabled:opacity-60"
               >
                 {settingsUpdating ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -536,12 +589,12 @@ export default function SystemSettingsHub() {
           ================================================== */}
 
           {displayError && (
-            <div className="flex items-start gap-3 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700">
+            <div className="flex items-start gap-3 p-4 rounded-2xl bg-[#1b64da] border border-[#1b64da] text-white">
               <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
 
               <div className="flex-1">
                 <p className="text-sm font-bold">Operation Failed</p>
-                <p className="text-xs mt-1">{displayError}</p>
+                <p className="text-xs mt-1 text-white/80">{displayError}</p>
               </div>
 
               <button
@@ -550,7 +603,7 @@ export default function SystemSettingsHub() {
                   setLocalError(null);
                   dispatch(clearSettingsError());
                 }}
-                className="p-1 hover:bg-rose-100 rounded-lg"
+                className="p-1 hover:bg-white/20 rounded-lg"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -562,8 +615,8 @@ export default function SystemSettingsHub() {
           ================================================== */}
 
           {successMessage && (
-            <div className="flex items-start gap-3 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-700">
-              <CheckCircle2 className="w-5 h-5 shrink-0" />
+            <div className="flex items-start gap-3 p-4 rounded-2xl bg-[#bfe0f5] border border-[#7BBDE8] text-[#0f172a]">
+              <CheckCircle2 className="w-5 h-5 shrink-0 text-[#1b64da]" />
 
               <div>
                 <p className="text-sm font-bold">{successMessage}</p>
@@ -584,98 +637,50 @@ export default function SystemSettingsHub() {
           )}
 
           {/* ==================================================
-              KPI CARDS
+              KPI CARDS (filled like the dashboard)
           ================================================== */}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
-            {/* SHIFT */}
+            <CountCard
+              label="SHIFT.START & SHIFT.END"
+              value={`${settings.shift.start} – ${settings.shift.end}`}
+              note={`${settings.full_day_hours} hrs standard`}
+              color={SKY}
+              text={INK}
+              muted="text-black/50"
+              Icon={Clock}
+            />
 
-            <div className="bg-white border border-[#d5dbe1] rounded-3xl p-6 shadow-sm flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#64748b] font-mono">
-                  SHIFT.START & SHIFT.END
-                </span>
+            <CountCard
+              label="WEEKLY_OFF_DAYS"
+              value={`${settings.weekly_off_days.length} Days Off / Wk`}
+              note={`[${settings.weekly_off_days.join(", ")}]`}
+              color={SKY_LIGHT}
+              text={INK}
+              muted="text-black/50"
+              Icon={CalendarDays}
+            />
 
-                <div className="text-xl sm:text-2xl font-black text-[#0f172a] tracking-tight mt-2">
-                  {settings.shift.start} – {settings.shift.end}
-                </div>
+            <CountCard
+              label="ANNUAL HOLIDAYS"
+              value={`${holidays.length} Declared`}
+              note={`Calendar year ${selectedYear}`}
+              color={BLUE}
+              text="#ffffff"
+              muted="text-white/70"
+              Icon={Calendar}
+            />
 
-                <p className="text-xs font-bold text-[#1b64da] mt-1">
-                  {settings.full_day_hours} hrs standard
-                </p>
-              </div>
-
-              <div className="w-12 h-12 rounded-2xl bg-[#eef4fa] border border-[#d6e5fb] flex items-center justify-center text-[#1b64da] shrink-0">
-                <Clock className="w-6 h-6" />
-              </div>
-            </div>
-
-            {/* WEEKLY OFF */}
-
-            <div className="bg-white border border-[#d5dbe1] rounded-3xl p-6 shadow-sm flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#64748b] font-mono">
-                  WEEKLY_OFF_DAYS
-                </span>
-
-                <div className="text-xl sm:text-2xl font-black text-[#0f172a] tracking-tight mt-2">
-                  {settings.weekly_off_days.length} Days Off / Wk
-                </div>
-
-                <p className="text-xs font-medium text-[#64748b] mt-1">
-                  [{settings.weekly_off_days.join(", ")}]
-                </p>
-              </div>
-
-              <div className="w-12 h-12 rounded-2xl bg-[#eef4fa] border border-[#d6e5fb] flex items-center justify-center text-[#1b64da] shrink-0">
-                <CalendarDays className="w-6 h-6" />
-              </div>
-            </div>
-
-            {/* HOLIDAYS */}
-
-            <div className="bg-white border border-[#d5dbe1] rounded-3xl p-6 shadow-sm flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#64748b] font-mono">
-                  ANNUAL HOLIDAYS
-                </span>
-
-                <div className="text-xl sm:text-2xl font-black text-[#0f172a] tracking-tight mt-2">
-                  {holidays.length} Declared
-                </div>
-
-                <p className="text-xs font-medium text-[#64748b] mt-1">
-                  Calendar year {selectedYear}
-                </p>
-              </div>
-
-              <div className="w-12 h-12 rounded-2xl bg-[#eef4fa] border border-[#d6e5fb] flex items-center justify-center text-[#1b64da] shrink-0">
-                <Calendar className="w-6 h-6" />
-              </div>
-            </div>
-
-            {/* LEAVE */}
-
-            <div className="bg-white border border-[#d5dbe1] rounded-3xl p-6 shadow-sm flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#64748b] font-mono">
-                  LEAVE_BALANCE_CAP
-                </span>
-
-                <div className="text-xl sm:text-2xl font-black text-[#0f172a] tracking-tight mt-2">
-                  {settings.leave_monthly_accrual} Days / mo
-                </div>
-
-                <p className="text-xs font-medium text-[#64748b] mt-1">
-                  Cap: {settings.leave_balance_cap} days
-                </p>
-              </div>
-
-              <div className="w-12 h-12 rounded-2xl bg-[#eef4fa] border border-[#d6e5fb] flex items-center justify-center text-[#1b64da] shrink-0">
-                <Hourglass className="w-6 h-6" />
-              </div>
-            </div>
+            <CountCard
+              label="LEAVE_BALANCE_CAP"
+              value={`${settings.leave_monthly_accrual} Days / mo`}
+              note={`Cap: ${settings.leave_balance_cap} days`}
+              color={SKY}
+              text={INK}
+              muted="text-black/50"
+              Icon={Hourglass}
+            />
           </div>
 
           {/* ==================================================
@@ -691,7 +696,7 @@ export default function SystemSettingsHub() {
             <div className="lg:col-span-7 space-y-6">
 
               <div className="flex items-center gap-2 px-2">
-                <span className="w-2 h-2 rounded-full bg-[#1b64da]" />
+                <span className="w-2 h-2 rounded-full bg-[#7BBDE8]" />
 
                 <h2 className="text-lg font-black text-[#0f172a] tracking-tight">
                   Core Operational Policies
@@ -702,10 +707,10 @@ export default function SystemSettingsHub() {
                   SECTION A: SHIFT SETTINGS
               ============================================== */}
 
-              <div className="bg-white border border-[#d5dbe1] rounded-3xl p-6 shadow-sm space-y-5">
+              <div className="bg-white border border-[#e6edf4] rounded-[32px] p-6 shadow-sm space-y-5">
 
-                <div className="flex items-center gap-3 border-b border-[#e2e8f0] pb-3">
-                  <div className="w-8 h-8 rounded-xl bg-[#eef4fa] border border-[#d6e5fb] flex items-center justify-center text-[#1b64da] font-black text-xs">
+                <div className="flex items-center gap-3 border-b border-[#e6edf4] pb-3">
+                  <div className="w-8 h-8 rounded-full bg-[#7BBDE8] flex items-center justify-center text-[#0f172a] font-black text-xs">
                     A
                   </div>
 
@@ -714,7 +719,7 @@ export default function SystemSettingsHub() {
                       Shift Timing & Core Work Windows
                     </h3>
 
-                    <p className="text-xs text-[#64748b]">
+                    <p className="text-xs text-slate-500">
                       Default shifts and attendance thresholds
                     </p>
                   </div>
@@ -724,13 +729,13 @@ export default function SystemSettingsHub() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-                  <div className="bg-[#f8fafc] border border-[#d5dbe1] rounded-2xl p-4">
-                    <div className="flex items-center justify-between text-xs text-[#64748b] mb-1.5 font-bold">
+                  <div className="bg-[#f0f6fa] border border-[#bfe0f5] rounded-3xl p-4">
+                    <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5 font-bold">
                       <span>Shift Start Time</span>
                       <span className="font-mono text-[11px]">shift.start</span>
                     </div>
 
-                    <div className="flex items-center justify-between bg-white border border-[#d5dbe1] rounded-xl px-3 py-2">
+                    <div className="flex items-center justify-between bg-white border border-[#bfe0f5] rounded-xl px-3 py-2 focus-within:ring-2 focus-within:ring-[#7BBDE8]/40">
                       <input
                         type="text"
                         value={settings.shift.start}
@@ -741,17 +746,17 @@ export default function SystemSettingsHub() {
                         className="font-bold text-sm text-[#0f172a] bg-transparent focus:outline-none w-full"
                       />
 
-                      <Clock className="w-4 h-4 text-slate-400 shrink-0 ml-2" />
+                      <Clock className="w-4 h-4 text-[#7BBDE8] shrink-0 ml-2" />
                     </div>
                   </div>
 
-                  <div className="bg-[#f8fafc] border border-[#d5dbe1] rounded-2xl p-4">
-                    <div className="flex items-center justify-between text-xs text-[#64748b] mb-1.5 font-bold">
+                  <div className="bg-[#f0f6fa] border border-[#bfe0f5] rounded-3xl p-4">
+                    <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5 font-bold">
                       <span>Shift End Time</span>
                       <span className="font-mono text-[11px]">shift.end</span>
                     </div>
 
-                    <div className="flex items-center justify-between bg-white border border-[#d5dbe1] rounded-xl px-3 py-2">
+                    <div className="flex items-center justify-between bg-white border border-[#bfe0f5] rounded-xl px-3 py-2 focus-within:ring-2 focus-within:ring-[#7BBDE8]/40">
                       <input
                         type="text"
                         value={settings.shift.end}
@@ -762,7 +767,7 @@ export default function SystemSettingsHub() {
                         className="font-bold text-sm text-[#0f172a] bg-transparent focus:outline-none w-full"
                       />
 
-                      <Clock className="w-4 h-4 text-slate-400 shrink-0 ml-2" />
+                      <Clock className="w-4 h-4 text-[#7BBDE8] shrink-0 ml-2" />
                     </div>
                   </div>
                 </div>
@@ -797,7 +802,7 @@ export default function SystemSettingsHub() {
                 {/* WEEKLY OFF DAYS */}
 
                 <div>
-                  <div className="flex items-center justify-between text-xs text-[#64748b] mb-2 font-bold gap-2">
+                  <div className="flex items-center justify-between text-xs text-slate-500 mb-2 font-bold gap-2">
                     <span>Standard Weekly Off Days</span>
 
                     <span className="font-mono text-[11px]">
@@ -815,10 +820,10 @@ export default function SystemSettingsHub() {
                           key={day.index}
                           type="button"
                           onClick={() => toggleWeeklyOff(day.index)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
                             isSelected
                               ? "bg-[#1b64da] text-white shadow-sm"
-                              : "bg-[#f1f5f9] text-[#475569] hover:bg-[#e2e8f0]"
+                              : "bg-[#f0f6fa] text-[#0f172a] hover:bg-[#bfe0f5]"
                           }`}
                         >
                           {day.label}
@@ -838,10 +843,10 @@ export default function SystemSettingsHub() {
                   SECTION B: ATTENDANCE SETTINGS
               ============================================== */}
 
-              <div className="bg-white border border-[#d5dbe1] rounded-3xl p-6 shadow-sm space-y-5">
+              <div className="bg-white border border-[#e6edf4] rounded-[32px] p-6 shadow-sm space-y-5">
 
-                <div className="flex items-center gap-3 border-b border-[#e2e8f0] pb-3">
-                  <div className="w-8 h-8 rounded-xl bg-[#eef4fa] border border-[#d6e5fb] flex items-center justify-center text-[#1b64da] font-black text-xs">
+                <div className="flex items-center gap-3 border-b border-[#e6edf4] pb-3">
+                  <div className="w-8 h-8 rounded-full bg-[#7BBDE8] flex items-center justify-center text-[#0f172a] font-black text-xs">
                     B
                   </div>
 
@@ -850,7 +855,7 @@ export default function SystemSettingsHub() {
                       Attendance Tolerance & Punch Integrity
                     </h3>
 
-                    <p className="text-xs text-[#64748b]">
+                    <p className="text-xs text-slate-500">
                       Lateness, break allowance, and duplicate punch rules
                     </p>
                   </div>
@@ -896,19 +901,19 @@ export default function SystemSettingsHub() {
 
                   {/* PAYROLL DIVISOR */}
 
-                  <div className="bg-[#f8fafc] border border-[#d5dbe1] rounded-2xl p-4">
-                    <div className="flex items-center justify-between text-xs text-[#64748b] mb-1.5 font-bold">
+                  <div className="bg-[#f0f6fa] border border-[#bfe0f5] rounded-3xl p-4">
+                    <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5 font-bold">
                       <span>Payroll Divisor Engine</span>
 
-                      <Lock className="w-3.5 h-3.5 text-slate-400" />
+                      <Lock className="w-3.5 h-3.5 text-[#7BBDE8]" />
                     </div>
 
-                    <div className="flex items-center justify-between bg-white border border-[#d5dbe1] rounded-xl px-3 py-2">
+                    <div className="flex items-center justify-between bg-white border border-[#bfe0f5] rounded-xl px-3 py-2">
                       <span className="font-mono font-bold text-xs text-[#1b64da]">
                         CALENDAR_DAYS
                       </span>
 
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#bfe0f5] text-[#0f172a]">
                         IMMUTABLE
                       </span>
                     </div>
@@ -924,10 +929,10 @@ export default function SystemSettingsHub() {
                   SECTION C: LEAVE SETTINGS
               ============================================== */}
 
-              <div className="bg-white border border-[#d5dbe1] rounded-3xl p-6 shadow-sm space-y-5">
+              <div className="bg-white border border-[#e6edf4] rounded-[32px] p-6 shadow-sm space-y-5">
 
-                <div className="flex items-center gap-3 border-b border-[#e2e8f0] pb-3">
-                  <div className="w-8 h-8 rounded-xl bg-[#eef4fa] border border-[#d6e5fb] flex items-center justify-center text-[#1b64da] font-black text-xs">
+                <div className="flex items-center gap-3 border-b border-[#e6edf4] pb-3">
+                  <div className="w-8 h-8 rounded-full bg-[#7BBDE8] flex items-center justify-center text-[#0f172a] font-black text-xs">
                     C
                   </div>
 
@@ -936,7 +941,7 @@ export default function SystemSettingsHub() {
                       Leave Accrual & Permission Allocations
                     </h3>
 
-                    <p className="text-xs text-[#64748b]">
+                    <p className="text-xs text-slate-500">
                       Monthly leave credits, balance caps, and permission limits
                     </p>
                   </div>
@@ -960,8 +965,8 @@ export default function SystemSettingsHub() {
 
                   {/* PERMISSION UNIT */}
 
-                  <div className="bg-[#f8fafc] border border-[#d5dbe1] rounded-2xl p-4">
-                    <div className="flex items-center justify-between text-xs text-[#64748b] mb-1.5 font-bold">
+                  <div className="bg-[#f0f6fa] border border-[#bfe0f5] rounded-3xl p-4">
+                    <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5 font-bold">
                       <span>Permission Unit Block</span>
 
                       <span className="font-mono text-[11px]">
@@ -977,7 +982,7 @@ export default function SystemSettingsHub() {
                           Number(e.target.value),
                         )
                       }
-                      className="w-full bg-white border border-[#d5dbe1] rounded-xl px-3 py-2 font-bold text-sm text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]"
+                      className="w-full bg-white border border-[#bfe0f5] rounded-xl px-3 py-2 font-bold text-sm text-[#0f172a] focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]/40"
                     >
                       <option value={15}>15 Minutes</option>
                       <option value={30}>30 Minutes</option>
@@ -1040,7 +1045,7 @@ export default function SystemSettingsHub() {
                     setNewHolidayDate(`${selectedYear}-01-01`);
                     setIsHolidayModalOpen(true);
                   }}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#1b64da] hover:bg-[#1552b5] text-white text-xs font-bold shadow-sm transition-all"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#1b64da] hover:bg-[#1552b5] text-white text-xs font-bold shadow-sm transition-all"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   Add Holiday
@@ -1049,19 +1054,15 @@ export default function SystemSettingsHub() {
 
               {/* HOLIDAY CARD */}
 
-              <div className="bg-white border border-[#d5dbe1] rounded-3xl p-6 shadow-sm space-y-4">
+              <div className="bg-white border border-[#e6edf4] rounded-[32px] p-6 shadow-sm space-y-4">
 
-                <div className="flex items-center justify-between border-b border-[#e2e8f0] pb-3 gap-2">
-                  <span className="font-bold text-xs uppercase tracking-wider text-[#64748b]">
+                <div className="flex items-center justify-between border-b border-[#e6edf4] pb-3 gap-2">
+                  <span className="font-bold text-xs uppercase tracking-wider text-slate-500">
                     Declared Schedule{" "}
                     <strong className="text-[#1b64da]">
                       CY {selectedYear}
                     </strong>
                   </span>
-
-                  {/* <span className="text-xs text-slate-400">
-                    Backend synced
-                  </span> */}
                 </div>
 
                 {/* YEAR SELECTOR */}
@@ -1072,10 +1073,10 @@ export default function SystemSettingsHub() {
                       key={year}
                       type="button"
                       onClick={() => handleYearChange(year)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
                         selectedYear === year
                           ? "bg-[#1b64da] text-white"
-                          : "bg-[#f1f5f9] text-[#475569] hover:bg-[#e2e8f0]"
+                          : "bg-[#f0f6fa] text-[#0f172a] hover:bg-[#bfe0f5]"
                       }`}
                     >
                       {year}
@@ -1103,13 +1104,13 @@ export default function SystemSettingsHub() {
                       return (
                         <div
                           key={h.id}
-                          className="group flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] hover:border-[#7BBDE8] hover:bg-white transition-all shadow-sm"
+                          className="group flex items-center justify-between gap-3 p-3.5 rounded-3xl bg-[#f0f6fa] border border-[#e6edf4] hover:border-[#7BBDE8] hover:bg-white transition-all shadow-sm"
                         >
                           <div className="flex items-center gap-3.5 min-w-0">
 
-                            {/* DATE BADGE */}
+                            {/* DATE BADGE (filled) */}
 
-                            <div className="w-12 h-12 rounded-2xl bg-[#eef4fa] border border-[#d6e5fb] flex flex-col items-center justify-center text-[#1b64da] shrink-0">
+                            <div className="w-12 h-12 rounded-2xl bg-[#7BBDE8] flex flex-col items-center justify-center text-[#0f172a] shrink-0">
                               <span className="text-[10px] font-bold uppercase tracking-wider leading-none">
                                 {month}
                               </span>
@@ -1126,7 +1127,7 @@ export default function SystemSettingsHub() {
                                 {h.name}
                               </div>
 
-                              <div className="text-xs text-[#64748b] flex flex-wrap items-center gap-2 mt-0.5">
+                              <div className="text-xs text-slate-500 flex flex-wrap items-center gap-2 mt-0.5">
                                 <span>{weekday}</span>
                                 <span>•</span>
                                 <span>{h.holiday_date}</span>
@@ -1142,7 +1143,7 @@ export default function SystemSettingsHub() {
                               handleDeleteHoliday(h.id, h.name)
                             }
                             disabled={holidayDeleting}
-                            className="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-40 shrink-0"
+                            className="p-2 rounded-full text-slate-400 hover:text-[#1b64da] hover:bg-[#bfe0f5]/60 transition-colors disabled:opacity-40 shrink-0"
                             title="Delete Holiday"
                           >
                             {holidayDeleting ? (
@@ -1161,7 +1162,7 @@ export default function SystemSettingsHub() {
 
                 {!holidaysLoading && holidays.length === 0 && (
                   <div className="text-center py-10">
-                    <CalendarDays className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                    <CalendarDays className="w-10 h-10 text-[#7BBDE8] mx-auto mb-3" />
 
                     <p className="font-bold text-sm text-slate-600">
                       No holidays found
@@ -1183,7 +1184,7 @@ export default function SystemSettingsHub() {
 
                 {/* INFORMATION */}
 
-                <div className="mt-6 bg-[#f0f9ff] border border-cyan-200 rounded-2xl p-4 flex items-start gap-3">
+                <div className="mt-6 bg-[#bfe0f5]/50 border border-[#7BBDE8] rounded-3xl p-4 flex items-start gap-3">
                   <Info className="w-5 h-5 text-[#1b64da] shrink-0 mt-0.5" />
 
                   <div className="text-xs text-slate-700 leading-relaxed">
@@ -1198,17 +1199,6 @@ export default function SystemSettingsHub() {
                   </div>
                 </div>
               </div>
-
-              {/* AUDIT INFORMATION */}
-
-              {/* <div className="px-5 py-3 rounded-2xl bg-white/70 border border-[#e2e8f0] flex items-center gap-2 text-xs text-slate-500">
-                <ShieldCheck className="w-4 h-4 text-[#1b64da] shrink-0" /> */}
-
-                {/* <span>
-                  Settings and holiday changes are recorded in the
-                  backend audit log.
-                </span> */}
-              {/* </div> */}
             </div>
           </div>
         </div>
@@ -1220,13 +1210,13 @@ export default function SystemSettingsHub() {
 
       {isHolidayModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white border border-[#d5dbe1] rounded-3xl max-w-md w-full p-6 shadow-2xl">
+          <div className="bg-white border border-[#e6edf4] rounded-[32px] max-w-md w-full p-6 shadow-2xl">
 
             {/* MODAL HEADER */}
 
-            <div className="flex items-center justify-between pb-4 border-b border-[#e2e8f0]">
+            <div className="flex items-center justify-between pb-4 border-b border-[#e6edf4]">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-[#eef4fa] border border-[#d6e5fb] flex items-center justify-center text-[#1b64da]">
+                <div className="w-10 h-10 rounded-full bg-[#bfe0f5] flex items-center justify-center text-[#1b64da]">
                   <Calendar className="w-5 h-5" />
                 </div>
 
@@ -1235,7 +1225,7 @@ export default function SystemSettingsHub() {
                     Add New Holiday
                   </h3>
 
-                  <p className="text-xs text-[#64748b]">
+                  <p className="text-xs text-slate-500">
                     Create a company holiday
                   </p>
                 </div>
@@ -1245,7 +1235,7 @@ export default function SystemSettingsHub() {
                 type="button"
                 onClick={() => setIsHolidayModalOpen(false)}
                 disabled={holidayCreating}
-                className="p-2 rounded-xl text-slate-400 hover:text-slate-700"
+                className="p-2 rounded-full text-slate-400 hover:text-[#1b64da] hover:bg-[#bfe0f5]/50"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1258,7 +1248,7 @@ export default function SystemSettingsHub() {
               {/* DATE */}
 
               <div>
-                <label className="block text-xs font-bold text-[#475569] mb-1.5 uppercase tracking-wider">
+                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">
                   Holiday Date
                 </label>
 
@@ -1269,14 +1259,14 @@ export default function SystemSettingsHub() {
                   onChange={(e) =>
                     setNewHolidayDate(e.target.value)
                   }
-                  className="w-full px-4 py-2.5 rounded-xl bg-[#f8fafc] border border-[#d5dbe1] text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]"
+                  className="w-full px-4 py-2.5 rounded-xl bg-[#f0f6fa] border border-[#bfe0f5] text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]/40"
                 />
               </div>
 
               {/* NAME */}
 
               <div>
-                <label className="block text-xs font-bold text-[#475569] mb-1.5 uppercase tracking-wider">
+                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wider">
                   Holiday Name
                 </label>
 
@@ -1289,7 +1279,7 @@ export default function SystemSettingsHub() {
                   onChange={(e) =>
                     setNewHolidayName(e.target.value)
                   }
-                  className="w-full px-4 py-2.5 rounded-xl bg-[#f8fafc] border border-[#d5dbe1] text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]"
+                  className="w-full px-4 py-2.5 rounded-xl bg-[#f0f6fa] border border-[#bfe0f5] text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]/40"
                 />
 
                 <p className="text-[11px] text-slate-400 mt-1">
@@ -1299,7 +1289,7 @@ export default function SystemSettingsHub() {
 
               {/* AUTOMATIC BROADCAST INFO */}
 
-              <div className="p-3 bg-cyan-50 rounded-xl border border-cyan-200 text-xs text-cyan-900 leading-relaxed">
+              <div className="p-3 bg-[#bfe0f5]/50 rounded-2xl border border-[#7BBDE8] text-xs text-slate-700 leading-relaxed">
                 <strong>Automatic Attendance Update:</strong>{" "}
                 The backend will mark the selected date as HOLIDAY
                 for all active employees and create an audit log entry.
@@ -1308,7 +1298,7 @@ export default function SystemSettingsHub() {
               {/* MODAL ERROR */}
 
               {localError && (
-                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-start gap-2">
+                <div className="p-3 bg-[#1b64da] border border-[#1b64da] rounded-2xl text-xs text-white flex items-start gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   <span>{localError}</span>
                 </div>
@@ -1316,7 +1306,7 @@ export default function SystemSettingsHub() {
 
               {/* BUTTONS */}
 
-              <div className="pt-3 flex items-center justify-end gap-3 border-t border-slate-100">
+              <div className="pt-3 flex items-center justify-end gap-3 border-t border-[#e6edf4]">
                 <button
                   type="button"
                   disabled={holidayCreating}
@@ -1324,7 +1314,7 @@ export default function SystemSettingsHub() {
                     setIsHolidayModalOpen(false);
                     setLocalError(null);
                   }}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-[#64748b] hover:bg-slate-100 disabled:opacity-50"
+                  className="px-4 py-2 rounded-full text-xs font-bold text-slate-500 hover:bg-[#bfe0f5]/50 disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -1332,7 +1322,7 @@ export default function SystemSettingsHub() {
                 <button
                   type="submit"
                   disabled={holidayCreating}
-                  className="px-5 py-2.5 rounded-xl text-xs font-bold bg-[#1b64da] hover:bg-[#1552b5] text-white shadow-md transition-all disabled:opacity-60 inline-flex items-center gap-2"
+                  className="px-5 py-2.5 rounded-full text-xs font-bold bg-[#1b64da] hover:bg-[#1552b5] text-white shadow-md shadow-[#1b64da]/20 transition-all disabled:opacity-60 inline-flex items-center gap-2"
                 >
                   {holidayCreating && (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -1354,7 +1344,7 @@ export default function SystemSettingsHub() {
 
       {isSavedToast && (
         <div className="fixed bottom-6 right-6 z-50 bg-[#0f172a] text-white px-5 py-3.5 rounded-2xl shadow-xl flex items-center gap-3 border border-slate-700">
-          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+          <CheckCircle2 className="w-5 h-5 text-[#7BBDE8] shrink-0" />
 
           <div className="text-xs">
             <p className="font-bold">{successMessage}</p>

@@ -37,7 +37,14 @@ import {
   PlusCircle,
 } from "lucide-react";
 
-import Sidebar from "../components/SideBar";
+// --------------------------------------------------
+// THEME COLOURS (same three blues as the dashboard)
+// --------------------------------------------------
+
+const SKY = "#7BBDE8";
+const SKY_LIGHT = "#bfe0f5";
+const BLUE = "#1b64da";
+const INK = "#0f172a";
 
 type CorrectionDirection = "IN" | "OUT";
 
@@ -131,14 +138,15 @@ const getDayStatus = (day: any, dateString: string, today: string) => {
   return "NO_RECORD";
 };
 
+// calendar / status colours – built only from the three blues (+ their tints)
 const statusStyles: Record<string, string> = {
-  PRESENT: "bg-emerald-100 text-emerald-800 border-emerald-200",
-  HALF_DAY: "bg-amber-100 text-amber-800 border-amber-200",
-  ABSENT: "bg-rose-100 text-rose-800 border-rose-200",
-  LEAVE: "bg-violet-100 text-violet-800 border-violet-200",
-  HOLIDAY: "bg-sky-100 text-sky-800 border-sky-200",
+  PRESENT: "bg-[#7BBDE8] text-[#0f172a] border-[#7BBDE8]",
+  HALF_DAY: "bg-[#bfe0f5] text-[#0f172a] border-[#a5d3ef]",
+  ABSENT: "bg-[#1b64da] text-white border-[#1b64da]",
+  LEAVE: "bg-[#dbe7ff] text-blue-800 border-blue-200",
+  HOLIDAY: "bg-[#e8f1fa] text-[#0f172a] border-[#cfe3f5]",
   WEEKLY_OFF: "bg-slate-200 text-slate-700 border-slate-300",
-  INSUFFICIENT: "bg-orange-100 text-orange-800 border-orange-200",
+  INSUFFICIENT: "bg-white text-[#1b64da] border-[#1b64da]",
   NO_RECORD: "bg-slate-50 text-slate-500 border-slate-200",
   UPCOMING: "bg-blue-50 text-blue-700 border-blue-200",
 };
@@ -186,11 +194,11 @@ const formatShort12 = (value: string | null) => {
 
 // Avatar gradient palette – picked per employee so each person keeps the same colour
 const avatarGradients = [
-  "from-cyan-400 to-blue-600",
-  "from-amber-400 to-orange-600",
-  "from-indigo-500 to-violet-600",
-  "from-rose-500 to-pink-600",
-  "from-emerald-400 to-teal-600",
+  "from-[#7BBDE8] to-[#1b64da]",
+  "from-[#1b64da] to-[#0a47b3]",
+  "from-[#a9d6f2] to-[#4aa3df]",
+  "from-[#5aa6e3] to-[#2f78e6]",
+  "from-[#6fb5e6] to-[#0a47b3]",
 ];
 
 const getAvatarGradient = (userId: number | string) => {
@@ -215,14 +223,14 @@ function TimePill({
 
   const wrapper =
     tone === "late"
-      ? "bg-amber-50 border-amber-300 text-amber-900"
-      : "bg-slate-100 border-slate-200 text-slate-900";
+      ? "bg-[#1b64da] border-[#1b64da] text-white"
+      : "bg-[#eaf4fc] border-[#d6e8f7] text-slate-900";
 
   const icon =
     tone === "late"
-      ? "text-amber-600"
+      ? "text-white"
       : tone === "live"
-        ? "text-blue-600"
+        ? "text-[#1b64da]"
         : "text-slate-500";
 
   return (
@@ -648,9 +656,7 @@ export default function AdminAttendanceOperationsPage() {
 
   if (!dateInitialized || !monthlyInitialized) {
     return (
-      <div className="min-h-screen bg-[#f5faff] lg:flex">
-        <Sidebar />
-
+      <div className="min-h-screen bg-[#f0f6fa]">
         <main className="flex-1 flex items-center justify-center p-8">
           <div className="text-center">
             <RefreshCw className="w-8 h-8 animate-spin text-[#1b64da] mx-auto mb-3" />
@@ -668,9 +674,7 @@ export default function AdminAttendanceOperationsPage() {
   // --------------------------------------------------
 
   return (
-    <div className="min-h-screen bg-[#f5faff] text-[#1e293b] font-sans antialiased lg:flex">
-      <Sidebar />
-
+    <div className="min-h-screen bg-[#f0f6fa] text-[#1e293b] font-sans antialiased">
       <main className="flex-1 min-w-0 p-4 md:p-6 lg:p-8">
         <div className="max-w-[1440px] mx-auto space-y-7">
 
@@ -810,7 +814,7 @@ export default function AdminAttendanceOperationsPage() {
 
           {activeTab === "DAILY" && (
             <>
-              {/* DAILY KPI CARDS */}
+              {/* DAILY KPI CARDS (three blues, same as the dashboard cards) */}
 
               <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
                 {[
@@ -818,61 +822,76 @@ export default function AdminAttendanceOperationsPage() {
                     title: "Total Employees",
                     value: totalEmployees,
                     subtitle: "Employees returned for this date",
-                    color: "text-slate-900",
-                    icon: <UserCheck className="w-5 h-5 text-blue-600" />,
+                    bg: SKY_LIGHT,
+                    text: INK,
+                    muted: "text-black/40",
+                    Icon: UserCheck,
                   },
                   {
                     title: "Present / Live",
                     value: stats.liveIn,
                     subtitle: `${stats.coverage}% currently in office`,
-                    color: "text-sky-600",
-                    icon: <Users className="w-5 h-5 text-sky-600" />,
+                    bg: SKY,
+                    text: INK,
+                    muted: "text-black/40",
+                    Icon: Users,
                   },
                   {
                     title: "Absent",
                     value: stats.absent,
                     subtitle: `Leave: ${stats.leave} · Half day: ${stats.halfDay}`,
-                    color: "text-rose-600",
-                    icon: <AlertTriangle className="w-5 h-5 text-rose-600" />,
+                    bg: BLUE,
+                    text: "#ffffff",
+                    muted: "text-white/60",
+                    Icon: AlertTriangle,
                   },
                   {
                     title: "Late Arrivals",
                     value: stats.late,
                     subtitle: "Based on backend late flag",
-                    color: "text-amber-600",
-                    icon: <Clock className="w-5 h-5 text-amber-600" />,
+                    bg: SKY_LIGHT,
+                    text: INK,
+                    muted: "text-black/40",
+                    Icon: Clock,
                   },
                   {
                     title: "Needs Correction",
                     value: stats.regularization,
                     subtitle: `Excess break: ${stats.excessBreak}`,
-                    color: "text-indigo-600",
-                    icon: <AlertTriangle className="w-5 h-5 text-indigo-600" />,
+                    bg: SKY,
+                    text: INK,
+                    muted: "text-black/40",
+                    Icon: AlertTriangle,
                   },
                   {
                     title: "Payroll Cycle",
                     value: "Date-specific",
                     subtitle: "Lock status is shown per employee",
-                    color: "text-slate-900",
-                    icon: <Lock className="w-5 h-5 text-emerald-600" />,
+                    bg: BLUE,
+                    text: "#ffffff",
+                    muted: "text-white/60",
+                    Icon: Lock,
                   },
                 ].map((item) => (
                   <div
                     key={item.title}
-                    className="bg-white border border-[#d5dbe1] rounded-3xl p-5 shadow-sm"
+                    className="rounded-3xl p-5 shadow-sm"
+                    style={{ backgroundColor: item.bg, color: item.text }}
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs font-bold uppercase tracking-wide text-[#64748b]">
+                      <span className="text-xs font-bold uppercase tracking-wide opacity-70">
                         {item.title}
                       </span>
-                      {item.icon}
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/70 text-slate-600">
+                        <item.Icon className="w-5 h-5" />
+                      </span>
                     </div>
 
-                    <div className={`text-3xl font-black ${item.color}`}>
+                    <div className="text-3xl font-black">
                       {dailyLoading ? "—" : item.value}
                     </div>
 
-                    <p className="text-sm font-medium text-[#64748b] mt-2">
+                    <p className={`text-sm font-medium mt-2 ${item.muted}`}>
                       {item.subtitle}
                     </p>
                   </div>
@@ -901,8 +920,8 @@ export default function AdminAttendanceOperationsPage() {
                         onClick={() => setFilterRoster(tab.key)}
                         className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
                           filterRoster === tab.key
-                            ? "bg-[#0a4ec4] text-white shadow-sm"
-                            : "bg-[#e9edf5] text-slate-600 hover:bg-[#dfe5ef]"
+                            ? "bg-[#1b64da] text-white shadow-sm"
+                            : "bg-[#eaf4fc] text-slate-600 hover:bg-[#dcecf9]"
                         }`}
                       >
                         {tab.label}
@@ -928,7 +947,7 @@ export default function AdminAttendanceOperationsPage() {
                       onClick={handleExport}
                       disabled={!employees.length}
                       aria-label="Export attendance"
-                      className="h-12 w-12 shrink-0 flex items-center justify-center rounded-full bg-[#e9edf5] hover:bg-[#dfe5ef] text-slate-700 shadow-sm disabled:opacity-40"
+                      className="h-12 w-12 shrink-0 flex items-center justify-center rounded-full bg-[#eaf4fc] hover:bg-[#dcecf9] text-[#1b64da] shadow-sm disabled:opacity-40"
                     >
                       <Download className="w-5 h-5" />
                     </button>
@@ -938,7 +957,7 @@ export default function AdminAttendanceOperationsPage() {
                       onClick={() => dispatch(fetchDailyAttendance(selectedDate))}
                       disabled={dailyLoading}
                       aria-label="Refresh attendance"
-                      className="h-12 w-12 shrink-0 flex items-center justify-center rounded-full bg-[#e9edf5] hover:bg-[#dfe5ef] text-slate-700 shadow-sm disabled:opacity-40"
+                      className="h-12 w-12 shrink-0 flex items-center justify-center rounded-full bg-[#eaf4fc] hover:bg-[#dcecf9] text-[#1b64da] shadow-sm disabled:opacity-40"
                     >
                       <RefreshCw className={`w-5 h-5 ${dailyLoading ? "animate-spin" : ""}`} />
                     </button>
@@ -983,7 +1002,7 @@ export default function AdminAttendanceOperationsPage() {
                         <col className="w-[12%]" />
                       </colgroup>
                       <thead>
-                        <tr className="bg-[#eef1f6] border-b border-[#e3e8f0] text-xs font-bold text-slate-600 uppercase tracking-wider">
+                        <tr className="bg-[#eaf4fc] border-b border-[#d6e8f7] text-xs font-bold text-slate-600 uppercase tracking-wider">
                           <th className="py-4 px-3">Employee</th>
                           <th className="py-4 px-3">Status & Live Feed</th>
                           <th className="py-4 px-3">First In</th>
@@ -1013,23 +1032,23 @@ export default function AdminAttendanceOperationsPage() {
                             const durationText = !hasWork
                               ? "text-slate-400"
                               : isHalfDay
-                                ? "text-teal-700"
+                                ? "text-[#0a47b3]"
                                 : isLate
                                   ? "text-slate-800"
-                                  : "text-sky-700";
+                                  : "text-[#1b64da]";
 
                             const barFill = isHalfDay
-                              ? "from-teal-700 to-teal-500"
+                              ? "from-[#7BBDE8] to-[#bfe0f5]"
                               : isLate
-                                ? "from-amber-500 to-orange-500"
-                                : "from-blue-600 to-cyan-400";
+                                ? "from-[#0a47b3] to-[#1b64da]"
+                                : "from-[#1b64da] to-[#7BBDE8]";
 
-                            const percentText = isLate ? "text-amber-600" : "text-blue-600";
+                            const percentText = isLate ? "text-[#0a47b3]" : "text-[#1b64da]";
 
                             return (
                               <tr
                                 key={employee.user_id}
-                                className="bg-white hover:bg-[#f8faff] transition-colors"
+                                className="bg-white hover:bg-[#f5faff] transition-colors"
                               >
                                 {/* EMPLOYEE */}
                                 <td className="py-4 px-3">
@@ -1060,8 +1079,8 @@ export default function AdminAttendanceOperationsPage() {
                                 {/* STATUS & LIVE FEED */}
                                 <td className="py-4 px-3">
                                   {isLive ? (
-                                    <span className="inline-flex items-center gap-2 px-2.5 py-2 rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                    <span className="inline-flex items-center gap-2 px-2.5 py-2 rounded-2xl bg-[#e1f1fb] text-[#0a47b3] border border-[#7BBDE8]">
+                                      <span className="w-2 h-2 rounded-full bg-[#1b64da] animate-pulse" />
                                       <span className="text-xs leading-tight">
                                         <span className="block font-bold">IN OFFICE</span>
                                         {formatShort12(employee.first_in) && (
@@ -1072,15 +1091,15 @@ export default function AdminAttendanceOperationsPage() {
                                       </span>
                                     </span>
                                   ) : noPunch ? (
-                                    <span className="inline-flex items-center gap-2 px-2.5 py-2 rounded-2xl bg-rose-50 text-rose-600 border border-rose-200">
-                                      <span className="w-2 h-2 rounded-full bg-rose-500" />
+                                    <span className="inline-flex items-center gap-2 px-2.5 py-2 rounded-2xl bg-[#1b64da] text-white border border-[#1b64da]">
+                                      <span className="w-2 h-2 rounded-full bg-white" />
                                       <span className="text-xs leading-tight font-bold">
                                         <span className="block">NO PUNCH</span>
                                         <span className="block">RECORDED</span>
                                       </span>
                                     </span>
                                   ) : (
-                                    <span className="inline-flex items-center gap-2 px-2.5 py-2 rounded-2xl bg-slate-100 text-slate-600 border border-slate-200">
+                                    <span className="inline-flex items-center gap-2 px-2.5 py-2 rounded-2xl bg-[#eaf4fc] text-slate-600 border border-[#d6e8f7]">
                                       <span className="w-2 h-2 rounded-full bg-slate-500" />
                                       <span className="text-xs leading-tight">
                                         {employee.last_out ? (
@@ -1111,8 +1130,8 @@ export default function AdminAttendanceOperationsPage() {
                                 {/* LAST OUT */}
                                 <td className="py-4 px-3">
                                   {isLive ? (
-                                    <span className="inline-flex items-center gap-2 px-2.5 py-2 rounded-full bg-[#e8f1fb] text-blue-900 text-xs font-semibold">
-                                      <span className="w-2 h-2 rounded-full bg-teal-700" />
+                                    <span className="inline-flex items-center gap-2 px-2.5 py-2 rounded-full bg-[#bfe0f5] text-[#0a47b3] text-xs font-semibold">
+                                      <span className="w-2 h-2 rounded-full bg-[#1b64da]" />
                                       Active on floor
                                     </span>
                                   ) : (
@@ -1131,7 +1150,7 @@ export default function AdminAttendanceOperationsPage() {
                                       </span>
 
                                       {isHalfDay ? (
-                                        <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold whitespace-nowrap">
+                                        <span className="px-2 py-0.5 rounded-full bg-[#bfe0f5] text-[#0a47b3] text-[10px] font-bold whitespace-nowrap">
                                           Half Day
                                         </span>
                                       ) : (
@@ -1158,21 +1177,21 @@ export default function AdminAttendanceOperationsPage() {
                                 <td className="py-4 px-3">
                                   <div className="flex items-center gap-1.5 flex-wrap">
                                     {employee.flags.is_late && (
-                                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-100 border border-amber-300 text-amber-900 font-bold text-[10px] whitespace-nowrap">
-                                        <AlertTriangle className="w-3 h-3 text-amber-600" />
+                                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#1b64da] border border-[#1b64da] text-white font-bold text-[10px] whitespace-nowrap">
+                                        <AlertTriangle className="w-3 h-3 text-white" />
                                         Late
                                       </span>
                                     )}
 
                                     {employee.flags.excess_break && (
-                                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-600 font-bold text-[10px] whitespace-nowrap">
+                                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#dcecf9] border border-[#7BBDE8] text-[#0a47b3] font-bold text-[10px] whitespace-nowrap">
                                         <TimerOff className="w-3 h-3" />
                                         Excess Break
                                       </span>
                                     )}
 
                                     {employee.flags.needs_regularization && (
-                                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#e0e8ff] border border-blue-200 text-blue-800 font-bold text-[10px]">
+                                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#bfe0f5] border border-[#7BBDE8] text-[#0a47b3] font-bold text-[10px]">
                                         <Flag className="w-3 h-3 shrink-0" />
                                         Needs Regularization
                                       </span>
@@ -1183,7 +1202,7 @@ export default function AdminAttendanceOperationsPage() {
                                       !employee.flags.needs_regularization &&
                                       employee.status === "PRESENT" && (
                                         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-50 border border-slate-300 text-slate-600 font-bold text-[10px] whitespace-nowrap">
-                                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                                          <CheckCircle2 className="w-3.5 h-3.5 text-[#1b64da]" />
                                           Compliant
                                         </span>
                                       )}
@@ -1222,7 +1241,7 @@ export default function AdminAttendanceOperationsPage() {
                                       <button
                                         type="button"
                                         onClick={() => openCorrectionForEmployee(employee)}
-                                        className="inline-flex items-center justify-center gap-1 px-2 py-2 rounded-full bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-900 font-bold text-xs text-center leading-tight transition-colors"
+                                        className="inline-flex items-center justify-center gap-1 px-2 py-2 rounded-full bg-[#bfe0f5] hover:bg-[#a9d6f2] border border-[#7BBDE8] text-[#0a47b3] font-bold text-xs text-center leading-tight transition-colors"
                                       >
                                         <Pencil className="w-4 h-4" />
                                         Correct Punch
@@ -1426,10 +1445,10 @@ export default function AdminAttendanceOperationsPage() {
 
                   <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
                     {[
-                      { label: "Present", value: monthlyTotals?.present ?? 0, color: "text-emerald-600" },
-                      { label: "Half Day", value: monthlyTotals?.half ?? 0, color: "text-amber-600" },
-                      { label: "Absent", value: monthlyTotals?.absent ?? 0, color: "text-rose-600" },
-                      { label: "Leave", value: monthlyTotals?.leave ?? 0, color: "text-violet-600" },
+                      { label: "Present", value: monthlyTotals?.present ?? 0, color: "text-[#1b64da]" },
+                      { label: "Half Day", value: monthlyTotals?.half ?? 0, color: "text-[#4aa3df]" },
+                      { label: "Absent", value: monthlyTotals?.absent ?? 0, color: "text-[#0a47b3]" },
+                      { label: "Leave", value: monthlyTotals?.leave ?? 0, color: "text-sky-700" },
                       { label: "Holidays", value: monthlyTotals?.holiday ?? 0, color: "text-sky-600" },
                       { label: "Weekly Off", value: monthlyTotals?.weekly_off ?? 0, color: "text-slate-700" },
                     ].map((item) => (
@@ -1452,7 +1471,7 @@ export default function AdminAttendanceOperationsPage() {
                       <p className="text-sm font-bold text-slate-500">
                         Insufficient Days
                       </p>
-                      <p className="text-2xl font-black text-orange-600 mt-2">
+                      <p className="text-2xl font-black text-[#0a47b3] mt-2">
                         {monthlyTotals?.insufficient ?? 0}
                       </p>
                     </div>
@@ -1461,7 +1480,7 @@ export default function AdminAttendanceOperationsPage() {
                       <p className="text-sm font-bold text-slate-500">
                         Late Arrivals
                       </p>
-                      <p className="text-2xl font-black text-amber-600 mt-2">
+                      <p className="text-2xl font-black text-[#1b64da] mt-2">
                         {monthlyTotals?.late_count ?? 0}
                       </p>
                     </div>
@@ -1612,7 +1631,7 @@ export default function AdminAttendanceOperationsPage() {
                     <div className="overflow-x-auto">
                       <table className="w-full text-left">
                         <thead>
-                          <tr className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                          <tr className="bg-[#eaf4fc] text-xs uppercase tracking-wide text-slate-500">
                             <th className="px-5 py-4 font-bold">Date</th>
                             <th className="px-5 py-4 font-bold">Status</th>
                             <th className="px-5 py-4 font-bold">Work Duration</th>
@@ -1638,7 +1657,7 @@ export default function AdminAttendanceOperationsPage() {
                             );
 
                             return (
-                              <tr key={day.date} className="hover:bg-slate-50">
+                              <tr key={day.date} className="hover:bg-[#f5faff]">
                                 <td className="px-5 py-4 font-bold text-slate-800 whitespace-nowrap">
                                   {formatDate(day.date)}
                                 </td>
@@ -1708,7 +1727,7 @@ export default function AdminAttendanceOperationsPage() {
               )}
 
               {correctionSuccess && (
-                <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-700">
+                <div className="rounded-xl bg-[#e1f1fb] border border-[#7BBDE8] p-3 text-sm text-[#0a47b3]">
                   {correctionSuccess}
                 </div>
               )}
@@ -1780,8 +1799,8 @@ export default function AdminAttendanceOperationsPage() {
                       className={`py-3 rounded-xl text-sm font-bold border transition-all ${
                         newCorrection.direction === direction
                           ? direction === "IN"
-                            ? "bg-emerald-50 border-emerald-500 text-emerald-700"
-                            : "bg-sky-50 border-sky-500 text-sky-700"
+                            ? "bg-[#e1f1fb] border-[#7BBDE8] text-[#0a47b3]"
+                            : "bg-[#1b64da] border-[#1b64da] text-white"
                           : "bg-[#f8fafc] border-[#d5dbe1] text-[#64748b]"
                       }`}
                     >

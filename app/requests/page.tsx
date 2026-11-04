@@ -1,10 +1,7 @@
-
 "use client";
 
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import Sidebar from "../components/SideBar";
-
 import type { AppDispatch, RootState } from "@/app/store/store";
 
 import {
@@ -35,6 +32,23 @@ import {
 } from "lucide-react";
 
 // --------------------------------------------------
+// THEME COLOURS (same family as the dashboard / #7BBDE8)
+// --------------------------------------------------
+
+const SKY = "#7BBDE8";
+const SKY_LIGHT = "#bfe0f5";
+const BLUE = "#1b64da";
+const INK = "#0f172a";
+
+const AVATAR_GRADIENTS = [
+  "from-cyan-400 to-blue-600",
+  "from-amber-400 to-orange-600",
+  "from-indigo-500 to-violet-600",
+  "from-rose-500 to-pink-600",
+  "from-emerald-400 to-teal-600",
+];
+
+// --------------------------------------------------
 // TYPES
 // --------------------------------------------------
 
@@ -61,6 +75,8 @@ interface ApprovalRequest {
   appliedTime: string;
   reason: string;
   status: RequestStatus;
+  metric?: number;
+  metricUnit?: string;
 }
 
 interface CalendarEvent {
@@ -247,6 +263,8 @@ const mapLeaveRequest = (
     appliedTime: getAppliedTime(request.created_at),
     reason: request.reason,
     status: request.status,
+    metric: request.days,
+    metricUnit: request.days === 1 ? "day" : "days",
   };
 };
 
@@ -280,6 +298,8 @@ const mapPermissionRequest = (
     appliedTime: getAppliedTime(request.created_at),
     reason: request.reason,
     status: request.status,
+    metric: request.minutes,
+    metricUnit: "min",
   };
 };
 
@@ -328,13 +348,13 @@ const mapRegularizationRequest = (
 const getEventColor = (type: CalendarEvent["type"]) => {
   switch (type) {
     case "annual":
-      return "bg-violet-100 text-violet-800 border-violet-200";
+      return "bg-[#dbe7ff] text-blue-800 border-blue-200";
 
     case "sick":
       return "bg-amber-100 text-amber-800 border-amber-200";
 
     case "permission":
-      return "bg-sky-100 text-sky-800 border-sky-200";
+      return "bg-[#d3ebfa] text-sky-800 border-sky-200";
 
     case "regularization":
       return "bg-amber-100 text-amber-800 border-amber-200";
@@ -343,6 +363,79 @@ const getEventColor = (type: CalendarEvent["type"]) => {
       return "bg-slate-100 text-slate-700 border-slate-200";
   }
 };
+
+// --------------------------------------------------
+// CARD STYLES PER REQUEST TYPE (display only)
+// --------------------------------------------------
+
+const TYPE_STYLES: Record<
+  ApprovalRequest["type"],
+  {
+    panel: string;
+    bubble: string;
+    bubbleText: string;
+    chip: string;
+    dot: string;
+  }
+> = {
+  Leave: {
+    panel: "#e8f1fa",
+    bubble: BLUE,
+    bubbleText: "#ffffff",
+    chip: "bg-[#dbe7ff] text-blue-700",
+    dot: "bg-blue-600",
+  },
+  Permission: {
+    panel: "#dcecf9",
+    bubble: SKY,
+    bubbleText: INK,
+    chip: "bg-[#d3ebfa] text-sky-800",
+    dot: "bg-[#7BBDE8]",
+  },
+  Regularization: {
+    panel: "#fff4d9",
+    bubble: "#f5b82e",
+    bubbleText: INK,
+    chip: "bg-amber-100 text-amber-800",
+    dot: "bg-amber-500",
+  },
+};
+
+// circle that grows with the number of days / minutes
+function MetricBubble({
+  metric,
+  unit,
+  color,
+  text,
+}: {
+  metric?: number;
+  unit?: string;
+  color: string;
+  text: string;
+}) {
+  const value = metric ?? 0;
+
+  const size =
+    metric === undefined
+      ? 56
+      : Math.round(Math.min(84, 52 + (unit === "min" ? value / 8 : value * 5)));
+
+  return (
+    <span
+      className="flex shrink-0 flex-col items-center justify-center rounded-full font-black leading-none shadow-sm"
+      style={{ width: size, height: size, backgroundColor: color, color: text }}
+    >
+      {metric === undefined ? (
+        <Clock className="h-6 w-6" />
+      ) : (
+        <>
+          <span className="text-xl">{metric}</span>
+          <span className="mt-0.5 text-[10px] font-bold opacity-80">{unit}</span>
+        </>
+      )}
+    </span>
+  );
+}
 
 // --------------------------------------------------
 // MAIN PAGE
@@ -390,8 +483,8 @@ export default function AdminRequestsApprovals() {
   const [calendarStream, setCalendarStream] =
     useState<RequestStream>("all");
 
-  const [currentMonth, setCurrentMonth] = useState(0);
-  const [currentYear, setCurrentYear] = useState(2000);
+  const [currentMonth, setCurrentMonth] = useState(() => new Date().getMonth());
+  const [currentYear, setCurrentYear] = useState(() => new Date().getFullYear());
 
   const [calendarRequests, setCalendarRequests] =
     useState<CalendarRequests>({
@@ -412,17 +505,6 @@ export default function AdminRequestsApprovals() {
     useState<DecisionAction>("APPROVE");
 
   const [decisionNote, setDecisionNote] = useState("");
-
-  // --------------------------------------------------
-  // INITIALIZE CURRENT CALENDAR MONTH
-  // --------------------------------------------------
-
-  useEffect(() => {
-    const now = new Date();
-
-    setCurrentMonth(now.getMonth());
-    setCurrentYear(now.getFullYear());
-  }, []);
 
   // --------------------------------------------------
   // FETCH REQUESTS
@@ -762,6 +844,25 @@ export default function AdminRequestsApprovals() {
 
   const visibleEventCount = visibleCalendarEvents.length;
 
+  // display-only: counts for the header chips and today highlight
+  const calendarCounts = {
+    leave: visibleCalendarEvents.filter(
+      (event) => event.type === "annual" || event.type === "sick"
+    ).length,
+    permission: visibleCalendarEvents.filter(
+      (event) => event.type === "permission"
+    ).length,
+    regularization: visibleCalendarEvents.filter(
+      (event) => event.type === "regularization"
+    ).length,
+  };
+
+  const now = new Date();
+
+  const todayKey = `${now.getFullYear()}-${String(
+    now.getMonth() + 1
+  ).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+
   // --------------------------------------------------
   // OPEN DECISION MODAL
   // --------------------------------------------------
@@ -843,116 +944,154 @@ export default function AdminRequestsApprovals() {
   };
 
   // --------------------------------------------------
+  // DISPLAY-ONLY DATA FOR THE NEW DESIGN
+  // (uses the same totals from your API/store)
+  // --------------------------------------------------
+
+  const metricCards = [
+    {
+      key: "leave",
+      label: "Leave Requests",
+      value: totalLeaveRequests,
+      note: "Live count from leave API",
+      color: SKY_LIGHT,
+      text: INK,
+      muted: "text-black/40",
+      Icon: CalendarIcon,
+    },
+    {
+      key: "permission",
+      label: "Permission Requests",
+      value: totalPermissionRequests,
+      note: "Live count from permission API",
+      color: SKY,
+      text: INK,
+      muted: "text-black/40",
+      Icon: Clock,
+    },
+    {
+      key: "regularization",
+      label: "Regularization Requests",
+      value: totalRegularizationRequests,
+      note: "Live count from regularization API",
+      color: BLUE,
+      text: "#ffffff",
+      muted: "text-white/60",
+      Icon: CheckCircle2,
+    },
+  ];
+
+  const tabs: {
+    key: RequestStream;
+    label: string;
+    count: number;
+  }[] = [
+    { key: "leaves", label: "Leave Requests", count: totalLeaveRequests },
+    {
+      key: "permissions",
+      label: "Permission Requests",
+      count: totalPermissionRequests,
+    },
+    {
+      key: "regularizations",
+      label: "Regularization Requests",
+      count: totalRegularizationRequests,
+    },
+  ];
+
+  const requestsTotal =
+    totalLeaveRequests +
+    totalPermissionRequests +
+    totalRegularizationRequests;
+
+  // --------------------------------------------------
   // RENDER
   // --------------------------------------------------
 
   return (
-    <div className="min-h-screen w-full bg-[#f0f6fa] flex font-sans text-slate-800">
+    <div className="min-h-screen w-full bg-white font-sans antialiased text-slate-800 flex flex-col">
 
-      <Sidebar />
+      <main className="flex-1 rounded-t-[40px] bg-[#f0f6fa]">
 
-      <main className="flex-1 min-w-0 min-h-screen xl:h-screen xl:overflow-y-auto p-4 md:p-6 xl:p-8">
+        <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-5 py-8 lg:px-10 lg:py-10">
 
-        <div className="w-full mx-auto flex flex-col gap-6">
+          {/* =========================================
+              PAGE TITLE
+          ========================================= */}
+
+          <div>
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight">
+              Requests &amp; <span className="text-[#3b82f6]">Approvals</span>
+            </h1>
+
+            <p className="text-base text-slate-500 mt-2">
+              Review leave, permission and regularization requests.
+            </p>
+          </div>
 
           {/* =========================================
               1. TOP METRIC CARDS
           ========================================= */}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
 
-            {/* LEAVE */}
+            {metricCards.map((card) => {
+              const share =
+                requestsTotal > 0
+                  ? Math.round((card.value / requestsTotal) * 100)
+                  : 0;
 
-            <div className="bg-white rounded-2xl p-6 border border-[#d6e5fb] shadow-sm hover:shadow-md transition-all">
+              return (
+                <div
+                  key={card.key}
+                  className="flex min-h-[200px] flex-col justify-between rounded-[32px] border border-[#e6edf4] bg-white p-7 shadow-sm"
+                  style={{ backgroundColor: card.color, color: card.text }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-[15px] font-bold leading-tight">
+                      {card.label}
+                    </p>
 
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h3 className="text-xl font-bold text-slate-900">
-                    Leave Requests
-                  </h3>
-
-                  <div className="mt-3 flex items-baseline gap-3">
-                    <span className="text-[44px] leading-none font-extrabold text-[#0284c7]">
-                      {totalLeaveRequests}
-                    </span>
-
-                    <span className="text-base font-medium text-slate-500">
-                      Matching Requests
-                    </span>
-                  </div>
-                </div>
-
-                <div className="w-14 h-14 shrink-0 rounded-2xl bg-[#eaf2fd] border border-[#d3e7fa] flex items-center justify-center text-[#0284c7]">
-                  <CalendarIcon className="w-7 h-7" />
-                </div>
-              </div>
-
-              <div className="mt-5 pt-4 border-t border-slate-100 text-base font-medium text-slate-500">
-                Live count from leave API
-              </div>
-            </div>
-
-            {/* PERMISSION */}
-
-            <div className="bg-white rounded-2xl p-6 border border-[#d6e5fb] shadow-sm hover:shadow-md transition-all">
-
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h3 className="text-xl font-bold text-slate-900">
-                    Permission Requests
-                  </h3>
-
-                  <div className="mt-3 flex items-baseline gap-3">
-                    <span className="text-[44px] leading-none font-extrabold text-[#0284c7]">
-                      {totalPermissionRequests}
-                    </span>
-
-                    <span className="text-base font-medium text-slate-500">
-                      Matching Requests
+                    <span
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/70 text-slate-600 ring-4 ring-white/60"
+                    >
+                      <card.Icon className="h-5 w-5" />
                     </span>
                   </div>
-                </div>
 
-                <div className="w-14 h-14 shrink-0 rounded-2xl bg-[#eaf2fd] border border-[#d3e7fa] flex items-center justify-center text-[#0284c7]">
-                  <Clock className="w-7 h-7" />
-                </div>
-              </div>
-
-              <div className="mt-5 pt-4 border-t border-slate-100 text-base font-medium text-slate-500">
-                Live count from permission API
-              </div>
-            </div>
-
-            {/* REGULARIZATION */}
-
-            <div className="bg-white rounded-2xl p-6 border border-[#d6e5fb] shadow-sm hover:shadow-md transition-all">
-
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h3 className="text-xl font-bold text-slate-900">
-                    Regularization Requests
-                  </h3>
-
-                  <div className="mt-3 flex items-baseline gap-3">
-                    <span className="text-[44px] leading-none font-extrabold text-[#0284c7]">
-                      {totalRegularizationRequests}
+                  <div>
+                    <span
+                      className="flex h-16 w-16 items-center justify-center rounded-full text-2xl font-black"
+                      style={{
+                        backgroundColor: card.color,
+                        color: card.text,
+                      }}
+                    >
+                      {card.value}
                     </span>
 
-                    <span className="text-base font-medium text-slate-500">
+                    <p className={`mt-2 text-xs font-semibold ${card.muted}`}>
                       Matching Requests
-                    </span>
+                    </p>
+
+                    <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-white/50">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${share}%`,
+                          backgroundColor: card.text === "#ffffff" ? "#ffffff" : INK,
+                        }}
+                      />
+                    </div>
+
+                    <div className={`mt-2 flex items-center justify-between text-[11px] font-medium ${card.muted}`}>
+                      <span>{card.note}</span>
+                      <span className="font-bold">{share}%</span>
+                    </div>
                   </div>
                 </div>
-
-                <div className="w-14 h-14 shrink-0 rounded-2xl bg-[#eaf2fd] border border-[#d3e7fa] flex items-center justify-center text-[#0284c7]">
-                  <CheckCircle2 className="w-7 h-7" />
-                </div>
-              </div>
-
-              <div className="mt-5 pt-4 border-t border-slate-100 text-base font-medium text-slate-500">
-                Live count from regularization API
-              </div>
-            </div>
+              );
+            })}
 
           </div>
 
@@ -964,52 +1103,31 @@ export default function AdminRequestsApprovals() {
 
             {/* REQUEST TABS */}
 
-            <div className="flex items-center gap-6 border-b xl:border-none border-slate-200 overflow-x-auto pb-2 xl:pb-0">
+            <div className="flex items-center gap-2.5 overflow-x-auto pb-1 xl:pb-0">
 
-              <button
-                onClick={() => setActiveTab("leaves")}
-                className={`whitespace-nowrap flex items-center gap-2.5 pb-3 text-base font-bold transition-all border-b-[3px] ${
-                  activeTab === "leaves"
-                    ? "text-[#0284c7] border-[#0284c7]"
-                    : "text-slate-500 border-transparent hover:text-slate-800"
-                }`}
-              >
-                Leave Requests
+              {tabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`whitespace-nowrap flex items-center gap-2.5 px-5 py-2.5 rounded-full border text-sm font-bold transition-all ${
+                    activeTab === tab.key
+                      ? "border-[#1b64da] bg-[#1b64da] text-white shadow-sm"
+                      : "border-[#e6edf4] bg-white text-slate-600 hover:bg-[#f5faff]"
+                  }`}
+                >
+                  {tab.label}
 
-                <span className="px-2.5 py-1 text-[13px] font-bold rounded-full bg-[#0284c7] text-white">
-                  {totalLeaveRequests}
-                </span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab("permissions")}
-                className={`whitespace-nowrap flex items-center gap-2.5 pb-3 text-base font-bold transition-all border-b-[3px] ${
-                  activeTab === "permissions"
-                    ? "text-[#0284c7] border-[#0284c7]"
-                    : "text-slate-500 border-transparent hover:text-slate-800"
-                }`}
-              >
-                Permission Requests
-
-                <span className="px-2.5 py-1 text-[13px] font-bold rounded-full bg-slate-100 text-slate-600">
-                  {totalPermissionRequests}
-                </span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab("regularizations")}
-                className={`whitespace-nowrap flex items-center gap-2.5 pb-3 text-base font-bold transition-all border-b-[3px] ${
-                  activeTab === "regularizations"
-                    ? "text-[#0284c7] border-[#0284c7]"
-                    : "text-slate-500 border-transparent hover:text-slate-800"
-                }`}
-              >
-                Regularization Requests
-
-                <span className="px-2.5 py-1 text-[13px] font-bold rounded-full bg-slate-100 text-slate-600">
-                  {totalRegularizationRequests}
-                </span>
-              </button>
+                  <span
+                    className={`px-2 py-0.5 text-xs font-bold rounded-full ${
+                      activeTab === tab.key
+                        ? "bg-white/25 text-white"
+                        : "bg-[#eef4fa] text-slate-600"
+                    }`}
+                  >
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
 
             </div>
 
@@ -1017,7 +1135,7 @@ export default function AdminRequestsApprovals() {
 
             <div className="flex flex-wrap items-center gap-3">
 
-              <div className="flex items-center bg-white rounded-xl p-1.5 border border-[#d6e5fb] shadow-sm">
+              <div className="flex items-center bg-white rounded-full p-1.5 border border-[#e6edf4] shadow-sm">
 
                 {(
                   ["pending", "approved", "rejected"] as StatusFilter[]
@@ -1025,9 +1143,9 @@ export default function AdminRequestsApprovals() {
                   <button
                     key={status}
                     onClick={() => setStatusFilter(status)}
-                    className={`px-4 py-2.5 rounded-lg text-[15px] font-bold capitalize transition-all ${
+                    className={`px-5 py-2 rounded-full text-sm font-bold capitalize transition-all ${
                       statusFilter === status
-                        ? "bg-[#0284c7] text-white shadow-sm"
+                        ? "bg-[#1b64da] text-white shadow-sm"
                         : "text-slate-600 hover:text-slate-900"
                     }`}
                   >
@@ -1037,8 +1155,8 @@ export default function AdminRequestsApprovals() {
 
               </div>
 
-              <div className="flex items-center gap-2.5 px-4 py-3 bg-white border border-[#d6e5fb] rounded-xl text-base font-semibold text-slate-500 shadow-sm">
-                <Filter className="w-5 h-5 text-slate-500" />
+              <div className="flex items-center gap-2.5 px-5 py-3 bg-white border border-[#e6edf4] rounded-full text-sm font-semibold text-slate-500 shadow-sm">
+                <Filter className="w-4 h-4 text-slate-500" />
                 All Departments
               </div>
 
@@ -1051,29 +1169,29 @@ export default function AdminRequestsApprovals() {
           ========================================= */}
 
           {decisionSuccess && (
-            <div className="flex items-center gap-2 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700">
+            <div className="flex items-center gap-2 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-700">
               <CheckCircle2 className="w-5 h-5 shrink-0" />
               {decisionSuccess}
             </div>
           )}
 
           {error && (
-            <div className="flex items-center gap-2 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700">
+            <div className="flex items-center gap-2 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700">
               <AlertCircle className="w-5 h-5 shrink-0" />
               {error}
             </div>
           )}
 
           {loading ? (
-            <div className="bg-white rounded-2xl border border-[#d6e5fb] p-12 flex flex-col items-center justify-center gap-3">
-              <Loader2 className="w-8 h-8 text-[#0284c7] animate-spin" />
+            <div className="bg-white rounded-[32px] border border-[#e6edf4] shadow-sm p-12 flex flex-col items-center justify-center gap-3">
+              <Loader2 className="w-8 h-8 text-[#1b64da] animate-spin" />
               <p className="text-slate-500 font-medium">
                 Loading {activeTab} requests...
               </p>
             </div>
           ) : requests.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-[#d6e5fb] p-12 text-center">
-              <div className="w-14 h-14 mx-auto rounded-2xl bg-[#eaf2fd] flex items-center justify-center text-[#0284c7]">
+            <div className="bg-white rounded-[32px] border border-[#e6edf4] shadow-sm p-12 text-center">
+              <div className="w-14 h-14 mx-auto rounded-2xl bg-[#eaf4fc] flex items-center justify-center text-[#1b64da]">
                 <CheckCircle2 className="w-7 h-7" />
               </div>
 
@@ -1088,160 +1206,183 @@ export default function AdminRequestsApprovals() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
 
-              {requests.map((req) => (
-                <div
-                  key={`${req.requestType}-${req.id}`}
-                  className="bg-white rounded-2xl p-6 border border-[#d6e5fb] shadow-sm flex flex-col justify-between hover:border-[#7BBDE8] hover:shadow-md transition-all min-w-0"
-                >
+              {requests.map((req, index) => {
+                const ts = TYPE_STYLES[req.type];
 
-                  <div>
+                return (
+                  <div
+                    key={`${req.requestType}-${req.id}`}
+                    className="bg-white rounded-[32px] p-6 border border-[#e6edf4] shadow-sm flex flex-col justify-between hover:border-[#7BBDE8] hover:shadow-md transition-all min-w-0"
+                  >
 
-                    {/* EMPLOYEE DETAILS */}
+                    <div>
 
-                    <div className="flex items-start justify-between gap-3">
+                      {/* EMPLOYEE DETAILS */}
 
-                      <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="flex items-start justify-between gap-3">
 
-                        <div className="w-14 h-14 shrink-0 rounded-full bg-[#eaf2fd] border border-[#d3e5fa] text-[#0284c7] font-bold flex items-center justify-center text-lg">
-                          {req.initials}
-                        </div>
+                        <div className="flex items-center gap-3.5 min-w-0">
 
-                        <div className="min-w-0">
-
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h4 className="text-lg font-bold text-slate-900">
-                              {req.name}
-                            </h4>
-
-                            <span className="text-[13px] text-slate-400 font-semibold">
-                              {req.empId}
-                            </span>
+                          <div
+                            className={`w-14 h-14 shrink-0 rounded-2xl bg-gradient-to-br ${
+                              AVATAR_GRADIENTS[index % AVATAR_GRADIENTS.length]
+                            } text-white font-black flex items-center justify-center text-lg shadow-sm`}
+                          >
+                            {req.initials}
                           </div>
 
-                          <p className="text-[15px] text-slate-500 mt-1.5 truncate">
-                            {req.role}
-                          </p>
+                          <div className="min-w-0">
+
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h4 className="text-lg font-bold text-slate-900">
+                                {req.name}
+                              </h4>
+
+                              <span className="text-xs font-bold text-blue-700 bg-[#dbe5ff] px-2.5 py-0.5 rounded-full">
+                                {req.empId}
+                              </span>
+                            </div>
+
+                            <p className="text-[15px] text-slate-500 mt-1.5 truncate">
+                              {req.role}
+                            </p>
+
+                          </div>
+
+                        </div>
+
+                        <span
+                          className={`shrink-0 inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[13px] font-bold ${ts.chip}`}
+                        >
+                          <span className={`w-2 h-2 rounded-full ${ts.dot}`} />
+                          {req.type}
+                        </span>
+
+                      </div>
+
+                      {/* REQUEST INFORMATION (tinted panel + size bubble) */}
+
+                      <div
+                        className="mt-5 rounded-3xl p-4"
+                        style={{ backgroundColor: ts.panel }}
+                      >
+
+                        <div className="flex items-center justify-between gap-3">
+
+                          <div className="min-w-0">
+
+                            <span className="text-[12px] text-slate-500 block uppercase font-bold tracking-wider">
+                              Request Type
+                            </span>
+
+                            <span className="font-extrabold text-slate-900 text-base mt-1.5 block leading-snug">
+                              {req.subType}
+                            </span>
+
+                            <span className="mt-2 inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-[12px] font-bold text-slate-700">
+                              <span className={`w-2 h-2 rounded-full ${ts.dot}`} />
+                              {req.status === "PENDING"
+                                ? "Pending Admin Approval"
+                                : req.status}
+                            </span>
+
+                          </div>
+
+                          <MetricBubble
+                            metric={req.metric}
+                            unit={req.metricUnit}
+                            color={ts.bubble}
+                            text={ts.bubbleText}
+                          />
+
+                        </div>
+
+                        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-white/80 pt-3">
+
+                          <span className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                            <CalendarIcon className="w-4 h-4 text-slate-500" />
+                            {req.dateRange}
+                          </span>
+
+                          <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-bold text-slate-600">
+                            {req.quotaInfo}
+                          </span>
 
                         </div>
 
                       </div>
 
-                      <span className="shrink-0 px-3 py-1.5 rounded-full text-[13px] font-bold bg-[#eaf2fd] text-[#0284c7] border border-[#d6e5fb]">
-                        {req.type}
-                      </span>
+                      {/* REASON */}
 
-                    </div>
+                      <div className="mt-4">
 
-                    {/* REQUEST INFORMATION */}
-
-                    <div className="mt-5 grid grid-cols-2 gap-4 py-4 px-4 bg-[#f8fbff] rounded-xl border border-[#e2edfa]">
-
-                      <div className="min-w-0">
-
-                        <span className="text-[13px] text-slate-400 block uppercase font-bold tracking-wider">
-                          Request Type
+                        <span className="text-[13px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
+                          Reason / Justification
                         </span>
 
-                        <span className="font-bold text-slate-800 text-base mt-2 block leading-snug">
-                          {req.subType}
-                        </span>
-
-                        <span className="text-[13px] text-[#0284c7] font-semibold mt-2 block">
-                          {req.status === "PENDING"
-                            ? "● Pending Admin Approval"
-                            : req.status}
-                        </span>
+                        <p className="border-l-4 border-[#7BBDE8] pl-4 text-[15px] md:text-base text-slate-600 italic leading-relaxed">
+                          &ldquo;{req.reason}&rdquo;
+                        </p>
 
                       </div>
 
-                      <div className="text-right min-w-0">
+                      {/* APPLIED TIME */}
 
-                        <span className="text-[13px] text-slate-400 block uppercase font-bold tracking-wider">
-                          Date / Details
-                        </span>
-
-                        <span className="font-semibold text-slate-700 text-base mt-2 block leading-snug">
-                          {req.dateRange}
-                        </span>
-
-                        <span className="text-[13px] text-slate-500 mt-2 block">
-                          {req.quotaInfo}
-                        </span>
-
-                      </div>
-
-                    </div>
-
-                    {/* REASON */}
-
-                    <div className="mt-4">
-
-                      <span className="text-[13px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
-                        Reason / Justification
-                      </span>
-
-                      <p className="text-[15px] md:text-base text-slate-600 italic bg-white p-4 rounded-xl border border-slate-100 leading-relaxed">
-                        &ldquo;{req.reason}&rdquo;
+                      <p className="mt-3 text-[13px] font-medium text-slate-400">
+                        {req.appliedTime}
                       </p>
 
                     </div>
 
-                    {/* APPLIED TIME */}
+                    {/* ACTION BUTTONS */}
 
-                    <p className="mt-3 text-[13px] font-medium text-slate-400">
-                      {req.appliedTime}
-                    </p>
+                    <div className="mt-5 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
 
-                  </div>
+                      <div className="flex items-center gap-2 text-[13px] font-semibold">
+                        <span
+                          className={`px-3 py-1.5 rounded-full border ${getStatusStyle(
+                            req.status
+                          )}`}
+                        >
+                          {req.status}
+                        </span>
+                      </div>
 
-                  {/* ACTION BUTTONS */}
+                      {req.status === "PENDING" && (
+                        <div className="flex items-center gap-2">
 
-                  <div className="mt-5 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                          <button
+                            onClick={() =>
+                              openDecisionModal(req, "REJECT")
+                            }
+                            disabled={deciding}
+                            className="flex items-center gap-2 px-4 py-2.5 text-[15px] font-bold text-rose-600 hover:bg-rose-50 rounded-full transition-colors border border-rose-200 disabled:opacity-50"
+                          >
+                            <X className="w-4 h-4" />
+                            Reject
+                          </button>
 
-                    <div className="flex items-center gap-2 text-[13px] font-semibold">
-                      <span
-                        className={`px-3 py-1.5 rounded-full border ${getStatusStyle(
-                          req.status
-                        )}`}
-                      >
-                        {req.status}
-                      </span>
+                          <button
+                            onClick={() =>
+                              openDecisionModal(req, "APPROVE")
+                            }
+                            disabled={deciding}
+                            className="flex items-center gap-2 px-5 py-2.5 text-[15px] font-bold text-white bg-[#1b64da] hover:bg-[#1552b5] rounded-full transition-colors shadow-sm disabled:opacity-50"
+                          >
+                            <Check className="w-4 h-4" />
+                            {req.type === "Regularization"
+                              ? "Reconcile"
+                              : "Approve"}
+                          </button>
+
+                        </div>
+                      )}
+
                     </div>
 
-                    {req.status === "PENDING" && (
-                      <div className="flex items-center gap-2">
-
-                        <button
-                          onClick={() =>
-                            openDecisionModal(req, "REJECT")
-                          }
-                          disabled={deciding}
-                          className="flex items-center gap-2 px-4 py-2.5 text-[15px] font-bold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors border border-rose-200 disabled:opacity-50"
-                        >
-                          <X className="w-4 h-4" />
-                          Reject
-                        </button>
-
-                        <button
-                          onClick={() =>
-                            openDecisionModal(req, "APPROVE")
-                          }
-                          disabled={deciding}
-                          className="flex items-center gap-2 px-4 py-2.5 text-[15px] font-bold text-white bg-[#0284c7] hover:bg-[#0369a1] rounded-xl transition-colors shadow-sm disabled:opacity-50"
-                        >
-                          <Check className="w-4 h-4" />
-                          {req.type === "Regularization"
-                            ? "Reconcile"
-                            : "Approve"}
-                        </button>
-
-                      </div>
-                    )}
-
                   </div>
-
-                </div>
-              ))}
+                );
+              })}
 
             </div>
           )}
@@ -1250,14 +1391,14 @@ export default function AdminRequestsApprovals() {
               4. TEAM ABSENCE & LEAVE CALENDAR
           ========================================= */}
 
-          <div className="bg-white rounded-2xl border border-[#d6e5fb] shadow-sm overflow-hidden flex flex-col shrink-0">
+          <div className="bg-white rounded-[32px] border border-[#e6edf4] shadow-sm overflow-hidden flex flex-col shrink-0">
 
             {/* CALENDAR HEADER */}
 
-            <div className="bg-gradient-to-r from-[#eaf2fd] via-[#f0f6fa] to-[#eaf2fd] border-b border-[#d3e7fa] px-5 md:px-6 py-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="bg-white border-b border-[#e8eef5] px-5 md:px-8 py-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
 
               <div>
-                <h2 className="text-2xl font-bold text-slate-900">
+                <h2 className="text-2xl font-extrabold text-slate-900">
                   Team Absence &amp; Leave Calendar
                 </h2>
 
@@ -1265,13 +1406,32 @@ export default function AdminRequestsApprovals() {
                   Company-wide planned leave, permission hours &amp;
                   regularizations
                 </p>
+
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {[
+                    { label: "Leave", value: calendarCounts.leave, dot: "bg-blue-600", chip: "bg-[#dbe7ff] text-blue-800" },
+                    { label: "Permission", value: calendarCounts.permission, dot: "bg-[#7BBDE8]", chip: "bg-[#d3ebfa] text-sky-800" },
+                    { label: "Regularization", value: calendarCounts.regularization, dot: "bg-amber-500", chip: "bg-amber-100 text-amber-800" },
+                  ].map((chip) => (
+                    <span
+                      key={chip.label}
+                      className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold ${chip.chip}`}
+                    >
+                      <span className={`h-2 w-2 rounded-full ${chip.dot}`} />
+                      {chip.label}
+                      <span className="rounded-full bg-white/80 px-2 py-0.5 text-[11px]">
+                        {chip.value}
+                      </span>
+                    </span>
+                  ))}
+                </div>
               </div>
 
               <div className="flex flex-wrap items-center justify-between lg:justify-end gap-3">
 
                 {/* CALENDAR STREAM FILTER */}
 
-                <div className="flex items-center bg-white border border-[#d3e7fa] rounded-xl p-1.5 text-[15px] shadow-sm overflow-x-auto">
+                <div className="flex items-center bg-white border border-[#e6edf4] rounded-full p-1.5 text-sm shadow-sm overflow-x-auto">
 
                   {(
                     [
@@ -1285,9 +1445,9 @@ export default function AdminRequestsApprovals() {
                       key={tab}
                       type="button"
                       onClick={() => setCalendarStream(tab)}
-                      className={`px-4 py-2.5 rounded-lg capitalize font-semibold whitespace-nowrap transition-colors ${
+                      className={`px-4 py-2 rounded-full capitalize font-semibold whitespace-nowrap transition-colors ${
                         calendarStream === tab
-                          ? "bg-[#0284c7] text-white font-bold shadow-sm"
+                          ? "bg-[#1b64da] text-white font-bold shadow-sm"
                           : "text-slate-600 hover:text-slate-900"
                       }`}
                     >
@@ -1303,12 +1463,12 @@ export default function AdminRequestsApprovals() {
 
                 {/* MONTH NAVIGATION */}
 
-                <div className="flex items-center gap-4 bg-white border border-[#d3e7fa] px-4 py-3 rounded-xl text-base font-bold text-slate-800 shadow-sm">
+                <div className="flex items-center gap-3 bg-white border border-[#e6edf4] px-3 py-2 rounded-full text-sm font-bold text-slate-800 shadow-sm">
 
                   <button
                     type="button"
                     onClick={() => changeMonth(-1)}
-                    className="p-1 hover:text-[#0284c7] text-slate-500"
+                    className="p-1.5 rounded-full hover:bg-[#eef4fa] hover:text-[#1b64da] text-slate-500"
                     aria-label="Previous month"
                   >
                     <ChevronLeft className="w-5 h-5" />
@@ -1321,7 +1481,7 @@ export default function AdminRequestsApprovals() {
                   <button
                     type="button"
                     onClick={() => changeMonth(1)}
-                    className="p-1 hover:text-[#0284c7] text-slate-500"
+                    className="p-1.5 rounded-full hover:bg-[#eef4fa] hover:text-[#1b64da] text-slate-500"
                     aria-label="Next month"
                   >
                     <ChevronRight className="w-5 h-5" />
@@ -1342,118 +1502,143 @@ export default function AdminRequestsApprovals() {
               </div>
             )}
 
-            {/* WEEKDAY HEADER */}
+            {/* WEEKDAYS + DAY TILES */}
 
-            <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50 text-center py-3.5 text-base font-bold text-slate-500 uppercase tracking-wider">
+            <div className="bg-white px-4 pb-5 pt-4 md:px-6">
 
-              {[
-                "Mon",
-                "Tue",
-                "Wed",
-                "Thu",
-                "Fri",
-                "Sat",
-                "Sun",
-              ].map((day) => (
-                <div key={day}>
-                  {day}
-                </div>
-              ))}
+              <div className="grid grid-cols-7 gap-2 pb-2">
 
-            </div>
-
-            {/* CALENDAR GRID */}
-
-            <div
-              className="grid grid-cols-7"
-              style={{
-                gridTemplateRows: `repeat(${calendarWeeks}, minmax(85px, 1fr))`,
-              }}
-            >
-
-              {calendarDays.map((day, idx) => {
-                const isWeekend =
-                  idx % 7 === 5 || idx % 7 === 6;
-
-                const events = day
-                  ? filteredCalendarEvents(day)
-                  : [];
-
-                return (
+                {[
+                  "Mon",
+                  "Tue",
+                  "Wed",
+                  "Thu",
+                  "Fri",
+                  "Sat",
+                  "Sun",
+                ].map((day) => (
                   <div
-                    key={`${currentYear}-${currentMonth}-${idx}`}
-                    className={`min-h-[85px] md:min-h-[95px] p-2 md:p-3 border-r border-b border-slate-100 flex flex-col ${
-                      isWeekend
-                        ? "bg-slate-50/60"
-                        : "bg-white"
-                    }`}
+                    key={day}
+                    className="rounded-full bg-[#eef4fa] py-2 text-center text-xs font-bold uppercase tracking-wider text-slate-500"
                   >
-
-                    {/* DATE */}
-
-                    <div className="flex items-center justify-between text-base font-bold text-slate-400 shrink-0">
-
-                      <span
-                        className={
-                          day
-                            ? "text-slate-800"
-                            : "text-transparent"
-                        }
-                      >
-                        {day
-                          ? String(day).padStart(2, "0")
-                          : "00"}
-                      </span>
-
-                      {isWeekend && day && (
-                        <span className="hidden xl:block text-[13px] text-slate-400 font-medium">
-                          Weekend
-                        </span>
-                      )}
-
-                    </div>
-
-                    {/* EVENTS */}
-
-                    <div className="space-y-1.5 mt-2">
-
-                      {events.map((event, eventIndex) => (
-                        <div
-                          key={`${event.date}-${eventIndex}`}
-                          title={`${event.title} · ${event.person} · ${event.status}`}
-                          className={`px-2 py-1.5 rounded-md border text-xs md:text-sm font-semibold truncate ${getEventColor(
-                            event.type
-                          )}`}
-                        >
-                          {event.title}
-
-                          <span className="hidden xl:inline">
-                            {" · "}
-                            {event.person}
-                          </span>
-                        </div>
-                      ))}
-
-                    </div>
-
+                    {day}
                   </div>
-                );
-              })}
+                ))}
+
+              </div>
+
+              <div
+                className="grid grid-cols-7 gap-2"
+                style={{
+                  gridTemplateRows: `repeat(${calendarWeeks}, minmax(100px, 1fr))`,
+                }}
+              >
+
+                {calendarDays.map((day, idx) => {
+                  if (!day) {
+                    return <div key={`${currentYear}-${currentMonth}-${idx}`} />;
+                  }
+
+                  const isWeekend =
+                    idx % 7 === 5 || idx % 7 === 6;
+
+                  const events = filteredCalendarEvents(day);
+
+                  const dateKey = `${currentYear}-${String(
+                    currentMonth + 1
+                  ).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+                  const isToday = dateKey === todayKey;
+
+                  return (
+                    <div
+                      key={`${currentYear}-${currentMonth}-${idx}`}
+                      className={`relative flex min-h-[100px] md:min-h-[116px] flex-col rounded-2xl border p-2.5 transition-colors ${
+                        events.length > 0
+                          ? "border-[#cfe3f5] bg-[#f3f9fe]"
+                          : isWeekend
+                          ? "border-transparent bg-[#f5faff]"
+                          : "border-[#eef2f7] bg-white"
+                      } ${isToday ? "ring-2 ring-[#1b64da] ring-offset-1" : ""}`}
+                    >
+
+                      {/* DATE */}
+
+                      <div className="flex items-center justify-between shrink-0">
+
+                        <span
+                          className={`flex h-7 min-w-7 items-center justify-center rounded-full px-1 text-sm font-black ${
+                            isToday
+                              ? "bg-[#1b64da] text-white"
+                              : "text-slate-800"
+                          }`}
+                        >
+                          {String(day).padStart(2, "0")}
+                        </span>
+
+                        {events.length > 0 ? (
+                          <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-[#7BBDE8] px-1.5 text-[11px] font-extrabold text-slate-900">
+                            {events.length}
+                          </span>
+                        ) : (
+                          isWeekend && (
+                            <span className="hidden xl:block text-[11px] font-medium text-slate-400">
+                              Weekend
+                            </span>
+                          )
+                        )}
+
+                      </div>
+
+                      {/* EVENTS */}
+
+                      <div className="mt-2 space-y-1.5">
+
+                        {events.slice(0, 2).map((event, eventIndex) => (
+                          <div
+                            key={`${event.date}-${eventIndex}`}
+                            title={`${event.title} · ${event.person} · ${event.status}`}
+                            className={`px-2 py-1 rounded-lg border text-[11px] md:text-xs font-semibold truncate ${getEventColor(
+                              event.type
+                            )}`}
+                          >
+                            {event.title}
+
+                            <span className="hidden xl:inline">
+                              {" · "}
+                              {event.person}
+                            </span>
+                          </div>
+                        ))}
+
+                        {events.length > 2 && (
+                          <div className="px-2 text-[11px] font-bold text-[#1b64da]">
+                            +{events.length - 2} more
+                          </div>
+                        )}
+
+                      </div>
+
+                    </div>
+                  );
+                })}
+
+              </div>
 
             </div>
 
             {/* CALENDAR LEGEND */}
 
-            <div className="px-5 md:px-6 py-4 bg-slate-50/60 border-t border-slate-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+            <div className="px-5 md:px-8 py-4 bg-white border-t border-[#e8eef5] flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
 
               <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
 
                 {/* LEAVE */}
 
                 <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-violet-500" />
+                  <span className="w-3 h-3 rounded-full bg-blue-600" />
 
-                  <span className="text-base font-medium text-slate-700">
+                  <span className="text-sm font-medium text-slate-700">
                     Leave
                   </span>
                 </div>
@@ -1461,9 +1646,9 @@ export default function AdminRequestsApprovals() {
                 {/* PERMISSION */}
 
                 <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-sky-500" />
+                  <span className="w-3 h-3 rounded-full bg-[#7BBDE8]" />
 
-                  <span className="text-base font-medium text-slate-700">
+                  <span className="text-sm font-medium text-slate-700">
                     Permission Hours
                   </span>
                 </div>
@@ -1473,7 +1658,7 @@ export default function AdminRequestsApprovals() {
                 <div className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full bg-amber-500" />
 
-                  <span className="text-base font-medium text-slate-700">
+                  <span className="text-sm font-medium text-slate-700">
                     Regularization
                   </span>
                 </div>
@@ -1482,7 +1667,7 @@ export default function AdminRequestsApprovals() {
 
               {/* EVENT COUNT */}
 
-              <div className="text-base font-medium text-slate-500">
+              <div className="text-sm font-medium text-slate-500">
                 {calendarLoading
                   ? "Loading team events..."
                   : `Showing ${visibleEventCount} team events`}
@@ -1503,7 +1688,7 @@ export default function AdminRequestsApprovals() {
       {selectedRequest && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
 
-          <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden">
+          <div className="w-full max-w-lg bg-white rounded-[28px] shadow-2xl overflow-hidden">
 
             {/* MODAL HEADER */}
 
@@ -1526,7 +1711,7 @@ export default function AdminRequestsApprovals() {
               <button
                 onClick={closeDecisionModal}
                 disabled={deciding}
-                className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 disabled:opacity-50"
+                className="p-2 rounded-full hover:bg-slate-100 text-slate-500 disabled:opacity-50"
                 aria-label="Close modal"
               >
                 <X className="w-5 h-5" />
@@ -1538,7 +1723,7 @@ export default function AdminRequestsApprovals() {
 
             <div className="p-6">
 
-              <div className="p-4 rounded-xl bg-[#f8fbff] border border-[#e2edfa]">
+              <div className="p-4 rounded-2xl border border-slate-100 bg-white">
 
                 <p className="text-sm text-slate-500">
                   Employee
@@ -1570,7 +1755,7 @@ export default function AdminRequestsApprovals() {
                     ? "Enter the reason for approving this request..."
                     : "Enter the reason for rejecting this request..."
                 }
-                className="w-full mt-2 p-4 border border-slate-200 rounded-xl text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0284c7] focus:border-transparent resize-none"
+                className="w-full mt-2 p-4 border border-slate-200 rounded-2xl text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#7BBDE8] focus:border-transparent resize-none"
               />
 
               <div className="flex items-center justify-between mt-2">
@@ -1586,7 +1771,7 @@ export default function AdminRequestsApprovals() {
               </div>
 
               {decisionError && (
-                <div className="mt-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-sm text-rose-700">
+                <div className="mt-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-sm text-rose-700">
                   {decisionError}
                 </div>
               )}
@@ -1595,12 +1780,12 @@ export default function AdminRequestsApprovals() {
 
             {/* MODAL FOOTER */}
 
-            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
+            <div className="px-6 py-4 bg-white border-t border-slate-100 flex items-center justify-end gap-3">
 
               <button
                 onClick={closeDecisionModal}
                 disabled={deciding}
-                className="px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 font-semibold hover:bg-slate-100 disabled:opacity-50"
+                className="px-5 py-2.5 rounded-full border border-slate-200 bg-white text-slate-600 font-semibold hover:bg-slate-100 disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -1608,9 +1793,9 @@ export default function AdminRequestsApprovals() {
               <button
                 onClick={handleDecision}
                 disabled={deciding || !decisionNote.trim()}
-                className={`px-5 py-2.5 rounded-xl text-white font-bold flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                className={`px-5 py-2.5 rounded-full text-white font-bold flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
                   decisionAction === "APPROVE"
-                    ? "bg-[#0284c7] hover:bg-[#0369a1]"
+                    ? "bg-[#1b64da] hover:bg-[#1552b5]"
                     : "bg-rose-600 hover:bg-rose-700"
                 }`}
               >

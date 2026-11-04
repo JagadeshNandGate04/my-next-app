@@ -2,8 +2,8 @@
 
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
-import Header from "./Header";
 import Footer from "./Footer";
+import TopNavBar from "./TopNavBar";
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -11,7 +11,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <>
-      {!isLoginPage && <Header />}
+      {!isLoginPage && <TopNavBar />}
 
       <div className="flex-1 min-w-0">{children}</div>
 

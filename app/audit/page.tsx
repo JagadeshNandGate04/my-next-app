@@ -32,8 +32,6 @@ import {
 
 import { useDispatch, useSelector } from "react-redux";
 
-import Sidebar from "@/app/components/SideBar";
-
 import type {
   RootState,
   AppDispatch,
@@ -49,6 +47,19 @@ import {
   clearSelectedAuditLog,
   clearAuditError,
 } from "@/app/store/audit/auditSlice";
+
+// ==================================================
+// THEME (same colours as the dashboard)
+//   SKY       #7BBDE8
+//   SKY LIGHT #bfe0f5
+//   BLUE      #1b64da
+//   INK       #0f172a
+// ==================================================
+
+const SKY = "#7BBDE8";
+const SKY_LIGHT = "#bfe0f5";
+const BLUE = "#1b64da";
+const INK = "#0f172a";
 
 // ==================================================
 // TYPES
@@ -136,7 +147,7 @@ const getActionBadgeStyle = (action: string) => {
     normalized.includes("CREATED") ||
     normalized.includes("CREATE")
   ) {
-    return "bg-blue-50 text-blue-700 border-blue-200";
+    return "bg-[#bfe0f5] text-[#0f172a] border-[#7BBDE8]";
   }
 
   if (
@@ -144,14 +155,14 @@ const getActionBadgeStyle = (action: string) => {
     normalized.includes("UPDATE") ||
     normalized.includes("CHANGED")
   ) {
-    return "bg-indigo-50 text-indigo-700 border-indigo-200";
+    return "bg-white text-[#1b64da] border-[#7BBDE8]";
   }
 
   if (
     normalized.includes("APPROVED") ||
     normalized.includes("FINALIZED")
   ) {
-    return "bg-emerald-50 text-emerald-700 border-emerald-200";
+    return "bg-[#7BBDE8] text-[#0f172a] border-[#7BBDE8]";
   }
 
   if (
@@ -159,10 +170,10 @@ const getActionBadgeStyle = (action: string) => {
     normalized.includes("DELETED") ||
     normalized.includes("CANCELLED")
   ) {
-    return "bg-rose-50 text-rose-700 border-rose-200";
+    return "bg-[#1b64da] text-white border-[#1b64da]";
   }
 
-  return "bg-slate-100 text-slate-700 border-slate-200";
+  return "bg-[#f0f6fa] text-slate-700 border-[#e6edf4]";
 };
 
 const stringifyValue = (value: unknown): string => {
@@ -207,6 +218,51 @@ const csvEscape = (value: unknown) => {
   const text = stringifyValue(value);
   return `"${text.replace(/"/g, '""')}"`;
 };
+
+// ==================================================
+// COMPONENT: FILLED COUNT CARD (same look as dashboard cards)
+// ==================================================
+
+function CountCard({
+  label,
+  value,
+  note,
+  color,
+  text,
+  muted,
+  Icon,
+  valueClass = "text-[40px]",
+}: {
+  label: string;
+  value: React.ReactNode;
+  note: string;
+  color: string;
+  text: string;
+  muted: string;
+  Icon: React.ComponentType<{ className?: string }>;
+  valueClass?: string;
+}) {
+  return (
+    <div
+      className="relative flex min-h-[170px] flex-col justify-end rounded-[32px] p-5 shadow-sm"
+      style={{ backgroundColor: color, color: text }}
+    >
+      <p className="absolute left-5 top-5 max-w-[65%] text-[13px] font-bold leading-tight">
+        {label}
+      </p>
+
+      <span className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white/70 text-slate-600 ring-4 ring-white/60">
+        <Icon className="h-4 w-4" />
+      </span>
+
+      <p className={`${valueClass} font-black leading-none`}>{value}</p>
+
+      <p className={`mt-4 text-[11px] font-medium leading-snug ${muted}`}>
+        {note}
+      </p>
+    </div>
+  );
+}
 
 // ==================================================
 // COMPONENT: CHANGE COMPARISON
@@ -260,7 +316,7 @@ function ChangeComparison({
 
   if (!beforeExists && !afterExists) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
+      <div className="rounded-2xl border border-[#e6edf4] bg-[#f0f6fa] p-5 text-sm text-slate-500">
         No before or after data is available for this event.
       </div>
     );
@@ -273,14 +329,14 @@ function ChangeComparison({
   return (
     <div className="space-y-3">
       {!beforeExists && afterExists && (
-        <div className="flex items-center gap-2 text-emerald-800 font-bold text-sm">
+        <div className="flex items-center gap-2 text-[#1b64da] font-bold text-sm">
           <Check className="w-4 h-4" />
           New record created
         </div>
       )}
 
       {beforeExists && !afterExists && (
-        <div className="font-bold text-sm text-rose-800">
+        <div className="font-bold text-sm text-[#0f172a]">
           Record removed or no after-state recorded
         </div>
       )}
@@ -297,17 +353,17 @@ function ChangeComparison({
       </div>
 
       {changes.length === 0 ? (
-        <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 text-sm text-slate-500">
+        <div className="rounded-xl bg-[#f0f6fa] border border-[#e6edf4] p-4 text-sm text-slate-500">
           No fields available for comparison.
         </div>
       ) : (
         changes.map((item) => (
           <div
             key={item.key}
-            className={`rounded-xl border p-3 ${
+            className={`rounded-2xl border p-3 ${
               item.changed
-                ? "border-[#d6e5fb] bg-[#f8fbff]"
-                : "border-slate-200 bg-white"
+                ? "border-[#7BBDE8] bg-[#bfe0f5]/20"
+                : "border-[#e6edf4] bg-white"
             }`}
           >
             <div className="flex items-center justify-between gap-3 mb-3">
@@ -316,7 +372,7 @@ function ChangeComparison({
               </span>
 
               {item.changed ? (
-                <span className="text-[10px] font-bold uppercase text-[#1b64da] bg-[#eef4fa] px-2 py-1 rounded-full shrink-0">
+                <span className="text-[10px] font-bold uppercase text-white bg-[#1b64da] px-2 py-1 rounded-full shrink-0">
                   Changed
                 </span>
               ) : (
@@ -327,8 +383,8 @@ function ChangeComparison({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div className="rounded-lg bg-rose-50 border border-rose-100 p-2 min-w-0">
-                <p className="text-[10px] uppercase font-bold text-rose-600 mb-1">
+              <div className="rounded-xl bg-white border border-[#bfe0f5] p-2 min-w-0">
+                <p className="text-[10px] uppercase font-bold text-slate-500 mb-1">
                   Before
                 </p>
 
@@ -339,8 +395,8 @@ function ChangeComparison({
                 </p>
               </div>
 
-              <div className="rounded-lg bg-emerald-50 border border-emerald-100 p-2 min-w-0">
-                <p className="text-[10px] uppercase font-bold text-emerald-700 mb-1">
+              <div className="rounded-xl bg-[#bfe0f5]/60 border border-[#7BBDE8] p-2 min-w-0">
+                <p className="text-[10px] uppercase font-bold text-[#1b64da] mb-1">
                   After
                 </p>
 
@@ -646,7 +702,7 @@ export default function AuditLogsPage() {
 
   if (!isMounted) {
     return (
-      <div className="min-h-screen bg-[#f5faff] flex items-center justify-center">
+      <div className="min-h-screen bg-[#f0f6fa] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-8 h-8 animate-spin text-[#1b64da]" />
           <p className="text-sm font-medium text-slate-500">
@@ -662,11 +718,7 @@ export default function AuditLogsPage() {
   // ==================================================
 
   return (
-    <div className="min-h-screen bg-[#f5faff] text-[#1e293b] font-sans antialiased flex flex-col lg:flex-row">
-
-      {/* SIDEBAR */}
-      <Sidebar />
-
+    <div className="min-h-screen bg-[#f0f6fa] text-[#0f172a] font-sans antialiased selection:bg-[#7BBDE8]/30">
       {/* MAIN CONTENT */}
       <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">
         <div className="max-w-[1600px] mx-auto space-y-6">
@@ -675,7 +727,7 @@ export default function AuditLogsPage() {
           <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-2xl bg-[#eef4fa] border border-[#d6e5fb] flex items-center justify-center text-[#1b64da]">
+                <div className="w-11 h-11 rounded-full bg-[#7BBDE8] flex items-center justify-center text-[#0f172a]">
                   <ShieldCheck className="w-6 h-6" />
                 </div>
 
@@ -696,7 +748,7 @@ export default function AuditLogsPage() {
                 type="button"
                 onClick={handleRefresh}
                 disabled={listLoading}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-[#d5dbe1] text-xs font-bold text-[#475569] hover:bg-[#f1f6fc] shadow-sm disabled:opacity-60"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white border border-[#bfe0f5] text-xs font-bold text-[#0f172a] hover:bg-[#bfe0f5]/40 shadow-sm disabled:opacity-60"
               >
                 <RefreshCw
                   className={`w-4 h-4 text-[#1b64da] ${
@@ -711,7 +763,7 @@ export default function AuditLogsPage() {
                 type="button"
                 onClick={handleExport}
                 disabled={logs.length === 0}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#1b64da] hover:bg-[#1552b5] text-white text-xs font-bold shadow-md shadow-blue-500/20 disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#1b64da] hover:bg-[#1552b5] text-white text-xs font-bold shadow-md shadow-[#1b64da]/20 disabled:opacity-50"
               >
                 <Download className="w-4 h-4" />
                 Export Current Page
@@ -721,15 +773,15 @@ export default function AuditLogsPage() {
 
           {/* AUTHENTICATION MESSAGE */}
           {!token && (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+            <div className="rounded-2xl border border-[#7BBDE8] bg-[#bfe0f5] p-4 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-[#1b64da] shrink-0" />
 
               <div>
-                <p className="text-sm font-bold text-amber-800">
+                <p className="text-sm font-bold text-[#0f172a]">
                   Authentication required
                 </p>
 
-                <p className="text-xs text-amber-700 mt-1">
+                <p className="text-xs text-slate-700 mt-1">
                   Please sign in again to access audit logs.
                 </p>
               </div>
@@ -738,15 +790,15 @@ export default function AuditLogsPage() {
 
           {/* API ERROR */}
           {error && (
-            <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+            <div className="rounded-2xl border border-[#1b64da] bg-[#1b64da] p-4 flex items-start gap-3 text-white">
+              <AlertCircle className="w-5 h-5 shrink-0" />
 
               <div className="flex-1">
-                <p className="text-sm font-bold text-rose-800">
+                <p className="text-sm font-bold">
                   Unable to load audit logs
                 </p>
 
-                <p className="text-xs text-rose-700 mt-1">
+                <p className="text-xs text-white/80 mt-1">
                   {error}
                 </p>
               </div>
@@ -754,99 +806,60 @@ export default function AuditLogsPage() {
               <button
                 type="button"
                 onClick={handleRefresh}
-                className="text-xs font-bold text-rose-700 underline"
+                className="text-xs font-bold underline"
               >
                 Retry
               </button>
             </div>
           )}
 
-          {/* KPI CARDS */}
+          {/* KPI CARDS (filled like the dashboard) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
 
-            <div className="bg-white border border-[#d5dbe1] rounded-2xl p-5 shadow-sm flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Total Audit Events
-                </p>
+            <CountCard
+              label="Total Audit Events"
+              value={pagination.total.toLocaleString("en-IN")}
+              note="Matching current filters"
+              color={SKY}
+              text={INK}
+              muted="text-black/40"
+              Icon={Activity}
+            />
 
-                <p className="text-3xl font-black text-[#0f172a] mt-2">
-                  {pagination.total.toLocaleString("en-IN")}
-                </p>
+            <CountCard
+              label="Actors on This Page"
+              value={uniqueActors}
+              note="Unique actor IDs"
+              color={SKY_LIGHT}
+              text={INK}
+              muted="text-black/40"
+              Icon={Users}
+            />
 
-                <p className="text-xs text-slate-500 mt-1">
-                  Matching current filters
-                </p>
-              </div>
+            <CountCard
+              label="Entities on This Page"
+              value={uniqueEntities}
+              note="Unique entity types"
+              color={BLUE}
+              text="#ffffff"
+              muted="text-white/60"
+              Icon={Database}
+            />
 
-              <div className="w-12 h-12 rounded-2xl bg-[#eef4fa] text-[#1b64da] flex items-center justify-center">
-                <Activity className="w-6 h-6" />
-              </div>
-            </div>
-
-            <div className="bg-white border border-[#d5dbe1] rounded-2xl p-5 shadow-sm flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Actors on This Page
-                </p>
-
-                <p className="text-3xl font-black text-[#0f172a] mt-2">
-                  {uniqueActors}
-                </p>
-
-                <p className="text-xs text-slate-500 mt-1">
-                  Unique actor IDs
-                </p>
-              </div>
-
-              <div className="w-12 h-12 rounded-2xl bg-[#eef4fa] text-[#1b64da] flex items-center justify-center">
-                <Users className="w-6 h-6" />
-              </div>
-            </div>
-
-            <div className="bg-white border border-[#d5dbe1] rounded-2xl p-5 shadow-sm flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Entities on This Page
-                </p>
-
-                <p className="text-3xl font-black text-[#0f172a] mt-2">
-                  {uniqueEntities}
-                </p>
-
-                <p className="text-xs text-slate-500 mt-1">
-                  Unique entity types
-                </p>
-              </div>
-
-              <div className="w-12 h-12 rounded-2xl bg-[#eef4fa] text-[#1b64da] flex items-center justify-center">
-                <Database className="w-6 h-6" />
-              </div>
-            </div>
-
-            <div className="bg-white border border-[#d5dbe1] rounded-2xl p-5 shadow-sm flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Security Filtering
-                </p>
-
-                <p className="text-xl font-black text-emerald-700 mt-2">
-                  API Enabled
-                </p>
-
-                <p className="text-xs text-slate-500 mt-1">
-                  Sensitive JSON fields filtered
-                </p>
-              </div>
-
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
-                <ShieldCheck className="w-6 h-6" />
-              </div>
-            </div>
+            <CountCard
+              label="Security Filtering"
+              value="API Enabled"
+              note="Sensitive JSON fields filtered"
+              color={SKY}
+              text={INK}
+              muted="text-black/40"
+              Icon={ShieldCheck}
+              valueClass="text-[26px]"
+            />
           </div>
 
           {/* FILTER TOOLBAR */}
-          <section className="bg-white border border-[#d5dbe1] rounded-2xl p-5 shadow-sm space-y-4">
+          <section className="bg-white border border-[#e6edf4] rounded-[32px] p-5 shadow-sm space-y-4">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <Filter className="w-4 h-4 text-[#1b64da]" />
@@ -879,7 +892,7 @@ export default function AuditLogsPage() {
                   value={actionFilter}
                   onChange={(e) => setActionFilter(e.target.value)}
                   placeholder="e.g. EMPLOYEE_UPDATED"
-                  className="w-full px-3 py-2.5 rounded-xl bg-[#f8fafc] border border-[#d5dbe1] text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]"
+                  className="w-full px-3 py-2.5 rounded-xl bg-[#f0f6fa] border border-[#bfe0f5] text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]/40"
                 />
               </div>
 
@@ -894,7 +907,7 @@ export default function AuditLogsPage() {
                   value={entityFilter}
                   onChange={(e) => setEntityFilter(e.target.value)}
                   placeholder="e.g. users"
-                  className="w-full px-3 py-2.5 rounded-xl bg-[#f8fafc] border border-[#d5dbe1] text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]"
+                  className="w-full px-3 py-2.5 rounded-xl bg-[#f0f6fa] border border-[#bfe0f5] text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]/40"
                 />
               </div>
 
@@ -912,12 +925,12 @@ export default function AuditLogsPage() {
                     value={actorIdFilter}
                     onChange={(e) => setActorIdFilter(e.target.value)}
                     placeholder="e.g. 1"
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-[#f8fafc] border border-[#d5dbe1] text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-[#f0f6fa] border border-[#bfe0f5] text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]/40"
                   />
                 </div>
 
                 {invalidActorId && (
-                  <p className="text-[10px] text-rose-600 mt-1">
+                  <p className="text-[10px] text-[#1b64da] font-semibold mt-1">
                     Actor ID must contain numbers only.
                   </p>
                 )}
@@ -933,7 +946,7 @@ export default function AuditLogsPage() {
                   type="date"
                   value={fromDate}
                   onChange={(e) => setFromDate(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-[#f8fafc] border border-[#d5dbe1] text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]"
+                  className="w-full px-3 py-2.5 rounded-xl bg-[#f0f6fa] border border-[#bfe0f5] text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]/40"
                 />
               </div>
 
@@ -948,11 +961,11 @@ export default function AuditLogsPage() {
                   value={toDate}
                   min={fromDate || undefined}
                   onChange={(e) => setToDate(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-[#f8fafc] border border-[#d5dbe1] text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]"
+                  className="w-full px-3 py-2.5 rounded-xl bg-[#f0f6fa] border border-[#bfe0f5] text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]/40"
                 />
 
                 {invalidDateRange && (
-                  <p className="text-[10px] text-rose-600 mt-1">
+                  <p className="text-[10px] text-[#1b64da] font-semibold mt-1">
                     To Date cannot be earlier than From Date.
                   </p>
                 )}
@@ -969,7 +982,7 @@ export default function AuditLogsPage() {
                   onChange={(e) =>
                     handleLimitChange(Number(e.target.value))
                   }
-                  className="w-full px-3 py-2.5 rounded-xl bg-[#f8fafc] border border-[#d5dbe1] text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]"
+                  className="w-full px-3 py-2.5 rounded-xl bg-[#f0f6fa] border border-[#bfe0f5] text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]/40"
                 >
                   <option value={10}>10 records</option>
                   <option value={25}>25 records</option>
@@ -984,7 +997,7 @@ export default function AuditLogsPage() {
                 type="button"
                 onClick={handleApplyFilters}
                 disabled={invalidActorId || invalidDateRange}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#1b64da] hover:bg-[#1552b5] text-white text-xs font-bold shadow-sm disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#1b64da] hover:bg-[#1552b5] text-white text-xs font-bold shadow-sm disabled:opacity-50"
               >
                 <Search className="w-4 h-4" />
                 Apply Filters
@@ -993,11 +1006,11 @@ export default function AuditLogsPage() {
           </section>
 
           {/* AUDIT TABLE */}
-          <section className="bg-white border border-[#cbdcf5] rounded-2xl shadow-sm overflow-hidden">
+          <section className="bg-white border border-[#e6edf4] rounded-[32px] shadow-sm overflow-hidden">
 
-            <div className="p-5 border-b border-[#d6e5fb] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="p-5 border-b border-[#e6edf4] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#eaf2ff] flex items-center justify-center text-[#1b64da]">
+                <div className="w-9 h-9 rounded-full bg-[#bfe0f5] flex items-center justify-center text-[#1b64da]">
                   <FileText className="w-4 h-4" />
                 </div>
 
@@ -1021,7 +1034,7 @@ export default function AuditLogsPage() {
               <table className="w-full text-left border-collapse min-w-[850px]">
 
                 <thead>
-                  <tr className="bg-[#eaf2ff] border-b border-[#cbdcf5] text-[11px] font-bold text-[#334b70] uppercase tracking-wider">
+                  <tr className="bg-[#f0f6fa] border-b border-[#bfe0f5] text-[11px] font-bold text-[#0f172a] uppercase tracking-wider">
                     <th className="py-4 px-5">Event / Action</th>
                     <th className="py-4 px-4">Entity</th>
                     <th className="py-4 px-4">Actor</th>
@@ -1031,7 +1044,7 @@ export default function AuditLogsPage() {
                   </tr>
                 </thead>
 
-                <tbody className="divide-y divide-[#e5edf8] text-xs">
+                <tbody className="divide-y divide-[#e6edf4] text-xs">
 
                   {listLoading ? (
                     <tr>
@@ -1046,7 +1059,7 @@ export default function AuditLogsPage() {
                   ) : logs.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-16 text-center bg-white">
-                        <Database className="w-8 h-8 text-slate-300 mx-auto" />
+                        <Database className="w-8 h-8 text-[#7BBDE8] mx-auto" />
 
                         <p className="font-bold text-slate-700 mt-3">
                           No audit records found
@@ -1069,10 +1082,10 @@ export default function AuditLogsPage() {
                           onClick={() => handleSelectLog(log)}
                           className={`cursor-pointer transition-colors duration-150 border-l-[3px] ${
                             isSelected
-                              ? "bg-[#e1edff] border-l-[#1b64da] hover:bg-[#d9e8ff]"
+                              ? "bg-[#bfe0f5]/60 border-l-[#1b64da] hover:bg-[#bfe0f5]/70"
                               : index % 2 === 0
-                              ? "bg-white border-l-transparent hover:bg-[#edf4ff]"
-                              : "bg-[#f7faff] border-l-transparent hover:bg-[#edf4ff]"
+                              ? "bg-white border-l-transparent hover:bg-[#bfe0f5]/30"
+                              : "bg-[#f0f6fa]/60 border-l-transparent hover:bg-[#bfe0f5]/30"
                           }`}
                         >
                           {/* ACTION */}
@@ -1089,7 +1102,7 @@ export default function AuditLogsPage() {
 
                           {/* ENTITY */}
                           <td className="py-4 px-4 whitespace-nowrap">
-                            <p className="font-bold text-[#263b59]">
+                            <p className="font-bold text-[#0f172a]">
                               {log.entity_type || "—"}
                             </p>
                           </td>
@@ -1097,16 +1110,16 @@ export default function AuditLogsPage() {
                           {/* ACTOR */}
                           <td className="py-4 px-4">
                             <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-xl bg-[#1b64da] text-white font-bold flex items-center justify-center text-[10px] shrink-0 shadow-sm">
+                              <div className="w-8 h-8 rounded-full bg-[#1b64da] text-white font-bold flex items-center justify-center text-[10px] shrink-0 shadow-sm">
                                 {getInitials(log.actor_name)}
                               </div>
 
                               <div className="min-w-0">
-                                <p className="font-bold text-[#263b59] whitespace-nowrap">
+                                <p className="font-bold text-[#0f172a] whitespace-nowrap">
                                   {log.actor_name || "Unknown Actor"}
                                 </p>
 
-                                <p className="text-[10px] text-[#71839e] font-mono">
+                                <p className="text-[10px] text-slate-500 font-mono">
                                   {log.actor_emp_code ||
                                     (log.actor_id
                                       ? `ID: ${log.actor_id}`
@@ -1119,7 +1132,7 @@ export default function AuditLogsPage() {
                           {/* REASON */}
                           <td className="py-4 px-4 max-w-[220px]">
                             <p
-                              className="text-[#52657f] line-clamp-2"
+                              className="text-slate-600 line-clamp-2"
                               title={log.reason || ""}
                             >
                               {log.reason || "No reason provided"}
@@ -1128,11 +1141,11 @@ export default function AuditLogsPage() {
 
                           {/* TIMESTAMP */}
                           <td className="py-4 px-5 whitespace-nowrap">
-                            <p className="font-bold text-[#334b70]">
+                            <p className="font-bold text-[#0f172a]">
                               {formatDate(log.created_at)}
                             </p>
 
-                            <p className="text-[10px] text-[#71839e] mt-1">
+                            <p className="text-[10px] text-slate-500 mt-1">
                               {formatTime(log.created_at)} IST
                             </p>
                           </td>
@@ -1146,7 +1159,7 @@ export default function AuditLogsPage() {
                                 event.stopPropagation();
                                 handleSelectLog(log);
                               }}
-                              className="w-9 h-9 inline-flex items-center justify-center rounded-xl bg-[#e5efff] border border-[#cbdcf5] text-[#1b64da] hover:bg-[#1b64da] hover:text-white hover:border-[#1b64da] transition-all duration-150"
+                              className="w-9 h-9 inline-flex items-center justify-center rounded-full bg-[#bfe0f5] border border-[#7BBDE8] text-[#1b64da] hover:bg-[#1b64da] hover:text-white hover:border-[#1b64da] transition-all duration-150"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
@@ -1160,23 +1173,23 @@ export default function AuditLogsPage() {
             </div>
 
             {/* PAGINATION */}
-            <div className="p-4 bg-[#f1f6fd] border-t border-[#d6e5fb] flex flex-col sm:flex-row items-center justify-between gap-3">
-              <p className="text-xs text-[#52657f]">
+            <div className="p-4 bg-[#f0f6fa] border-t border-[#e6edf4] flex flex-col sm:flex-row items-center justify-between gap-3">
+              <p className="text-xs text-slate-600">
                 Showing{" "}
-                <strong className="text-[#263b59]">
+                <strong className="text-[#0f172a]">
                   {pagination.total === 0
                     ? 0
                     : (filters.page - 1) * filters.limit + 1}
                 </strong>
                 {" - "}
-                <strong className="text-[#263b59]">
+                <strong className="text-[#0f172a]">
                   {Math.min(
                     filters.page * filters.limit,
                     pagination.total
                   )}
                 </strong>
                 {" of "}
-                <strong className="text-[#263b59]">
+                <strong className="text-[#0f172a]">
                   {pagination.total}
                 </strong>{" "}
                 records
@@ -1187,12 +1200,12 @@ export default function AuditLogsPage() {
                   type="button"
                   disabled={filters.page <= 1 || listLoading}
                   onClick={handlePreviousPage}
-                  className="w-9 h-9 rounded-lg border border-[#cbdcf5] bg-white flex items-center justify-center text-[#475569] hover:bg-[#e5efff] hover:text-[#1b64da] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="w-9 h-9 rounded-full border border-[#bfe0f5] bg-white flex items-center justify-center text-slate-600 hover:bg-[#bfe0f5]/50 hover:text-[#1b64da] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
 
-                <span className="text-xs font-bold text-[#334b70] px-2">
+                <span className="text-xs font-bold text-[#0f172a] px-2">
                   Page {filters.page} of{" "}
                   {Math.max(pagination.totalPages, 1)}
                 </span>
@@ -1205,18 +1218,13 @@ export default function AuditLogsPage() {
                     pagination.totalPages === 0
                   }
                   onClick={handleNextPage}
-                  className="w-9 h-9 rounded-lg border border-[#cbdcf5] bg-white flex items-center justify-center text-[#475569] hover:bg-[#e5efff] hover:text-[#1b64da] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="w-9 h-9 rounded-full border border-[#bfe0f5] bg-white flex items-center justify-center text-slate-600 hover:bg-[#bfe0f5]/50 hover:text-[#1b64da] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
           </section>
-
-          {/* <div className="flex items-center gap-2 text-xs text-slate-400">
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            Audit data is retrieved from the authenticated backend API.
-          </div> */}
         </div>
       </main>
 
@@ -1244,9 +1252,9 @@ export default function AuditLogsPage() {
           >
 
             {/* DRAWER HEADER */}
-            <div className="p-5 sm:p-6 border-b border-slate-200 bg-white flex items-center justify-between gap-3">
+            <div className="p-5 sm:p-6 border-b border-[#e6edf4] bg-white flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-11 h-11 rounded-2xl bg-[#eef4fa] border border-[#d6e5fb] text-[#1b64da] flex items-center justify-center shrink-0">
+                <div className="w-11 h-11 rounded-full bg-[#bfe0f5] text-[#1b64da] flex items-center justify-center shrink-0">
                   <FileCode className="w-5 h-5" />
                 </div>
 
@@ -1264,7 +1272,7 @@ export default function AuditLogsPage() {
               <button
                 type="button"
                 onClick={closeDrawer}
-                className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-600 shrink-0"
+                className="w-9 h-9 rounded-full bg-[#f0f6fa] hover:bg-[#bfe0f5] flex items-center justify-center text-slate-600 shrink-0"
                 aria-label="Close"
               >
                 <X className="w-5 h-5" />
@@ -1282,7 +1290,7 @@ export default function AuditLogsPage() {
               )}
 
               {detailError && (
-                <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 flex gap-2 text-xs text-rose-700">
+                <div className="rounded-2xl border border-[#1b64da] bg-[#1b64da] p-3 flex gap-2 text-xs text-white">
                   <AlertCircle className="w-4 h-4 shrink-0" />
                   {detailError}
                 </div>
@@ -1311,7 +1319,7 @@ export default function AuditLogsPage() {
                   </div>
 
                   {/* EVENT INFORMATION */}
-                  <div className="rounded-2xl border border-slate-200 bg-[#f8fafc] p-4 space-y-4">
+                  <div className="rounded-3xl border border-[#e6edf4] bg-[#f0f6fa] p-4 space-y-4">
                     <h4 className="text-xs font-black uppercase tracking-wider text-slate-600">
                       Event Information
                     </h4>
@@ -1378,7 +1386,7 @@ export default function AuditLogsPage() {
                   </div>
 
                   {/* REASON */}
-                  <div className="rounded-2xl border border-[#d6e5fb] bg-[#f0f7ff] p-4">
+                  <div className="rounded-3xl border border-[#7BBDE8] bg-[#bfe0f5]/40 p-4">
                     <p className="text-[10px] uppercase tracking-wider font-bold text-[#1b64da] mb-2">
                       Reason / Context
                     </p>
@@ -1413,11 +1421,11 @@ export default function AuditLogsPage() {
 
             {/* DRAWER FOOTER */}
             {activeLog && (
-              <div className="p-4 sm:p-5 border-t border-slate-200 bg-white flex justify-end">
+              <div className="p-4 sm:p-5 border-t border-[#e6edf4] bg-white flex justify-end">
                   <button
                     type="button"
                     onClick={closeDrawer}
-                    className="px-5 py-3 rounded-xl bg-[#1b64da] hover:bg-[#1552b5] text-white text-xs font-bold"
+                    className="px-6 py-2.5 rounded-full bg-[#1b64da] hover:bg-[#1552b5] text-white text-xs font-bold shadow-md shadow-[#1b64da]/20"
                   >
                     Close
                   </button>
