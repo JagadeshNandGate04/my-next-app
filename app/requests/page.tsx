@@ -184,14 +184,13 @@ const formatTime = (value?: string | null): string => {
   if (timeMatch) {
     const hours = Number(timeMatch[1]);
     const minutes = Number(timeMatch[2]);
-    const date = new Date();
+    const meridiem = hours >= 12 ? "PM" : "AM";
+    const hour12 = hours % 12 || 12;
 
-    date.setHours(hours, minutes, 0, 0);
-
-    return date.toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return `${String(hour12).padStart(2, "0")}:${String(minutes).padStart(
+      2,
+      "0"
+    )} ${meridiem}`;
   }
 
   const date = new Date(value);
@@ -483,8 +482,9 @@ export default function AdminRequestsApprovals() {
   const [calendarStream, setCalendarStream] =
     useState<RequestStream>("all");
 
-  const [currentMonth, setCurrentMonth] = useState(() => new Date().getMonth());
-  const [currentYear, setCurrentYear] = useState(() => new Date().getFullYear());
+  const [currentMonth, setCurrentMonth] = useState(0);
+  const [currentYear, setCurrentYear] = useState(2026);
+  const [todayKey, setTodayKey] = useState("");
 
   const [calendarRequests, setCalendarRequests] =
     useState<CalendarRequests>({
@@ -505,6 +505,21 @@ export default function AdminRequestsApprovals() {
     useState<DecisionAction>("APPROVE");
 
   const [decisionNote, setDecisionNote] = useState("");
+
+  useEffect(() => {
+    const timerId = window.setTimeout(() => {
+      const now = new Date();
+      setCurrentMonth(now.getMonth());
+      setCurrentYear(now.getFullYear());
+      setTodayKey(
+        `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
+          now.getDate()
+        ).padStart(2, "0")}`
+      );
+    }, 0);
+
+    return () => window.clearTimeout(timerId);
+  }, []);
 
   // --------------------------------------------------
   // FETCH REQUESTS
@@ -856,12 +871,6 @@ export default function AdminRequestsApprovals() {
       (event) => event.type === "regularization"
     ).length,
   };
-
-  const now = new Date();
-
-  const todayKey = `${now.getFullYear()}-${String(
-    now.getMonth() + 1
-  ).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
   // --------------------------------------------------
   // OPEN DECISION MODAL

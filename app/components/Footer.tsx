@@ -108,6 +108,8 @@
 // }
 
 
+"use client";
+
 /**
  * app/components/Footer.tsx
  * Page footer – same rounded card style as the dashboard cards.
@@ -122,7 +124,7 @@ export default function Footer({
 }: {
   links?: { label: string; href: string }[];
 }) {
-  const [year, setYear] = useState<number | null>(null);
+  const [year, setYear] = useState(2026);
 
   useEffect(() => {
     const timerId = window.setTimeout(() => {
@@ -133,30 +135,89 @@ export default function Footer({
   }, []);
 
   return (
-    <footer className="bg-[#f0f6fa] px-5 pb-8 lg:px-10">
-      <div className="mx-auto flex max-w-[1440px] flex-col items-center justify-between gap-3 rounded-[28px] border border-[#e6edf4] bg-white px-6 py-5 text-xs font-medium text-slate-500 shadow-sm sm:flex-row">
-        <p>
-          © {year ?? '2026'} <span className="font-bold text-slate-700">NANDGATE-IT</span> · All rights reserved
-        </p>
+    <footer className="relative w-full overflow-hidden bg-white pt-12">
+      <div className="relative w-full">
 
-        {links.length > 0 && (
-          <nav className="flex items-center gap-5" aria-label="Footer">
-            {links.map((link) => (
-              <Link
-                key={link.label}
-                href={link.href}
-                className="font-semibold transition-colors hover:text-[#1b64da]"
+        {/* Light blue decorative wave */}
+        <div
+          className="absolute inset-0 bg-[#7BBDE8]"
+          style={{
+            clipPath:
+              'polygon(0 32%, 16% 0, 48% 42%, 65% 48%, 78% 40%, 100% 52%, 100% 100%, 0 100%)',
+          }}
+        />
+
+        {/* Main blue footer */}
+        <div
+          className="relative bg-[#0875BD] px-6 pb-7 pt-16 text-white sm:px-10"
+          style={{
+            clipPath:
+              'polygon(0 24%, 14% 0, 45% 39%, 65% 46%, 78% 41%, 100% 49%, 100% 100%, 0 100%)',
+          }}
+        >
+          <div className="mx-auto flex max-w-[1440px] flex-col items-center justify-between gap-5 pt-5 sm:flex-row">
+
+            {/* Copyright */}
+            <p className="text-center text-sm font-medium text-white/90">
+              © {year}{' '}
+              <span className="font-bold text-white">
+                NANDGATE-IT
+              </span>
+              {' '}| All rights reserved
+            </p>
+
+            {/* Navigation */}
+            {links.length > 0 && (
+              <nav
+                className="flex flex-wrap items-center justify-center gap-5"
+                aria-label="Footer"
               >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-        )}
+                {links.map((link) => (
+                  <Link
+                    key={link.label}
+                    href={link.href}
+                    className="text-sm font-medium text-white/90 transition-colors hover:text-white hover:underline"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </nav>
+            )}
 
-        {/* <span className="inline-flex items-center gap-2 rounded-full bg-[#e8f1fa] px-3 py-1 font-bold text-[#1b64da]">
-          <span className="h-2 w-2 rounded-full bg-[#7BBDE8]" />
-          Attendance &amp; Payroll
-        </span> */}
+            {/* Social Media Icons */}
+            <div className="flex items-center gap-5">
+
+              {/* Facebook */}
+              <a href="#" aria-label="Facebook" className="hover:opacity-75">
+                <svg viewBox="0 0 24 24" className="h-6 w-6 fill-current">
+                  <path d="M13.5 21v-8h2.7l.4-3.1h-3.1V8c0-.9.3-1.5 1.6-1.5h1.7V3.7c-.8-.1-1.6-.2-2.4-.2-2.4 0-4.1 1.5-4.1 4.3v2.1H7.5V13h2.8v8h3.2z" />
+                </svg>
+              </a>
+
+              {/* Twitter / X */}
+              <a href="#" aria-label="Twitter" className="hover:opacity-75">
+                <svg viewBox="0 0 24 24" className="h-6 w-6 fill-current">
+                  <path d="M18.9 2H22l-6.8 7.8L23.2 22h-6.3l-5-7.4L5.5 22H2.3l7.3-8.4L1.8 2h6.5l4.5 6.8L18.9 2zm-1.1 17.9h1.7L7.2 4H5.4l12.4 15.9z" />
+                </svg>
+              </a>
+
+              {/* LinkedIn */}
+              <a href="#" aria-label="LinkedIn" className="hover:opacity-75">
+                <svg viewBox="0 0 24 24" className="h-6 w-6 fill-current">
+                  <path d="M5.2 3a2.2 2.2 0 1 0 0 4.4 2.2 2.2 0 0 0 0-4.4zM3.3 9h3.8v12H3.3V9zm6.1 0H13v1.6h.1c.5-.9 1.7-1.9 3.5-1.9 3.7 0 4.4 2.4 4.4 5.5V21h-3.8v-6c0-1.4 0-3.2-2-3.2s-2.3 1.5-2.3 3.1V21H9.4V9z" />
+                </svg>
+              </a>
+
+              {/* RSS */}
+              <a href="#" aria-label="RSS" className="hover:opacity-75">
+                <svg viewBox="0 0 24 24" className="h-6 w-6 fill-current">
+                  <path d="M4 4v3a13 13 0 0 1 13 13h3C20 10.1 13.9 4 4 4zm0 6v3a7 7 0 0 1 7 7h3c0-5.5-4.5-10-10-10zm2 7a2 2 0 1 0 0 4 2 2 0 0 0 0-4z" />
+                </svg>
+              </a>
+
+            </div>
+          </div>
+        </div>
       </div>
     </footer>
   );
