@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import Link from "next/link";
 import { useSelector } from "react-redux";
 import type { RootState } from "../store/store";
 import type {
@@ -24,7 +25,35 @@ interface CalendarEvent {
   person: string;
   type: CalendarEventType;
   status: RequestStatus;
+  requestId: number;
+  empCode: string;
+  designation: string;
+  when: string;
+  detail: string;
+  reason: string;
 }
+
+const EVENT_STREAM: Record<CalendarEventType, string> = {
+  annual: "leaves",
+  permission: "permissions",
+  regularization: "regularizations",
+};
+
+const EVENT_LABEL: Record<CalendarEventType, string> = {
+  annual: "Leave Request",
+  permission: "Permission Request",
+  regularization: "Regularization Request",
+};
+
+const formatDisplayDate = (value?: string | null): string => {
+  const key = value ? value.slice(0, 10) : "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return value || "Not provided";
+  return new Date(`${key}T00:00:00`).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
 
 interface CalendarRequests {
   leaves: LeaveRequest[];
@@ -92,6 +121,8 @@ export default function TeamAbsenceCalendar() {
     useState<CalendarRequests>(initialCalendarRequests);
   const [calendarLoading, setCalendarLoading] = useState(false);
   const [calendarError, setCalendarError] = useState<string | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [expandedDay, setExpandedDay] = useState<string | null>(null);
 
   useEffect(() => {
     const timerId = window.setTimeout(() => {
@@ -237,7 +268,19 @@ export default function TeamAbsenceCalendar() {
     calendarRequests.leaves.forEach((request) => {
       const person = request.employee_name || "Unknown Employee";
       getDateRangeKeys(request.from_date, request.to_date).forEach((date) => {
-        events.push({ date, title: "Leave", person, type: "annual", status: request.status });
+        events.push({
+          date,
+          title: "Leave",
+          person,
+          type: "annual",
+          status: request.status,
+          requestId: request.id,
+          empCode: request.emp_code || "N/A",
+          designation: request.designation || "Employee",
+          when: `${formatDisplayDate(request.from_date)} - ${formatDisplayDate(request.to_date)}`,
+          detail: `${request.days} Day${request.days === 1 ? "" : "s"} Leave`,
+          reason: request.reason,
+        });
       });
     });
 
@@ -250,6 +293,14 @@ export default function TeamAbsenceCalendar() {
           person: request.employee_name || "Unknown Employee",
           type: "permission",
           status: request.status,
+          requestId: request.id,
+          empCode: request.emp_code || "N/A",
+          designation: request.designation || "Employee",
+          when: `${formatDisplayDate(request.perm_date)}${
+            request.start_time ? ` · ${request.start_time}` : ""
+          }`,
+          detail: `${request.minutes} Minutes Permission`,
+          reason: request.reason,
         });
       }
     });
@@ -263,6 +314,18 @@ export default function TeamAbsenceCalendar() {
           person: request.employee?.name || "Unknown Employee",
           type: "regularization",
           status: request.status,
+          requestId: request.id,
+          empCode: request.employee?.emp_code || "N/A",
+          designation: request.employee?.designation || "Employee",
+          when: formatDisplayDate(request.work_date),
+          detail: [
+            request.type.replace(/_/g, " "),
+            request.claimed_in ? `In: ${request.claimed_in}` : "",
+            request.claimed_out ? `Out: ${request.claimed_out}` : "",
+          ]
+            .filter(Boolean)
+            .join(" · "),
+          reason: request.reason,
         });
       }
     });
@@ -449,22 +512,34 @@ export default function TeamAbsenceCalendar() {
                   </div>
 
                   <div className="mt-2 space-y-1.5">
-                    {events.slice(0, 2).map((event, eventIndex) => (
-                      <div
-                        key={`${event.date}-${eventIndex}`}
-                        title={`${event.title} · ${event.person} · ${event.status}`}
-                        className={`truncate rounded-lg border px-2 py-1 text-[11px] font-semibold md:text-xs ${getEventColor(
-                          event.type
-                        )}`}
-                      >
-                        {event.title}
-                        <span className="hidden xl:inline">{" · "}{event.person}</span>
-                      </div>
-                    ))}
+                    {(expandedDay === dateKey ? events : events.slice(0, 2)).map(
+                      (event, eventIndex) => (
+                        <button
+                          type="button"
+                          key={`${event.date}-${eventIndex}`}
+                          onClick={() => setSelectedEvent(event)}
+                          title={`${event.title} · ${event.person} · ${event.status}`}
+                          className={`block w-full cursor-pointer truncate rounded-lg border px-2 py-1 text-left text-[11px] font-semibold transition-shadow hover:shadow-md md:text-xs ${getEventColor(
+                            event.type
+                          )}`}
+                        >
+                          {event.title}
+                          <span className="hidden xl:inline">{" · "}{event.person}</span>
+                        </button>
+                      )
+                    )}
                     {events.length > 2 && (
-                      <div className="px-2 text-[11px] font-bold text-[#1b64da]">
-                        +{events.length - 2} more
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpandedDay(expandedDay === dateKey ? null : dateKey)
+                        }
+                        className="px-2 text-[11px] font-bold text-[#1b64da] hover:underline"
+                      >
+                        {expandedDay === dateKey
+                          ? "Show less"
+                          : `+${events.length - 2} more`}
+                      </button>
                     )}
                   </div>
                 </div>
@@ -495,6 +570,81 @@ export default function TeamAbsenceCalendar() {
             : `Showing ${visibleCalendarEvents.length} team events`}
         </p>
       </footer>
+
+      {selectedEvent && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm"
+          onClick={() => setSelectedEvent(null)}
+        >
+          <div
+            className="w-full max-w-md overflow-hidden rounded-[28px] bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-5">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">
+                  {EVENT_LABEL[selectedEvent.type]}
+                </h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  Request ID: #{selectedEvent.requestId}
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close"
+                onClick={() => setSelectedEvent(null)}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4 p-6 text-sm">
+              <div>
+                <p className="text-lg font-bold text-slate-900">{selectedEvent.person}</p>
+                <p className="text-slate-500">
+                  {selectedEvent.empCode} · {selectedEvent.designation}
+                </p>
+              </div>
+
+              <div className={`rounded-2xl border p-4 ${getEventColor(selectedEvent.type)}`}>
+                <p className="font-bold">{selectedEvent.detail}</p>
+                <p className="mt-1 font-medium">{selectedEvent.when}</p>
+                <span className="mt-2 inline-block rounded-full bg-white/80 px-3 py-0.5 text-xs font-bold">
+                  {selectedEvent.status}
+                </span>
+              </div>
+
+              <div>
+                <p className="mb-1 text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Reason
+                </p>
+                <p className="border-l-4 border-[#7BBDE8] pl-3 italic text-slate-600">
+                  &ldquo;{selectedEvent.reason || "No reason provided"}&rdquo;
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setSelectedEvent(null)}
+                className="rounded-full px-4 py-2 text-sm font-bold text-slate-500 hover:bg-slate-100"
+              >
+                Close
+              </button>
+              <Link
+                href={`/requests?tab=${EVENT_STREAM[selectedEvent.type]}&status=${selectedEvent.status.toLowerCase()}&id=${selectedEvent.requestId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full bg-[#1b64da] px-5 py-2 text-sm font-bold text-white shadow-sm hover:bg-[#1552b5]"
+              >
+                Open in Requests
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

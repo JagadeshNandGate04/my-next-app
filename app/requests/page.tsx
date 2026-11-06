@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "@/app/store/store";
 
@@ -310,7 +310,6 @@ const TYPE_STYLES: Record<
   },
 };
 
-// circle that grows with the number of days / minutes
 function MetricBubble({
   metric,
   unit,
@@ -322,24 +321,17 @@ function MetricBubble({
   color: string;
   text: string;
 }) {
-  const value = metric ?? 0;
-
-  const size =
-    metric === undefined
-      ? 56
-      : Math.round(Math.min(84, 52 + (unit === "min" ? value / 8 : value * 5)));
-
   return (
     <span
-      className="flex shrink-0 flex-col items-center justify-center rounded-full font-black leading-none shadow-sm"
-      style={{ width: size, height: size, backgroundColor: color, color: text }}
+      className="inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold"
+      style={{ backgroundColor: color, color: text }}
     >
       {metric === undefined ? (
-        <Clock className="h-6 w-6" />
+        <Clock className="h-4 w-4" aria-label="Attendance correction" />
       ) : (
         <>
-          <span className="text-xl">{metric}</span>
-          <span className="mt-0.5 text-[10px] font-bold opacity-80">{unit}</span>
+          <span className="tabular-nums">{metric}</span>
+          <span>{unit}</span>
         </>
       )}
     </span>
@@ -395,11 +387,46 @@ export default function AdminRequestsApprovals() {
 
   const [decisionNote, setDecisionNote] = useState("");
 
+  // Deep link from the dashboard calendar: ?tab=&status=&id=
+  const [highlightedRequest, setHighlightedRequest] = useState<{
+    key: string;
+    status: StatusFilter;
+  } | null>(null);
+  const [deepLinkInitialized, setDeepLinkInitialized] = useState(false);
+  const scrolledToRequest = useRef(false);
+
+  useEffect(() => {
+    const timerId = window.setTimeout(() => {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get("tab");
+      const status = params.get("status");
+      const id = params.get("id");
+
+      if (tab === "leaves" || tab === "permissions" || tab === "regularizations") {
+        setActiveTab(tab);
+      }
+      if (status === "pending" || status === "approved" || status === "rejected") {
+        setStatusFilter(status);
+      }
+      if (
+        id &&
+        (tab === "leaves" || tab === "permissions" || tab === "regularizations") &&
+        (status === "pending" || status === "approved" || status === "rejected")
+      ) {
+        setHighlightedRequest({ key: `${tab}-${id}`, status });
+      }
+      setDeepLinkInitialized(true);
+    }, 0);
+
+    return () => window.clearTimeout(timerId);
+  }, []);
+
   // --------------------------------------------------
   // FETCH REQUESTS
   // --------------------------------------------------
 
   useEffect(() => {
+    if (!deepLinkInitialized) return;
     const status = statusToApi(statusFilter);
 
     dispatch(fetchAdminLeaveRequests({ status })).catch(() => {});
@@ -407,7 +434,7 @@ export default function AdminRequestsApprovals() {
     dispatch(fetchAdminPermissionRequests({ status })).catch(() => {});
 
     dispatch(fetchAdminRegularizationRequests({ status })).catch(() => {});
-  }, [dispatch, statusFilter]);
+  }, [dispatch, statusFilter, deepLinkInitialized]);
 
   // --------------------------------------------------
   // CLEAR DECISION MESSAGES
@@ -436,6 +463,21 @@ export default function AdminRequestsApprovals() {
       : activeTab === "permissions"
       ? permissionLoading
       : regularizationLoading;
+
+  useEffect(() => {
+    if (
+      !highlightedRequest ||
+      highlightedRequest.status !== statusFilter ||
+      loading ||
+      scrolledToRequest.current
+    ) return;
+
+    const element = document.getElementById(`request-${highlightedRequest.key}`);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "center" });
+      scrolledToRequest.current = true;
+    }
+  }, [highlightedRequest, statusFilter, activeTab, loading, leaveRequests, permissionRequests, regularizationRequests]);
 
   const error =
     activeTab === "leaves"
@@ -563,17 +605,20 @@ export default function AdminRequestsApprovals() {
     key: RequestStream;
     label: string;
     count: number;
+    Icon: typeof CalendarIcon;
   }[] = [
-    { key: "leaves", label: "Leave Requests", count: totalLeaveRequests },
+    { key: "leaves", label: "Leave Requests", count: totalLeaveRequests, Icon: CalendarIcon },
     {
       key: "permissions",
       label: "Permission Requests",
       count: totalPermissionRequests,
+      Icon: Clock,
     },
     {
       key: "regularizations",
       label: "Regularization Requests",
       count: totalRegularizationRequests,
+      Icon: CheckCircle2,
     },
   ];
 
@@ -591,24 +636,26 @@ export default function AdminRequestsApprovals() {
 
       <main className="flex-1 rounded-t-[40px] bg-[#f0f6fa]">
 
-        <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-5 py-8 lg:px-10 lg:py-10">
+        <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-5 py-8 lg:px-10 lg:py-10">
 
           {/* =========================================
               PAGE TITLE
           ========================================= */}
 
           <div>
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight">
-              Requests &amp; <span className="text-[#3b82f6]">Approvals</span>
+            <h1 className="text-3xl lg:text-4xl font-black text-[#0f172a] tracking-tight">
+              Request Approvals
             </h1>
-
+            <p className="mt-2 text-sm text-slate-500">
+              Review leave, permission and regularization requests.
+            </p>
           </div>
 
           {/* =========================================
               1. TOP METRIC CARDS
           ========================================= */}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
 
             {metricCards.map((card) => {
               const share =
@@ -619,33 +666,27 @@ export default function AdminRequestsApprovals() {
               return (
                 <div
                   key={card.key}
-                  className="flex min-h-[200px] flex-col justify-between rounded-[32px] border border-[#e6edf4] bg-white p-7 shadow-sm"
+                  className="flex flex-col gap-3 rounded-2xl border border-[#e6edf4] bg-white px-5 py-4 shadow-sm"
                   style={{ backgroundColor: card.color, color: card.text }}
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <p className="text-[15px] font-bold leading-tight">
+                    <p className="text-sm font-bold leading-tight">
                       {card.label}
                     </p>
 
                     <span
-                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/70 text-slate-600 ring-4 ring-white/60"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/70 text-slate-600"
                     >
-                      <card.Icon className="h-5 w-5" />
+                      <card.Icon className="h-4 w-4" />
                     </span>
                   </div>
 
                   <div>
-                    <span
-                      className="flex h-16 w-16 items-center justify-center rounded-full text-2xl font-black"
-                      style={{
-                        backgroundColor: card.color,
-                        color: card.text,
-                      }}
-                    >
+                    <span className="text-2xl font-black leading-none tabular-nums">
                       {card.value}
                     </span>
 
-                     <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-white/50">
+                    <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-white/50">
                       <div
                         className="h-full rounded-full"
                         style={{
@@ -654,7 +695,7 @@ export default function AdminRequestsApprovals() {
                         }}
                       />
                     </div>
-                    </div>
+                  </div>
                 </div>
               );
             })}
@@ -665,65 +706,88 @@ export default function AdminRequestsApprovals() {
               2. FILTER BAR AND TABS
           ========================================= */}
 
-          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+          <div className="flex flex-col gap-5 rounded-2xl border border-[#e6edf4] bg-white px-5 py-4 shadow-sm xl:flex-row xl:items-end xl:justify-between">
 
             {/* REQUEST TABS */}
 
-            <div className="flex items-center gap-2.5 overflow-x-auto pb-1 xl:pb-0">
+            <div className="min-w-0 flex-1">
+              <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                Request type
+              </p>
+              <div className="flex items-center gap-2 overflow-x-auto pb-1">
 
-              {tabs.map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
-                  className={`whitespace-nowrap flex items-center gap-2.5 px-5 py-2.5 rounded-full border text-sm font-bold transition-all ${
-                    activeTab === tab.key
-                      ? "border-[#1b64da] bg-[#1b64da] text-white shadow-sm"
-                      : "border-[#e6edf4] bg-white text-slate-600 hover:bg-[#f5faff]"
-                  }`}
-                >
-                  {tab.label}
-
-                  <span
-                    className={`px-2 py-0.5 text-xs font-bold rounded-full ${
-                      activeTab === tab.key
-                        ? "bg-white/25 text-white"
-                        : "bg-[#eef4fa] text-slate-600"
-                    }`}
-                  >
-                    {tab.count}
-                  </span>
-                </button>
-              ))}
-
-            </div>
-
-            {/* STATUS FILTER */}
-
-            <div className="flex flex-wrap items-center gap-3">
-
-              <div className="flex items-center bg-white rounded-full p-1.5 border border-[#e6edf4] shadow-sm">
-
-                {(
-                  ["pending", "approved", "rejected"] as StatusFilter[]
-                ).map((status) => (
+                {tabs.map((tab) => (
                   <button
-                    key={status}
-                    onClick={() => setStatusFilter(status)}
-                    className={`px-5 py-2 rounded-full text-sm font-bold capitalize transition-all ${
-                      statusFilter === status
-                        ? "bg-[#1b64da] text-white shadow-sm"
-                        : "text-slate-600 hover:text-slate-900"
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setActiveTab(tab.key)}
+                    aria-pressed={activeTab === tab.key}
+                    className={`flex items-center gap-2 whitespace-nowrap rounded-xl border px-3 py-2.5 text-sm font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
+                      activeTab === tab.key
+                        ? "border-[#1b64da] bg-[#e8f2ff] text-[#0a47b3] shadow-sm"
+                        : "border-[#e6edf4] bg-[#f8fafc] text-slate-600 hover:border-blue-200 hover:bg-[#f5faff]"
                     }`}
                   >
-                    {status}
+                    <tab.Icon aria-hidden="true" className={`h-4 w-4 ${activeTab === tab.key ? "text-[#1b64da]" : "text-slate-400"}`} />
+                    {tab.label}
+
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+                        activeTab === tab.key
+                          ? "bg-[#1b64da] text-white"
+                          : "bg-white text-slate-600"
+                      }`}
+                    >
+                      {tab.count}
+                    </span>
                   </button>
                 ))}
 
               </div>
+            </div>
 
-              <div className="flex items-center gap-2.5 px-5 py-3 bg-white border border-[#e6edf4] rounded-full text-sm font-semibold text-slate-500 shadow-sm">
-                <Filter className="w-4 h-4 text-slate-500" />
-                All Departments
+            {/* STATUS FILTER */}
+
+            <div className="flex flex-wrap items-end gap-x-5 gap-y-3 xl:border-l xl:border-slate-200 xl:pl-5">
+
+              <div>
+                <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Status
+                </p>
+                <div className="flex items-center gap-1 rounded-full bg-slate-100 p-1">
+
+                  {(
+                    ["pending", "approved", "rejected"] as StatusFilter[]
+                  ).map((status) => (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => setStatusFilter(status)}
+                    aria-pressed={statusFilter === status}
+                    className={`flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold capitalize transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${
+                      statusFilter === status
+                        ? "bg-white text-slate-900 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <span aria-hidden="true" className={`h-2 w-2 rounded-full ${
+                      status === "pending" ? "bg-amber-500" : status === "approved" ? "bg-emerald-500" : "bg-rose-500"
+                    }`} />
+                    {status}
+                  </button>
+                  ))}
+
+                </div>
+              </div>
+
+              <div>
+                <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Scope
+                </p>
+                <div className="flex items-center gap-2 py-2.5 text-sm font-semibold text-slate-600">
+                  <Filter className="h-4 w-4 text-slate-400" />
+                  All Departments
+                </div>
               </div>
 
             </div>
@@ -749,14 +813,14 @@ export default function AdminRequestsApprovals() {
           )}
 
           {loading ? (
-            <div className="bg-white rounded-[32px] border border-[#e6edf4] shadow-sm p-12 flex flex-col items-center justify-center gap-3">
+            <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-[#e6edf4] bg-white p-10 shadow-sm">
               <Loader2 className="w-8 h-8 text-[#1b64da] animate-spin" />
               <p className="text-slate-500 font-medium">
                 Loading {activeTab} requests...
               </p>
             </div>
           ) : requests.length === 0 ? (
-            <div className="bg-white rounded-[32px] border border-[#e6edf4] shadow-sm p-12 text-center">
+            <div className="rounded-2xl border border-[#e6edf4] bg-white p-10 text-center shadow-sm">
               <div className="w-14 h-14 mx-auto rounded-2xl bg-[#eaf4fc] flex items-center justify-center text-[#1b64da]">
                 <CheckCircle2 className="w-7 h-7" />
               </div>
@@ -766,33 +830,45 @@ export default function AdminRequestsApprovals() {
               </h3>
 
               <p className="mt-2 text-slate-500">
-                There are currently no matching {activeTab} requests.
+                There are currently no matching {tabs.find((tab) => tab.key === activeTab)?.label.toLowerCase() ?? "requests"}.
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
 
               {requests.map((req, index) => {
                 const ts = TYPE_STYLES[req.type];
+                const cardKey = `${activeTab}-${req.id}`;
 
                 return (
                   <div
                     key={`${req.requestType}-${req.id}`}
-                    className="bg-white rounded-[32px] p-6 border border-[#e6edf4] shadow-sm flex flex-col justify-between hover:border-[#7BBDE8] hover:shadow-md transition-all min-w-0"
+                    id={`request-${cardKey}`}
+                    className={`flex min-w-0 flex-col rounded-2xl border bg-white p-5 shadow-sm transition-colors hover:border-[#7BBDE8] ${
+                      highlightedRequest?.key === cardKey && highlightedRequest.status === statusFilter
+                        ? "border-[#1b64da] ring-4 ring-[#1b64da]/30 shadow-lg"
+                        : "border-[#e6edf4]"
+                    }`}
                   >
 
                     <div>
+                      {highlightedRequest?.key === cardKey && highlightedRequest.status === statusFilter && (
+                        <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-[#1b64da] px-3 py-1 text-xs font-bold text-white">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          Selected from calendar
+                        </div>
+                      )}
 
                       {/* EMPLOYEE DETAILS */}
 
-                      <div className="flex items-start justify-between gap-3">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
 
-                        <div className="flex items-center gap-3.5 min-w-0">
+                        <div className="flex min-w-0 flex-1 items-center gap-3">
 
                           <div
-                            className={`w-14 h-14 shrink-0 rounded-2xl bg-gradient-to-br ${
+                            className={`w-11 h-11 shrink-0 rounded-xl bg-gradient-to-br ${
                               AVATAR_GRADIENTS[index % AVATAR_GRADIENTS.length]
-                            } text-white font-black flex items-center justify-center text-lg shadow-sm`}
+                            } text-white font-black flex items-center justify-center text-sm shadow-sm`}
                           >
                             {req.initials}
                           </div>
@@ -800,7 +876,7 @@ export default function AdminRequestsApprovals() {
                           <div className="min-w-0">
 
                             <div className="flex flex-wrap items-center gap-2">
-                              <h4 className="text-lg font-bold text-slate-900">
+                              <h4 className="break-words text-base font-bold text-slate-900">
                                 {req.name}
                               </h4>
 
@@ -809,7 +885,7 @@ export default function AdminRequestsApprovals() {
                               </span>
                             </div>
 
-                            <p className="text-[15px] text-slate-500 mt-1.5 truncate">
+                            <p className="mt-1 truncate text-sm text-slate-500" title={req.role}>
                               {req.role}
                             </p>
 
@@ -818,7 +894,7 @@ export default function AdminRequestsApprovals() {
                         </div>
 
                         <span
-                          className={`shrink-0 inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[13px] font-bold ${ts.chip}`}
+                          className={`shrink-0 inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full text-xs font-bold ${ts.chip}`}
                         >
                           <span className={`w-2 h-2 rounded-full ${ts.dot}`} />
                           {req.type}
@@ -826,30 +902,23 @@ export default function AdminRequestsApprovals() {
 
                       </div>
 
-                      {/* REQUEST INFORMATION (tinted panel + size bubble) */}
+                      {/* REQUEST INFORMATION */}
 
                       <div
-                        className="mt-5 rounded-3xl p-4"
+                        className="mt-4 rounded-2xl p-4"
                         style={{ backgroundColor: ts.panel }}
                       >
 
-                        <div className="flex items-center justify-between gap-3">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
 
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
 
                             <span className="text-[12px] text-slate-500 block uppercase font-bold tracking-wider">
                               Request Type
                             </span>
 
-                            <span className="font-extrabold text-slate-900 text-base mt-1.5 block leading-snug">
+                            <span className="mt-1 block break-words text-base font-bold leading-snug text-slate-900">
                               {req.subType}
-                            </span>
-
-                            <span className="mt-2 inline-flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 text-[12px] font-bold text-slate-700">
-                              <span className={`w-2 h-2 rounded-full ${ts.dot}`} />
-                              {req.status === "PENDING"
-                                ? "Pending Admin Approval"
-                                : req.status}
                             </span>
 
                           </div>
@@ -863,14 +932,14 @@ export default function AdminRequestsApprovals() {
 
                         </div>
 
-                        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-white/80 pt-3">
+                        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-white/80 pt-3">
 
-                          <span className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                            <CalendarIcon className="w-4 h-4 text-slate-500" />
+                          <span className="flex min-w-0 items-start gap-2 text-sm font-semibold text-slate-700">
+                            <CalendarIcon className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
                             {req.dateRange}
                           </span>
 
-                          <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-bold text-slate-600">
+                          <span className="break-words text-xs font-semibold text-slate-600">
                             {req.quotaInfo}
                           </span>
 
@@ -882,11 +951,11 @@ export default function AdminRequestsApprovals() {
 
                       <div className="mt-4">
 
-                        <span className="text-[13px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
+                        <span className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500">
                           Reason / Justification
                         </span>
 
-                        <p className="border-l-4 border-[#7BBDE8] pl-4 text-[15px] md:text-base text-slate-600 italic leading-relaxed">
+                        <p className="break-words border-l-2 border-[#7BBDE8] pl-3 text-sm leading-relaxed text-slate-700">
                           &ldquo;{req.reason}&rdquo;
                         </p>
 
@@ -894,7 +963,7 @@ export default function AdminRequestsApprovals() {
 
                       {/* APPLIED TIME */}
 
-                      <p className="mt-3 text-[13px] font-medium text-slate-400">
+                      <p className="mt-3 text-xs font-medium text-slate-500">
                         {req.appliedTime}
                       </p>
 
@@ -902,7 +971,7 @@ export default function AdminRequestsApprovals() {
 
                     {/* ACTION BUTTONS */}
 
-                    <div className="mt-5 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
 
                       <div className="flex items-center gap-2 text-[13px] font-semibold">
                         <span
@@ -918,22 +987,24 @@ export default function AdminRequestsApprovals() {
                         <div className="flex items-center gap-2">
 
                           <button
+                            type="button"
                             onClick={() =>
                               openDecisionModal(req, "REJECT")
                             }
                             disabled={deciding}
-                            className="flex items-center gap-2 px-4 py-2.5 text-[15px] font-bold text-rose-600 hover:bg-rose-50 rounded-full transition-colors border border-rose-200 disabled:opacity-50"
+                            className="flex items-center gap-2 rounded-full border border-rose-200 px-4 py-2 text-sm font-bold text-rose-600 transition-colors hover:bg-rose-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-600 disabled:opacity-50"
                           >
                             <X className="w-4 h-4" />
                             Reject
                           </button>
 
                           <button
+                            type="button"
                             onClick={() =>
                               openDecisionModal(req, "APPROVE")
                             }
                             disabled={deciding}
-                            className="flex items-center gap-2 px-5 py-2.5 text-[15px] font-bold text-white bg-[#1b64da] hover:bg-[#1552b5] rounded-full transition-colors shadow-sm disabled:opacity-50"
+                            className="flex items-center gap-2 rounded-full bg-[#1b64da] px-4 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-[#1552b5] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:opacity-50"
                           >
                             <Check className="w-4 h-4" />
                             {req.type === "Regularization"

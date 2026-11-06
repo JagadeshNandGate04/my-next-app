@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useDispatch, useSelector } from 'react-redux';
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useDispatch, useSelector } from "react-redux";
 import {
   Search,
   HelpCircle,
@@ -13,61 +13,61 @@ import {
   RefreshCw,
   X,
   ArrowUpRight,
-} from 'lucide-react';
-import { performLogout } from '../store/auth/authSlice';
-import type { AppDispatch, RootState } from '../store/store';
+} from "lucide-react";
+import { performLogout } from "../store/auth/authSlice";
+import type { AppDispatch, RootState } from "../store/store";
 import {
   fetchDashboard as fetchDashboardRequest,
   type DashboardEmployee,
   type DashboardPeriod,
-} from '../store/dashboard/dashboardSlice';
-import TeamAbsenceCalendar from '../components/TeamAbsenceCalendar';
+} from "../store/dashboard/dashboardSlice";
+import TeamAbsenceCalendar from "../components/TeamAbsenceCalendar";
 
 // 14 DIFFERENT AVATAR COLORS
 const AVATAR_COLORS = [
-  'bg-blue-500',
-  'bg-emerald-500',
-  'bg-purple-500',
-  'bg-orange-500',
-  'bg-pink-500',
-  'bg-cyan-600',
-  'bg-indigo-500',
-  'bg-rose-500',
-  'bg-teal-600',
-  'bg-amber-600',
-  'bg-violet-500',
-  'bg-lime-600',
-  'bg-sky-600',
-  'bg-fuchsia-500',
+  "bg-blue-500",
+  "bg-emerald-500",
+  "bg-purple-500",
+  "bg-orange-500",
+  "bg-pink-500",
+  "bg-cyan-600",
+  "bg-indigo-500",
+  "bg-rose-500",
+  "bg-teal-600",
+  "bg-amber-600",
+  "bg-violet-500",
+  "bg-lime-600",
+  "bg-sky-600",
+  "bg-fuchsia-500",
 ];
 
 // THEME COLOURS
-const SKY = '#7BBDE8';
-const SKY_LIGHT = '#bfe0f5';
-const BLUE = '#1b64da';
-const INK = '#0f172a';
+const SKY = "#7BBDE8";
+const SKY_LIGHT = "#bfe0f5";
+const BLUE = "#1b64da";
+const INK = "#0f172a";
 
 function formatDate(dateString: string, period: DashboardPeriod): string {
   const date = new Date(`${dateString}T00:00:00`);
 
-  if (period === 'day') {
-    return date.toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
+  if (period === "day") {
+    return date.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
     });
   }
 
-  if (period === 'month') {
-    return date.toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
+  if (period === "month") {
+    return date.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
     });
   }
 
-  return date.toLocaleDateString('en-IN', {
-    weekday: 'short',
-    day: '2-digit',
+  return date.toLocaleDateString("en-IN", {
+    weekday: "short",
+    day: "2-digit",
   });
 }
 
@@ -78,9 +78,9 @@ function getInitials(name?: string): string {
         .split(/\s+/)
         .slice(0, 2)
         .map((word) => word.charAt(0))
-        .join('')
+        .join("")
         .toUpperCase()
-    : '?';
+    : "?";
 }
 
 /* ---------------- design pieces ---------------- */
@@ -92,7 +92,7 @@ function AttendanceProgress({ percent }: { percent: number }) {
 
   return (
     <div
-      className="relative flex h-[104px] w-[104px] shrink-0 items-center justify-center"
+      className="relative flex h-[72px] w-[72px] shrink-0 items-center justify-center"
       role="progressbar"
       aria-label="Attendance today"
       aria-valuemin={0}
@@ -122,10 +122,12 @@ function AttendanceProgress({ percent }: { percent: number }) {
           strokeLinecap="round"
           strokeDasharray={circumference}
           strokeDashoffset={circumference * (1 - safe / 100)}
-          style={{ transition: 'stroke-dashoffset 900ms cubic-bezier(.22,.61,.36,1)' }}
+          style={{
+            transition: "stroke-dashoffset 900ms cubic-bezier(.22,.61,.36,1)",
+          }}
         />
       </svg>
-      <UserCheck className="h-9 w-9 text-[#1b64da]" aria-hidden="true" />
+      <UserCheck className="h-8 w-8 text-[#1b64da]" aria-hidden="true" />
     </div>
   );
 }
@@ -140,7 +142,7 @@ function CountBubble({
   text?: string;
 }) {
   const size = Math.min(78, Math.max(46, Math.round(34 + value * 4)));
-  const fs = size >= 60 ? 'text-lg' : 'text-sm';
+  const fs = size >= 60 ? "text-lg" : "text-sm";
 
   return (
     <span
@@ -152,7 +154,7 @@ function CountBubble({
   );
 }
 
-function Skeleton({ className = '' }: { className?: string }) {
+function Skeleton({ className = "" }: { className?: string }) {
   return (
     <span
       className={`inline-block animate-pulse rounded-md bg-slate-200 ${className}`}
@@ -165,13 +167,15 @@ function Skeleton({ className = '' }: { className?: string }) {
 export default function NandgateDashboard() {
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
-  const { data: dashboard, loading, error } = useSelector(
-    (state: RootState) => state.dashboard
-  );
-  const [timeFilter, setTimeFilter] = useState<DashboardPeriod>('week');
+  const {
+    data: dashboard,
+    loading,
+    error,
+  } = useSelector((state: RootState) => state.dashboard);
+  const [timeFilter, setTimeFilter] = useState<DashboardPeriod>("week");
 
   // SEARCH STATE
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] =
     useState<DashboardEmployee | null>(null);
@@ -182,11 +186,13 @@ export default function NandgateDashboard() {
       await dispatch(fetchDashboardRequest(timeFilter));
     } catch (error) {
       const unauthorized =
-        typeof error === 'object' && error !== null &&
-        'unauthorized' in error && error.unauthorized === true;
+        typeof error === "object" &&
+        error !== null &&
+        "unauthorized" in error &&
+        error.unauthorized === true;
       if (unauthorized) {
         dispatch(performLogout());
-        router.push('/login');
+        router.push("/login");
       }
     }
   }, [dispatch, router, timeFilter]);
@@ -220,12 +226,12 @@ export default function NandgateDashboard() {
     });
   }, [activeEmployees, searchQuery]);
 
-  const isShiftSearch = searchQuery.trim().toLowerCase().includes('shift');
-  const isReportSearch = searchQuery.trim().toLowerCase().includes('report');
+  const isShiftSearch = searchQuery.trim().toLowerCase().includes("shift");
+  const isReportSearch = searchQuery.trim().toLowerCase().includes("report");
 
   // CLEAR SEARCH
   const clearSearch = () => {
-    setSearchQuery('');
+    setSearchQuery("");
     setSearchOpen(false);
     setSelectedEmployee(null);
   };
@@ -235,14 +241,14 @@ export default function NandgateDashboard() {
     if (!counts) return [];
 
     return [
-      { label: 'In Office', value: counts.in, color: '#7BBDE8' },
-      { label: 'Out', value: counts.out, color: '#10b981' },
-      { label: 'On Leave', value: counts.on_leave, color: '#38bdf8' },
-      { label: 'Absent', value: counts.absent, color: '#f43f5e' },
+      { label: "In Office", value: counts.in, color: "#7BBDE8" },
+      { label: "Out", value: counts.out, color: "#10b981" },
+      { label: "On Leave", value: counts.on_leave, color: "#38bdf8" },
+      { label: "Absent", value: counts.absent, color: "#f43f5e" },
       {
-        label: 'Other',
+        label: "Other",
         value: counts.weekly_off + counts.insufficient + counts.no_punch_yet,
-        color: '#cbd5e1',
+        color: "#cbd5e1",
       },
     ];
   }, [counts]);
@@ -264,8 +270,7 @@ export default function NandgateDashboard() {
         chartData.length === 1
           ? width / 2
           : horizontalPadding +
-            (index / (chartData.length - 1)) *
-              (width - horizontalPadding * 2);
+            (index / (chartData.length - 1)) * (width - horizontalPadding * 2);
 
       const y =
         height -
@@ -277,25 +282,25 @@ export default function NandgateDashboard() {
   }, [chartData]);
 
   const chartPath = useMemo(() => {
-    if (!chartPoints.length) return '';
+    if (!chartPoints.length) return "";
     return chartPoints
-      .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
-      .join(' ');
+      .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`)
+      .join(" ");
   }, [chartPoints]);
 
   const chartAreaPath = useMemo(() => {
-    if (!chartPoints.length) return '';
+    if (!chartPoints.length) return "";
     const first = chartPoints[0];
     const last = chartPoints[chartPoints.length - 1];
     return `${chartPath} L ${last.x} 190 L ${first.x} 190 Z`;
   }, [chartPath, chartPoints]);
 
   const periodLabel =
-    timeFilter === 'day'
-      ? 'Today'
-      : timeFilter === 'week'
-        ? 'Last 7 Days'
-        : 'Last 30 Days';
+    timeFilter === "day"
+      ? "Today"
+      : timeFilter === "week"
+        ? "Last 7 Days"
+        : "Last 30 Days";
 
   // ---------- derived values ----------
   const totalCount = counts?.total_employees || totalEmployees || 0;
@@ -307,38 +312,38 @@ export default function NandgateDashboard() {
 
   const segments = [
     {
-      key: 'in',
-      label: 'In Office',
+      key: "in",
+      label: "In Office",
       count: counts?.in ?? 0,
-      note: 'Currently punched in',
+      note: "Currently punched in",
       color: SKY,
       text: INK,
-      bar: 'bg-[#1b64da]',
-      muted: 'text-black/50',
+      bar: "bg-[#1b64da]",
+      muted: "text-black/50",
       sample: dashboard?.today.employees.in?.[0],
       Icon: UserCheck,
     },
     {
-      key: 'wait',
-      label: 'Not Yet In',
+      key: "wait",
+      label: "Not Yet In",
       count: counts?.no_punch_yet ?? 0,
-      note: 'Awaiting first punch',
+      note: "Awaiting first punch",
       color: SKY_LIGHT,
       text: INK,
-      bar: 'bg-[#1b64da]',
-      muted: 'text-black/50',
+      bar: "bg-[#1b64da]",
+      muted: "text-black/50",
       sample: dashboard?.today.employees.no_punch_yet?.[0],
       Icon: Clock,
     },
     {
-      key: 'absent',
-      label: 'Absent',
+      key: "absent",
+      label: "Absent",
       count: counts?.absent ?? 0,
       note: `${dashboard?.unregularized_days_this_month ?? 0} unregularized`,
       color: BLUE,
-      text: '#ffffff',
-      bar: 'bg-white',
-      muted: 'text-white/70',
+      text: "#ffffff",
+      bar: "bg-white",
+      muted: "text-white/70",
       sample: dashboard?.today.employees.absent?.[0],
       Icon: AlertCircle,
     },
@@ -346,69 +351,57 @@ export default function NandgateDashboard() {
 
   const detailCards = [
     {
-      key: 'leave',
-      label: 'On Leave',
+      key: "leave",
+      label: "On Leave",
       value: counts?.on_leave ?? 0,
-      line: `${pctOf(counts?.on_leave ?? 0)}% of workforce`,
-      note: `${dashboard?.pending_requests.leave ?? 0} pending`,
       color: SKY_LIGHT,
       text: INK,
-      muted: 'text-black/50',
+      muted: "text-black/50",
       Icon: Calendar,
     },
     {
-      key: 'out',
-      label: 'Checked Out',
+      key: "out",
+      label: "Checked Out",
       value: counts?.out ?? 0,
-      line: `${pctOf(counts?.out ?? 0)}% of workforce`,
-      note: 'Left for the day',
       color: SKY,
       text: INK,
-      muted: 'text-black/50',
+      muted: "text-black/50",
       Icon: UserCheck,
     },
     {
-      key: 'late',
-      label: 'Late Arrivals',
+      key: "late",
+      label: "Late Arrivals",
       value: dashboard?.attendance_summary.late_count ?? 0,
-      line: periodLabel,
-      note: 'Late punch-ins',
       color: BLUE,
-      text: '#ffffff',
-      muted: 'text-white/70',
+      text: "#ffffff",
+      muted: "text-white/70",
       Icon: Clock,
     },
     {
-      key: 'insufficient',
-      label: 'Insufficient',
+      key: "insufficient",
+      label: "Insufficient",
       value: counts?.insufficient ?? 0,
-      line: `${pctOf(counts?.insufficient ?? 0)}% of workforce`,
-      note: 'Short working hours',
       color: SKY_LIGHT,
       text: INK,
-      muted: 'text-black/50',
+      muted: "text-black/50",
       Icon: AlertCircle,
     },
     {
-      key: 'weekly',
-      label: 'Weekly Off',
+      key: "weekly",
+      label: "Weekly Off",
       value: counts?.weekly_off ?? 0,
-      line: `${pctOf(counts?.weekly_off ?? 0)}% of workforce`,
-      note: 'Scheduled day off',
       color: SKY,
       text: INK,
-      muted: 'text-black/50',
+      muted: "text-black/50",
       Icon: Calendar,
     },
     {
-      key: 'unreg',
-      label: 'Unregularized',
+      key: "unreg",
+      label: "Unregularized",
       value: dashboard?.unregularized_days_this_month ?? 0,
-      line: 'This month',
-      note: 'Days needing action',
       color: BLUE,
-      text: '#ffffff',
-      muted: 'text-white/70',
+      text: "#ffffff",
+      muted: "text-white/70",
       Icon: AlertCircle,
     },
   ];
@@ -427,187 +420,11 @@ export default function NandgateDashboard() {
 
       <main className="flex-1 rounded-t-[40px] bg-[#f0f6fa]">
         <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
-
-          {/* ================= HEADER + SEARCH ================= */}
-          <header className="nand-fade-up flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            <div className="relative w-full max-w-xl">
-              <Search className="pointer-events-none absolute left-5 top-1/2 z-10 h-5 w-5 -translate-y-1/2 text-slate-400" />
-
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setSearchOpen(true);
-                  setSelectedEmployee(null);
-                }}
-                onFocus={() => setSearchOpen(true)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Escape') setSearchOpen(false);
-                }}
-                placeholder="Search employee, shift, report..."
-                autoComplete="off"
-                className="w-full rounded-full border border-slate-200/80 bg-white py-4 pl-14 pr-12 text-base text-slate-700 placeholder-slate-400 shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]/50"
-              />
-
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={clearSearch}
-                  title="Clear search"
-                  className="absolute right-5 top-1/2 z-10 -translate-y-1/2 text-slate-400 transition-colors hover:text-rose-500"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              )}
-
-              {/* SEARCH DROPDOWN — only when no employee selected */}
-              {searchOpen && searchQuery.trim() !== '' && !selectedEmployee && (
-                <div className="nand-fade-up absolute left-0 right-0 top-full z-50 mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
-                  {filteredEmployees.length > 0 && (
-                    <div className="p-3">
-                      <p className="px-3 py-2 text-xs font-bold uppercase tracking-wider text-slate-400">
-                        Employees ({filteredEmployees.length})
-                      </p>
-
-                      <div className="max-h-64 overflow-y-auto">
-                        {filteredEmployees.map((employee, index) => (
-                          <button
-                            key={employee.id}
-                            type="button"
-                            onClick={() => {
-                              setSelectedEmployee(employee);
-                              setSearchOpen(false);
-                              setSearchQuery('');
-                            }}
-                            className="flex w-full items-center gap-3 rounded-xl p-3 text-left transition-colors hover:bg-sky-50"
-                          >
-                            <div
-                              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${
-                                AVATAR_COLORS[index % AVATAR_COLORS.length]
-                              }`}
-                            >
-                              {getInitials(employee.name)}
-                            </div>
-
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-semibold text-slate-800">
-                                {employee.name}
-                              </p>
-                              <p className="mt-1 truncate text-xs text-slate-500">
-                                {employee.emp_code}
-                                {employee.designation ? ` • ${employee.designation}` : ''}
-                              </p>
-                            </div>
-
-                            <span className="text-xs font-semibold text-blue-500">
-                              View
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {isShiftSearch && (
-                    <div className="border-t border-slate-100 p-4">
-                      <div className="flex items-start gap-3">
-                        <Clock className="mt-0.5 h-5 w-5 text-blue-500" />
-                        <div>
-                          <p className="text-sm font-semibold text-slate-800">
-                            Shift Management
-                          </p>
-                          <p className="mt-1 text-xs text-slate-500">
-                            The shift management page has not been created yet.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {isReportSearch && (
-                    <div className="border-t border-slate-100 p-4">
-                      <div className="flex items-start gap-3">
-                        <Calendar className="mt-0.5 h-5 w-5 text-blue-500" />
-                        <div>
-                          <p className="text-sm font-semibold text-slate-800">
-                            Reports
-                          </p>
-                          <p className="mt-1 text-xs text-slate-500">
-                            The reports page has not been created yet.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {!isShiftSearch && !isReportSearch && filteredEmployees.length === 0 && (
-                    <div className="p-6 text-center">
-                      <Search className="mx-auto mb-2 h-6 w-6 text-slate-300" />
-                      <p className="text-sm font-semibold text-slate-700">
-                        No matching employees found
-                      </p>
-                      <p className="mt-1 text-xs text-slate-400">
-                        Try employee name, code, or designation.
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="border-t border-slate-100 p-2">
-                    <button
-                      type="button"
-                      onClick={clearSearch}
-                      className="w-full py-2 text-xs text-slate-500 transition-colors hover:text-slate-800"
-                    >
-                      Clear search
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* SELECTED EMPLOYEE CARD — only when dropdown closed */}
-              {selectedEmployee && !searchOpen && (
-                <div className="nand-fade-up absolute left-0 right-0 top-full z-40 mt-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
-                  <div className="mb-3 flex items-center justify-between">
-                    <p className="text-sm font-bold text-slate-800">
-                      Employee Details
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedEmployee(null)}
-                      className="text-xs font-semibold text-slate-400 transition-colors hover:text-rose-500"
-                    >
-                      Close
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`flex h-12 w-12 items-center justify-center rounded-full text-sm font-bold text-white ${AVATAR_COLORS[0]}`}
-                    >
-                      {getInitials(selectedEmployee.name)}
-                    </div>
-                    <div>
-                      <p className="text-base font-bold text-slate-900">
-                        {selectedEmployee.name}
-                      </p>
-                      <p className="text-sm text-slate-500">
-                        {selectedEmployee.emp_code}
-                        {selectedEmployee.designation
-                          ? ` • ${selectedEmployee.designation}`
-                          : ''}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </header>
-
+                
           {/* ================= GREETING + FILTERS ================= */}
           <div
             className="nand-fade-up flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
-            style={{ animationDelay: '60ms' }}
+            style={{ animationDelay: "60ms" }}
           >
             <div>
               <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 md:text-4xl lg:text-5xl">
@@ -625,7 +442,7 @@ export default function NandgateDashboard() {
                       title={employee.name}
                       aria-label={employee.name}
                       className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ring-2 ring-[#f0f6fa] ${
-                        index > 0 ? '-ml-2' : ''
+                        index > 0 ? "-ml-2" : ""
                       } ${AVATAR_COLORS[index % AVATAR_COLORS.length]}`}
                     >
                       {getInitials(employee.name)}
@@ -638,7 +455,9 @@ export default function NandgateDashboard() {
                   )}
                 </div>
                 <span className="text-sm font-semibold text-slate-500">
-                  {loading ? 'Loading employees…' : `${totalEmployees} Total Employees`}
+                  {loading
+                    ? "Loading employees…"
+                    : `${totalEmployees} Total Employees`}
                 </span>
               </div>
             </div>
@@ -646,7 +465,9 @@ export default function NandgateDashboard() {
             <div className="flex items-center gap-3">
               <select
                 value={timeFilter}
-                onChange={(e) => setTimeFilter(e.target.value as DashboardPeriod)}
+                onChange={(e) =>
+                  setTimeFilter(e.target.value as DashboardPeriod)
+                }
                 className="cursor-pointer rounded-full border border-slate-200/80 bg-white px-5 py-3 text-sm font-medium text-slate-600 shadow-sm outline-none transition-all hover:border-slate-300 focus:ring-2 focus:ring-[#7BBDE8]/50"
               >
                 <option value="day">Last Day</option>
@@ -661,7 +482,9 @@ export default function NandgateDashboard() {
                 title="Refresh dashboard"
                 className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition-all hover:-translate-y-0.5 hover:text-blue-600 hover:shadow-md disabled:opacity-50"
               >
-                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw
+                  className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
+                />
               </button>
             </div>
           </div>
@@ -687,17 +510,13 @@ export default function NandgateDashboard() {
             </div>
           )}
 
-
-{/* ================= BREAKDOWN ================= */}
-          <section className="nand-fade-up" style={{ animationDelay: '540ms' }}>
+          {/* ================= BREAKDOWN ================= */}
+          <section className="nand-fade-up" style={{ animationDelay: "540ms" }}>
             <div className="flex items-end justify-between gap-4">
               <h2 className="text-[22px] font-extrabold tracking-tight text-slate-900">
                 Attendance Breakdown
               </h2>
-              <span className="text-xs font-semibold text-slate-400">
-                {totalCount} Total Employees
-              </span>
-            </div>
+              </div>
 
             <div className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
               {detailCards.map((card) => (
@@ -719,12 +538,14 @@ export default function NandgateDashboard() {
                     {loading ? <Skeleton className="h-7 w-10" /> : card.value}
                   </p>
 
-                  <p className="mt-3 text-[11px] font-bold leading-snug">
+                  {/* <p className="mt-3 text-[11px] font-bold leading-snug">
                     {card.line}
-                  </p>
-                  <p className={`text-[11px] font-medium leading-snug ${card.muted}`}>
+                  </p> */}
+                  {/* <p
+                    className={`text-[11px] font-medium leading-snug ${card.muted}`}
+                  >
                     {card.note}
-                  </p>
+                  </p> */}
                 </div>
               ))}
             </div>
@@ -732,7 +553,7 @@ export default function NandgateDashboard() {
           {/* ================= OPERATIONS AT A GLANCE ================= */}
           <section
             className="nand-rise grid overflow-hidden rounded-[28px] border border-[#d6e8f7] bg-white shadow-sm lg:grid-cols-12"
-            style={{ animationDelay: '120ms' }}
+            style={{ animationDelay: "120ms" }}
           >
             <div className="relative flex flex-col justify-between gap-6 overflow-hidden bg-[#eaf4fc] p-6 sm:p-8 lg:col-span-4">
               <span className="absolute inset-y-0 left-0 w-1.5 bg-[#1b64da]" />
@@ -743,7 +564,11 @@ export default function NandgateDashboard() {
                 <div className="mt-4 flex items-center justify-between gap-4">
                   <div>
                     <p className="text-5xl font-black leading-none text-slate-900">
-                      {loading ? <Skeleton className="h-12 w-24" /> : `${presentPct}%`}
+                      {loading ? (
+                        <Skeleton className="h-12 w-24" />
+                      ) : (
+                        `${presentPct}%`
+                      )}
                     </p>
                     <p className="mt-3 text-sm font-semibold text-slate-600">
                       {counts?.in ?? 0} currently in office
@@ -764,7 +589,14 @@ export default function NandgateDashboard() {
                     {loading ? (
                       <Skeleton className="h-8 w-24" />
                     ) : (
-                      <>{totalHours.toLocaleString('en-IN', { maximumFractionDigits: 1 })}<span className="ml-1 text-sm font-bold text-slate-500">hrs</span></>
+                      <>
+                        {totalHours.toLocaleString("en-IN", {
+                          maximumFractionDigits: 1,
+                        })}
+                        <span className="ml-1 text-sm font-bold text-slate-500">
+                          hrs
+                        </span>
+                      </>
                     )}
                   </p>
                 </div>
@@ -785,7 +617,7 @@ export default function NandgateDashboard() {
                   </h2>
                 </div>
                 <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-500">
-                  {loading ? 'Updating…' : `${totalCount} team members`}
+                  {loading ? "Updating…" : `${totalCount} team members`}
                 </span>
               </div>
 
@@ -795,7 +627,7 @@ export default function NandgateDashboard() {
                   return (
                     <div
                       key={segment.key}
-                      className={`min-w-0 ${index > 0 ? 'sm:border-l sm:border-slate-100 sm:pl-4' : ''}`}
+                      className={`min-w-0 ${index > 0 ? "sm:border-l sm:border-slate-100 sm:pl-4" : ""}`}
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex min-w-0 items-center gap-2">
@@ -810,12 +642,16 @@ export default function NandgateDashboard() {
                           </span>
                         </div>
                         <span className="text-xs font-bold text-slate-400">
-                          {loading ? '—' : `${percentage}%`}
+                          {loading ? "—" : `${percentage}%`}
                         </span>
                       </div>
 
                       <p className="mt-4 text-3xl font-black leading-none text-slate-900">
-                        {loading ? <Skeleton className="h-8 w-12" /> : segment.count}
+                        {loading ? (
+                          <Skeleton className="h-8 w-12" />
+                        ) : (
+                          segment.count
+                        )}
                       </p>
                       <div
                         className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-100"
@@ -827,7 +663,10 @@ export default function NandgateDashboard() {
                       >
                         <div
                           className="h-full rounded-full transition-[width] duration-700 ease-out"
-                          style={{ width: `${percentage}%`, backgroundColor: segment.color }}
+                          style={{
+                            width: `${percentage}%`,
+                            backgroundColor: segment.color,
+                          }}
                         />
                       </div>
                       <p className="mt-2 text-[11px] leading-snug text-slate-400">
@@ -862,13 +701,13 @@ export default function NandgateDashboard() {
               </div>
             </div>
           </section>
- <TeamAbsenceCalendar />
+          <TeamAbsenceCalendar />
           {/* ================= CHARTS ================= */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
             {/* Line chart */}
             <div
               className="nand-fade-up flex flex-col rounded-[28px] border border-[#e6edf4] bg-white p-6 shadow-sm sm:p-8 lg:col-span-8"
-              style={{ animationDelay: '420ms' }}
+              style={{ animationDelay: "420ms" }}
             >
               <div className="mb-6 flex items-start justify-between">
                 <div>
@@ -890,9 +729,23 @@ export default function NandgateDashboard() {
                     preserveAspectRatio="none"
                   >
                     <defs>
-                      <linearGradient id="blueGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.25" />
-                        <stop offset="100%" stopColor="#38bdf8" stopOpacity="0" />
+                      <linearGradient
+                        id="blueGrad"
+                        x1="0%"
+                        y1="0%"
+                        x2="0%"
+                        y2="100%"
+                      >
+                        <stop
+                          offset="0%"
+                          stopColor="#38bdf8"
+                          stopOpacity="0.25"
+                        />
+                        <stop
+                          offset="100%"
+                          stopColor="#38bdf8"
+                          stopOpacity="0"
+                        />
                       </linearGradient>
                     </defs>
 
@@ -942,7 +795,8 @@ export default function NandgateDashboard() {
                         style={{ animationDelay: `${600 + index * 60}ms` }}
                       >
                         <title>
-                          {formatDate(point.date, timeFilter)}: {point.work_hours} hours
+                          {formatDate(point.date, timeFilter)}:{" "}
+                          {point.work_hours} hours
                         </title>
                       </circle>
                     ))}
@@ -950,8 +804,8 @@ export default function NandgateDashboard() {
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-sm text-slate-400">
                     {loading
-                      ? 'Loading attendance chart…'
-                      : 'No attendance data for this period.'}
+                      ? "Loading attendance chart…"
+                      : "No attendance data for this period."}
                   </div>
                 )}
               </div>
@@ -961,7 +815,9 @@ export default function NandgateDashboard() {
                   chartData
                     .filter((_, index) => {
                       const step = Math.max(1, Math.ceil(chartData.length / 7));
-                      return index % step === 0 || index === chartData.length - 1;
+                      return (
+                        index % step === 0 || index === chartData.length - 1
+                      );
                     })
                     .map((item) => (
                       <span key={item.date}>
@@ -972,11 +828,12 @@ export default function NandgateDashboard() {
 
               <div className="mt-6 flex flex-wrap gap-5 text-sm text-slate-500">
                 <div className="flex items-center gap-2">
-                  <span className="h-3 w-3 rounded-full bg-sky-600" /> Working Hours
+                  <span className="h-3 w-3 rounded-full bg-sky-600" /> Working
+                  Hours
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="h-3 w-3 rounded-full bg-orange-400" /> Late Count:{' '}
-                  {dashboard?.attendance_summary.late_count ?? 0}
+                  <span className="h-3 w-3 rounded-full bg-orange-400" /> Late
+                  Count: {dashboard?.attendance_summary.late_count ?? 0}
                 </div>
               </div>
             </div>
@@ -984,7 +841,7 @@ export default function NandgateDashboard() {
             {/* Donut */}
             <div
               className="nand-fade-up flex flex-col justify-between rounded-[28px] border border-[#e6edf4] bg-white p-6 shadow-sm sm:p-8 lg:col-span-4"
-              style={{ animationDelay: '480ms' }}
+              style={{ animationDelay: "480ms" }}
             >
               <div className="mb-2 flex items-start justify-between">
                 <div>
@@ -1016,7 +873,8 @@ export default function NandgateDashboard() {
                       const circumference = 2 * Math.PI * 38;
                       let offset = 0;
                       return donutItems.map((item) => {
-                        const segmentLength = (item.value / donutTotal) * circumference;
+                        const segmentLength =
+                          (item.value / donutTotal) * circumference;
                         const circle = (
                           <circle
                             key={item.label}
@@ -1028,7 +886,9 @@ export default function NandgateDashboard() {
                             strokeDasharray={`${segmentLength} ${circumference - segmentLength}`}
                             strokeDashoffset={-offset}
                             fill="none"
-                            style={{ transition: 'stroke-dasharray 700ms ease' }}
+                            style={{
+                              transition: "stroke-dasharray 700ms ease",
+                            }}
                           />
                         );
                         offset += segmentLength;
@@ -1055,7 +915,7 @@ export default function NandgateDashboard() {
                       style={{ backgroundColor: item.color }}
                     />
                     <span className="truncate">
-                      {item.label}{' '}
+                      {item.label}{" "}
                       <span className="font-bold text-slate-800">
                         ({item.value})
                       </span>
@@ -1066,16 +926,12 @@ export default function NandgateDashboard() {
             </div>
           </div>
 
-          
-
-         
-
           {/* ================= PENDING + DEVICES ================= */}
           <div className="grid grid-cols-1 gap-6 pb-6 md:grid-cols-2">
             {/* Pending Requests */}
             <div
               className="nand-fade-up rounded-[28px] border border-[#e6edf4] bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-md"
-              style={{ animationDelay: '600ms' }}
+              style={{ animationDelay: "600ms" }}
             >
               <div className="mb-5 flex items-center justify-between">
                 <h3 className="text-lg font-bold text-slate-900">
@@ -1089,19 +945,19 @@ export default function NandgateDashboard() {
               <div className="grid grid-cols-3 items-end gap-4 py-2">
                 {[
                   {
-                    label: 'Leave',
+                    label: "Leave",
                     value: dashboard?.pending_requests.leave ?? 0,
                     color: BLUE,
-                    text: '#ffffff',
+                    text: "#ffffff",
                   },
                   {
-                    label: 'Permission',
+                    label: "Permission",
                     value: dashboard?.pending_requests.permission ?? 0,
                     color: SKY,
                     text: INK,
                   },
                   {
-                    label: 'Regularization',
+                    label: "Regularization",
                     value: dashboard?.pending_requests.regularization ?? 0,
                     color: SKY_LIGHT,
                     text: INK,
@@ -1127,7 +983,7 @@ export default function NandgateDashboard() {
             {/* Device Health */}
             <div
               className="nand-fade-up rounded-[28px] border border-[#e6edf4] bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-md"
-              style={{ animationDelay: '660ms' }}
+              style={{ animationDelay: "660ms" }}
             >
               <div className="mb-5 flex items-center justify-between">
                 <h3 className="text-lg font-bold text-slate-900">
@@ -1164,7 +1020,6 @@ export default function NandgateDashboard() {
               </div>
             </div>
           </div>
-
         </div>
       </main>
     </div>

@@ -106,13 +106,13 @@ const INITIAL_SETTINGS: SystemSettings = {
 // ============================================================
 
 const DAYS_OF_WEEK = [
-  { index: 0, label: "Sun (0)" },
-  { index: 1, label: "Mon (1)" },
-  { index: 2, label: "Tue (2)" },
-  { index: 3, label: "Wed (3)" },
-  { index: 4, label: "Thu (4)" },
-  { index: 5, label: "Fri (5)" },
-  { index: 6, label: "Sat (6)" },
+  { index: 0, name: "Sunday", label: "Sun (0)" },
+  { index: 1, name: "Monday", label: "Mon (1)" },
+  { index: 2, name: "Tuesday", label: "Tue (2)" },
+  { index: 3, name: "Wednesday", label: "Wed (3)" },
+  { index: 4, name: "Thursday", label: "Thu (4)" },
+  { index: 5, name: "Friday", label: "Fri (5)" },
+  { index: 6, name: "Saturday", label: "Sat (6)" },
 ];
 
 // ============================================================
@@ -168,7 +168,7 @@ function CountCard({
 
 interface NumberFieldProps {
   label: string;
-  settingKey: string;
+  // settingKey: string;
   value: number;
   unit: string;
   step?: number;
@@ -178,7 +178,7 @@ interface NumberFieldProps {
 
 function NumberField({
   label,
-  settingKey,
+  // settingKey,
   value,
   unit,
   step = 1,
@@ -189,7 +189,7 @@ function NumberField({
     <div className="bg-[#f0f6fa] border border-[#bfe0f5] rounded-3xl p-4">
       <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5 font-bold gap-2">
         <span>{label}</span>
-        <span className="font-mono text-[11px]">{settingKey}</span>
+        {/* <span className="font-mono text-[11px]">{settingKey}</span> */}
       </div>
 
       <div className="flex items-center justify-between bg-white border border-[#bfe0f5] rounded-xl px-3 py-2 focus-within:ring-2 focus-within:ring-[#7BBDE8]/40">
@@ -246,8 +246,7 @@ export default function SystemSettingsHub() {
   // LOCAL FORM STATE
   // ----------------------------------------------------------
 
-  const [settings, setSettings] =
-    useState<SystemSettings>(INITIAL_SETTINGS);
+  const [settings, setSettings] = useState<SystemSettings>(INITIAL_SETTINGS);
 
   const [isHolidayModalOpen, setIsHolidayModalOpen] = useState(false);
 
@@ -318,10 +317,7 @@ export default function SystemSettingsHub() {
   // UPDATE NUMBER SETTING
   // ----------------------------------------------------------
 
-  const updateNumberSetting = (
-    key: keyof SystemSettings,
-    value: number,
-  ) => {
+  const updateNumberSetting = (key: keyof SystemSettings, value: number) => {
     setSettings((prev) => ({
       ...prev,
       [key]: value,
@@ -413,9 +409,7 @@ export default function SystemSettingsHub() {
   // CREATE HOLIDAY
   // ----------------------------------------------------------
 
-  const handleCreateHoliday = async (
-    e: React.FormEvent<HTMLFormElement>,
-  ) => {
+  const handleCreateHoliday = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!newHolidayName.trim()) {
@@ -445,9 +439,7 @@ export default function SystemSettingsHub() {
       setNewHolidayDate(`${selectedYear}-01-01`);
       setIsHolidayModalOpen(false);
     } catch (err) {
-      setLocalError(
-        typeof err === "string" ? err : "Failed to create holiday",
-      );
+      setLocalError(typeof err === "string" ? err : "Failed to create holiday");
     }
   };
 
@@ -455,10 +447,7 @@ export default function SystemSettingsHub() {
   // DELETE HOLIDAY
   // ----------------------------------------------------------
 
-  const handleDeleteHoliday = async (
-    id: number,
-    name: string,
-  ) => {
+  const handleDeleteHoliday = async (id: number, name: string) => {
     const confirmed = window.confirm(
       `Delete holiday "${name}"? Day summaries for active employees on this date will automatically be recomputed.`,
     );
@@ -473,9 +462,7 @@ export default function SystemSettingsHub() {
 
       console.log("Holiday deleted:", result);
     } catch (err) {
-      setLocalError(
-        typeof err === "string" ? err : "Failed to delete holiday",
-      );
+      setLocalError(typeof err === "string" ? err : "Failed to delete holiday");
     }
   };
 
@@ -488,9 +475,7 @@ export default function SystemSettingsHub() {
 
     const day = String(d.getDate()).padStart(2, "0");
 
-    const month = d
-      .toLocaleString("en-US", { month: "short" })
-      .toUpperCase();
+    const month = d.toLocaleString("en-US", { month: "short" }).toUpperCase();
 
     const weekday = d.toLocaleDateString("en-US", {
       weekday: "long",
@@ -532,7 +517,6 @@ export default function SystemSettingsHub() {
     <div className="min-h-screen bg-[#f0f6fa] text-[#0f172a] font-sans antialiased selection:bg-[#7BBDE8]/30">
       <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">
         <div className="max-w-[1440px] mx-auto space-y-6">
-
           {/* ==================================================
               TOP BAR
           ================================================== */}
@@ -546,12 +530,6 @@ export default function SystemSettingsHub() {
                   System Settings & Policy Controls
                 </h1>
               </div>
-
-              <p className="text-sm font-medium text-slate-500 mt-1.5 max-w-3xl">
-                Configure global enterprise shift hours, attendance
-                tolerance windows, leave accruals, and managed annual
-                holiday schedules across NANDGATE-IT operations.
-              </p>
             </div>
 
             <div className="flex items-center gap-3 flex-wrap">
@@ -641,9 +619,8 @@ export default function SystemSettingsHub() {
           ================================================== */}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-
             <CountCard
-              label="SHIFT.START & SHIFT.END"
+              label="Shift Timings"
               value={`${settings.shift.start} – ${settings.shift.end}`}
               note={`${settings.full_day_hours} hrs standard`}
               color={SKY}
@@ -653,9 +630,13 @@ export default function SystemSettingsHub() {
             />
 
             <CountCard
-              label="WEEKLY_OFF_DAYS"
+              label="Weekly Off Days"
               value={`${settings.weekly_off_days.length} Days Off / Wk`}
-              note={`[${settings.weekly_off_days.join(", ")}]`}
+              note={settings.weekly_off_days.length
+                ? settings.weekly_off_days.map((index) =>
+                    DAYS_OF_WEEK.find((day) => day.index === index)?.name ?? `Unknown day (${index})`
+                  ).join(", ")
+                : "No weekly off days"}
               color={SKY_LIGHT}
               text={INK}
               muted="text-black/50"
@@ -673,7 +654,7 @@ export default function SystemSettingsHub() {
             />
 
             <CountCard
-              label="LEAVE_BALANCE_CAP"
+              label="Leave Balance Cap"
               value={`${settings.leave_monthly_accrual} Days / mo`}
               note={`Cap: ${settings.leave_balance_cap} days`}
               color={SKY}
@@ -688,27 +669,16 @@ export default function SystemSettingsHub() {
           ================================================== */}
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-
             {/* =================================================
                 LEFT: OPERATIONAL SETTINGS
             ================================================= */}
 
             <div className="lg:col-span-7 space-y-6">
-
-              <div className="flex items-center gap-2 px-2">
-                <span className="w-2 h-2 rounded-full bg-[#7BBDE8]" />
-
-                <h2 className="text-lg font-black text-[#0f172a] tracking-tight">
-                  Core Operational Policies
-                </h2>
-              </div>
-
               {/* ==============================================
                   SECTION A: SHIFT SETTINGS
               ============================================== */}
 
               <div className="bg-white border border-[#e6edf4] rounded-[32px] p-6 shadow-sm space-y-5">
-
                 <div className="flex items-center gap-3 border-b border-[#e6edf4] pb-3">
                   <div className="w-8 h-8 rounded-full bg-[#7BBDE8] flex items-center justify-center text-[#0f172a] font-black text-xs">
                     A
@@ -716,32 +686,24 @@ export default function SystemSettingsHub() {
 
                   <div>
                     <h3 className="font-bold text-sm text-[#0f172a]">
-                      Shift Timing & Core Work Windows
+                      Shift Timings
                     </h3>
-
-                    <p className="text-xs text-slate-500">
-                      Default shifts and attendance thresholds
-                    </p>
                   </div>
                 </div>
 
                 {/* SHIFT START AND END */}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
                   <div className="bg-[#f0f6fa] border border-[#bfe0f5] rounded-3xl p-4">
                     <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5 font-bold">
                       <span>Shift Start Time</span>
-                      <span className="font-mono text-[11px]">shift.start</span>
                     </div>
 
                     <div className="flex items-center justify-between bg-white border border-[#bfe0f5] rounded-xl px-3 py-2 focus-within:ring-2 focus-within:ring-[#7BBDE8]/40">
                       <input
                         type="text"
                         value={settings.shift.start}
-                        onChange={(e) =>
-                          updateShift("start", e.target.value)
-                        }
+                        onChange={(e) => updateShift("start", e.target.value)}
                         placeholder="09:30 AM"
                         className="font-bold text-sm text-[#0f172a] bg-transparent focus:outline-none w-full"
                       />
@@ -753,16 +715,13 @@ export default function SystemSettingsHub() {
                   <div className="bg-[#f0f6fa] border border-[#bfe0f5] rounded-3xl p-4">
                     <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5 font-bold">
                       <span>Shift End Time</span>
-                      <span className="font-mono text-[11px]">shift.end</span>
                     </div>
 
                     <div className="flex items-center justify-between bg-white border border-[#bfe0f5] rounded-xl px-3 py-2 focus-within:ring-2 focus-within:ring-[#7BBDE8]/40">
                       <input
                         type="text"
                         value={settings.shift.end}
-                        onChange={(e) =>
-                          updateShift("end", e.target.value)
-                        }
+                        onChange={(e) => updateShift("end", e.target.value)}
                         placeholder="06:30 PM"
                         className="font-bold text-sm text-[#0f172a] bg-transparent focus:outline-none w-full"
                       />
@@ -775,10 +734,9 @@ export default function SystemSettingsHub() {
                 {/* FULL DAY AND HALF DAY */}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
                   <NumberField
                     label="Full Day Requirement"
-                    settingKey="full_day_hours"
+                    // settingKey="full_day_hours"
                     value={settings.full_day_hours}
                     unit="hrs"
                     step={0.5}
@@ -789,7 +747,7 @@ export default function SystemSettingsHub() {
 
                   <NumberField
                     label="Half Day Requirement"
-                    settingKey="half_day_hours"
+                    // settingKey="half_day_hours"
                     value={settings.half_day_hours}
                     unit="hrs"
                     step={0.5}
@@ -802,7 +760,7 @@ export default function SystemSettingsHub() {
                 {/* WEEKLY OFF DAYS */}
 
                 <div>
-                  <div className="flex items-center justify-between text-xs text-slate-500 mb-2 font-bold gap-2">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-500 mb-2 font-bold gap-2">
                     <span>Standard Weekly Off Days</span>
 
                     <span className="font-mono text-[11px]">
@@ -812,8 +770,9 @@ export default function SystemSettingsHub() {
 
                   <div className="flex items-center gap-2 flex-wrap">
                     {DAYS_OF_WEEK.map((day) => {
-                      const isSelected =
-                        settings.weekly_off_days.includes(day.index);
+                      const isSelected = settings.weekly_off_days.includes(
+                        day.index,
+                      );
 
                       return (
                         <button
@@ -833,8 +792,8 @@ export default function SystemSettingsHub() {
                   </div>
 
                   <p className="text-[11px] text-slate-500 mt-2">
-                    Selected days are treated as weekly off days by
-                    attendance computation.
+                    Selected days are treated as weekly off days by attendance
+                    computation.
                   </p>
                 </div>
               </div>
@@ -844,7 +803,6 @@ export default function SystemSettingsHub() {
               ============================================== */}
 
               <div className="bg-white border border-[#e6edf4] rounded-[32px] p-6 shadow-sm space-y-5">
-
                 <div className="flex items-center gap-3 border-b border-[#e6edf4] pb-3">
                   <div className="w-8 h-8 rounded-full bg-[#7BBDE8] flex items-center justify-center text-[#0f172a] font-black text-xs">
                     B
@@ -862,10 +820,9 @@ export default function SystemSettingsHub() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
                   <NumberField
-                    label="Arrival Grace Window"
-                    settingKey="grace_min"
+                    label="Arrival Grace Timing"
+                    // settingKey="grace_min"
                     value={settings.grace_min}
                     unit="mins"
                     description="Allowed grace period before a late flag."
@@ -876,7 +833,7 @@ export default function SystemSettingsHub() {
 
                   <NumberField
                     label="Lunch & Break Allowance"
-                    settingKey="break_allowance_min"
+                    // settingKey="break_allowance_min"
                     value={settings.break_allowance_min}
                     unit="mins"
                     description="Standard break allowance in minutes."
@@ -887,15 +844,12 @@ export default function SystemSettingsHub() {
 
                   <NumberField
                     label="Duplicate Punch Filter"
-                    settingKey="duplicate_punch_window_min"
+                    // settingKey="duplicate_punch_window_min"
                     value={settings.duplicate_punch_window_min}
                     unit="mins"
                     description="Ignores duplicate punches within this window."
                     onChange={(value) =>
-                      updateNumberSetting(
-                        "duplicate_punch_window_min",
-                        value,
-                      )
+                      updateNumberSetting("duplicate_punch_window_min", value)
                     }
                   />
 
@@ -930,7 +884,6 @@ export default function SystemSettingsHub() {
               ============================================== */}
 
               <div className="bg-white border border-[#e6edf4] rounded-[32px] p-6 shadow-sm space-y-5">
-
                 <div className="flex items-center gap-3 border-b border-[#e6edf4] pb-3">
                   <div className="w-8 h-8 rounded-full bg-[#7BBDE8] flex items-center justify-center text-[#0f172a] font-black text-xs">
                     C
@@ -938,7 +891,7 @@ export default function SystemSettingsHub() {
 
                   <div>
                     <h3 className="font-bold text-sm text-[#0f172a]">
-                      Leave Accrual & Permission Allocations
+                      Leave & Permission Allocations
                     </h3>
 
                     <p className="text-xs text-slate-500">
@@ -948,18 +901,14 @@ export default function SystemSettingsHub() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
                   <NumberField
-                    label="Monthly Permission Pool"
-                    settingKey="permission_monthly_min"
+                    label="Monthly Permission"
+                    // settingKey="permission_monthly_min"
                     value={settings.permission_monthly_min}
                     unit={`min (${(settings.permission_monthly_min / 60).toFixed(1)} hrs)`}
                     description="Maximum total permission minutes per month."
                     onChange={(value) =>
-                      updateNumberSetting(
-                        "permission_monthly_min",
-                        value,
-                      )
+                      updateNumberSetting("permission_monthly_min", value)
                     }
                   />
 
@@ -967,11 +916,7 @@ export default function SystemSettingsHub() {
 
                   <div className="bg-[#f0f6fa] border border-[#bfe0f5] rounded-3xl p-4">
                     <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5 font-bold">
-                      <span>Permission Unit Block</span>
-
-                      <span className="font-mono text-[11px]">
-                        permission_unit_min
-                      </span>
+                      <span>Permission Duration</span>
                     </div>
 
                     <select
@@ -995,23 +940,20 @@ export default function SystemSettingsHub() {
                   </div>
 
                   <NumberField
-                    label="Monthly Earned Accrual"
-                    settingKey="leave_monthly_accrual"
+                    label="Leave Earned This Month"
+                    // settingKey="leave_monthly_accrual"
                     value={settings.leave_monthly_accrual}
                     unit="days"
                     step={0.25}
                     description="Monthly earned leave credit."
                     onChange={(value) =>
-                      updateNumberSetting(
-                        "leave_monthly_accrual",
-                        value,
-                      )
+                      updateNumberSetting("leave_monthly_accrual", value)
                     }
                   />
 
                   <NumberField
                     label="Maximum Leave Balance"
-                    settingKey="leave_balance_cap"
+                    // settingKey="leave_balance_cap"
                     value={settings.leave_balance_cap}
                     unit="days"
                     description="Maximum permitted leave balance."
@@ -1028,7 +970,6 @@ export default function SystemSettingsHub() {
             ================================================= */}
 
             <div className="lg:col-span-5 space-y-6">
-
               <div className="flex items-center justify-between px-2 gap-3">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-[#1b64da]" />
@@ -1055,7 +996,6 @@ export default function SystemSettingsHub() {
               {/* HOLIDAY CARD */}
 
               <div className="bg-white border border-[#e6edf4] rounded-[32px] p-6 shadow-sm space-y-4">
-
                 <div className="flex items-center justify-between border-b border-[#e6edf4] pb-3 gap-2">
                   <span className="font-bold text-xs uppercase tracking-wider text-slate-500">
                     Declared Schedule{" "}
@@ -1098,8 +1038,9 @@ export default function SystemSettingsHub() {
                 {!holidaysLoading && holidays.length > 0 && (
                   <div className="space-y-3">
                     {holidays.map((h: HolidayItem) => {
-                      const { day, month, weekday } =
-                        formatHolidayDate(h.holiday_date);
+                      const { day, month, weekday } = formatHolidayDate(
+                        h.holiday_date,
+                      );
 
                       return (
                         <div
@@ -1107,7 +1048,6 @@ export default function SystemSettingsHub() {
                           className="group flex items-center justify-between gap-3 p-3.5 rounded-3xl bg-[#f0f6fa] border border-[#e6edf4] hover:border-[#7BBDE8] hover:bg-white transition-all shadow-sm"
                         >
                           <div className="flex items-center gap-3.5 min-w-0">
-
                             {/* DATE BADGE (filled) */}
 
                             <div className="w-12 h-12 rounded-2xl bg-[#7BBDE8] flex flex-col items-center justify-center text-[#0f172a] shrink-0">
@@ -1139,9 +1079,7 @@ export default function SystemSettingsHub() {
 
                           <button
                             type="button"
-                            onClick={() =>
-                              handleDeleteHoliday(h.id, h.name)
-                            }
+                            onClick={() => handleDeleteHoliday(h.id, h.name)}
                             disabled={holidayDeleting}
                             className="p-2 rounded-full text-slate-400 hover:text-[#1b64da] hover:bg-[#bfe0f5]/60 transition-colors disabled:opacity-40 shrink-0"
                             title="Delete Holiday"
@@ -1191,11 +1129,10 @@ export default function SystemSettingsHub() {
                     <strong className="text-[#0f172a] block mb-1">
                       Holiday Management
                     </strong>
-
-                    Adding a holiday automatically marks the date as
-                    HOLIDAY for active employees. Deleting a holiday
-                    recomputes the affected attendance summaries using
-                    your backend attendance computation.
+                    Adding a holiday automatically marks the date as HOLIDAY for
+                    active employees. Deleting a holiday recomputes the affected
+                    attendance summaries using your backend attendance
+                    computation.
                   </div>
                 </div>
               </div>
@@ -1211,7 +1148,6 @@ export default function SystemSettingsHub() {
       {isHolidayModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <div className="bg-white border border-[#e6edf4] rounded-[32px] max-w-md w-full p-6 shadow-2xl">
-
             {/* MODAL HEADER */}
 
             <div className="flex items-center justify-between pb-4 border-b border-[#e6edf4]">
@@ -1244,7 +1180,6 @@ export default function SystemSettingsHub() {
             {/* MODAL FORM */}
 
             <form onSubmit={handleCreateHoliday} className="mt-5 space-y-4">
-
               {/* DATE */}
 
               <div>
@@ -1256,9 +1191,7 @@ export default function SystemSettingsHub() {
                   type="date"
                   required
                   value={newHolidayDate}
-                  onChange={(e) =>
-                    setNewHolidayDate(e.target.value)
-                  }
+                  onChange={(e) => setNewHolidayDate(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl bg-[#f0f6fa] border border-[#bfe0f5] text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]/40"
                 />
               </div>
@@ -1276,9 +1209,7 @@ export default function SystemSettingsHub() {
                   maxLength={80}
                   placeholder="e.g. Tamil New Year"
                   value={newHolidayName}
-                  onChange={(e) =>
-                    setNewHolidayName(e.target.value)
-                  }
+                  onChange={(e) => setNewHolidayName(e.target.value)}
                   className="w-full px-4 py-2.5 rounded-xl bg-[#f0f6fa] border border-[#bfe0f5] text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]/40"
                 />
 
@@ -1290,9 +1221,9 @@ export default function SystemSettingsHub() {
               {/* AUTOMATIC BROADCAST INFO */}
 
               <div className="p-3 bg-[#bfe0f5]/50 rounded-2xl border border-[#7BBDE8] text-xs text-slate-700 leading-relaxed">
-                <strong>Automatic Attendance Update:</strong>{" "}
-                The backend will mark the selected date as HOLIDAY
-                for all active employees and create an audit log entry.
+                <strong>Automatic Attendance Update:</strong> The backend will
+                mark the selected date as HOLIDAY for all active employees and
+                create an audit log entry.
               </div>
 
               {/* MODAL ERROR */}
@@ -1328,9 +1259,7 @@ export default function SystemSettingsHub() {
                     <Loader2 className="w-4 h-4 animate-spin" />
                   )}
 
-                  {holidayCreating
-                    ? "Creating..."
-                    : "Confirm & Broadcast"}
+                  {holidayCreating ? "Creating..." : "Confirm & Broadcast"}
                 </button>
               </div>
             </form>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   Users,
@@ -11,19 +11,21 @@ import {
   IndianRupee,
   Briefcase,
   X,
-  ExternalLink,
   Edit3,
   AlertCircle,
   CheckCircle2,
 } from "lucide-react";
 
 import type { AppDispatch, RootState } from "@/app/store/store";
+import SalaryDetails from "@/app/components/SalaryDetails";
 import {
   fetchEmployees,
   fetchEmployeeById,
+  fetchEmployeeSalary,
   createEmployee,
   updateEmployee,
   clearEmployeeMessages,
+  clearEmployeeSalary,
   type Employee,
 } from "@/app/store/employee/employeeSlice";
 
@@ -78,22 +80,6 @@ const emptyForm = (dateOfJoining = ""): EmployeeFormData => ({
   special_allowance: "0",
 });
 
-const formatINR = (value?: number | null) => {
-  if (value === undefined || value === null) return "—";
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 0,
-  }).format(Number(value));
-};
-
-const formatK = (value?: number | null) => {
-  if (value === undefined || value === null) return "0k";
-  return `${(Number(value) / 1000).toFixed(
-    Number(value) % 1000 === 0 ? 0 : 1
-  )}k`;
-};
-
 // Parse YYYY-MM-DD as a local date to avoid timezone date shifts.
 const formatDate = (dateString?: string | null) => {
   if (!dateString) return "—";
@@ -133,7 +119,7 @@ const calculateTenure = (
     return `${years} yrs tenure`;
   }
 
-  return `${months} mos tenure`;
+  // return `${months} mos tenure`;
 };
 
 const getAvatarGradient = (name: string) => {
@@ -179,6 +165,9 @@ export default function EmployeeDirectoryPage() {
     updateError,
     validationErrors,
     successMessage,
+    salary,
+    salaryLoading,
+    salaryError,
   } = useSelector((state: RootState) => state.employees);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -186,13 +175,25 @@ export default function EmployeeDirectoryPage() {
   const [payrollFilter, setPayrollFilter] = useState<PayrollFilter>("ALL");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
-  const [viewingEmployee, setViewingEmployee] = useState<Employee | null>(null);
+  const [salaryEmployee, setSalaryEmployee] = useState<Employee | null>(null);
+  const salaryModalRef = useRef<HTMLElement>(null);
+  const salaryCloseRef = useRef<HTMLButtonElement>(null);
+  const detailRequestRef = useRef(0);
   const [detailLoadingId, setDetailLoadingId] = useState<number | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState<EmployeeFormData>(emptyForm());
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
   const isSaving = createLoading || updateLoading;
+  const hasEmployeeChanges = editingEmployee !== null && (
+    formData.emp_code.trim() !== editingEmployee.emp_code.trim() ||
+    formData.name.trim() !== editingEmployee.name.trim() ||
+    formData.email.trim().toLowerCase() !== editingEmployee.email.trim().toLowerCase() ||
+    formData.phone.trim() !== (editingEmployee.phone || "").trim() ||
+    formData.designation.trim() !== (editingEmployee.designation || "").trim() ||
+    formData.date_of_joining !== editingEmployee.date_of_joining.slice(0, 10) ||
+    formData.status !== editingEmployee.status
+  );
 
   useEffect(() => {
     const timerId = window.setTimeout(() => setCurrentDate(new Date()), 0);
@@ -203,9 +204,40 @@ export default function EmployeeDirectoryPage() {
 
   useEffect(() => {
     return () => {
+      detailRequestRef.current += 1;
       dispatch(clearEmployeeMessages());
+      dispatch(clearEmployeeSalary());
     };
   }, [dispatch]);
+
+  useEffect(() => {
+    if (!salaryEmployee) return;
+    const previousFocus = document.activeElement;
+    salaryCloseRef.current?.focus();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSalaryEmployee(null);
+        dispatch(clearEmployeeSalary());
+      } else if (event.key === "Tab") {
+        const buttons = salaryModalRef.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)");
+        if (!buttons?.length) return;
+        const first = buttons[0];
+        const last = buttons[buttons.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      if (previousFocus instanceof HTMLElement) previousFocus.focus();
+    };
+  }, [dispatch, salaryEmployee]);
 
   const nextEmpCode = useMemo(() => {
     const maxNumber = employees.reduce((max, employee) => {
@@ -329,7 +361,10 @@ export default function EmployeeDirectoryPage() {
 
     if (!formData.designation.trim()) {
       errors.designation = "Designation is required";
-    } else if (!designationRegex.test(formData.designation.trim())) {
+    } else if (
+      formData.designation.trim() !== editingEmployee?.designation &&
+      !designationRegex.test(formData.designation.trim())
+    ) {
       errors.designation = "Designation can contain only letters and spaces";
     }
 
@@ -374,6 +409,7 @@ export default function EmployeeDirectoryPage() {
   ) => {
     event.preventDefault();
 
+    if (isSaving || (editingEmployee && !hasEmployeeChanges)) return;
     if (!validateForm()) return;
 
     setFormErrors({});
@@ -422,6 +458,9 @@ export default function EmployeeDirectoryPage() {
   };
 
   const openCreateModal = () => {
+    detailRequestRef.current += 1;
+    setDetailLoadingId(null);
+    setDetailError(null);
     setEditingEmployee(null);
     dispatch(clearEmployeeMessages());
     resetForm();
@@ -447,15 +486,20 @@ export default function EmployeeDirectoryPage() {
     setIsModalOpen(true);
   };
 
-  const handleViewEmployee = async (id: number) => {
+  const handleEditEmployee = async (id: number) => {
+    const requestId = ++detailRequestRef.current;
     setDetailLoadingId(id);
     setDetailError(null);
-    setViewingEmployee(null);
 
     try {
       const employee = await dispatch(fetchEmployeeById({ id }));
-      setViewingEmployee(employee);
+      if (requestId !== detailRequestRef.current) return;
+      if (employee.id !== Number(id)) {
+        throw new Error("Employee lookup returned details for a different employee.");
+      }
+      openEditModal(employee);
     } catch (error) {
+      if (requestId !== detailRequestRef.current) return;
       setDetailError(
         error &&
           typeof error === "object" &&
@@ -465,8 +509,21 @@ export default function EmployeeDirectoryPage() {
           : "Unable to load employee details."
       );
     } finally {
-      setDetailLoadingId(null);
+      if (requestId === detailRequestRef.current) setDetailLoadingId(null);
     }
+  };
+
+  const openSalaryModal = (employee: Employee) => {
+    detailRequestRef.current += 1;
+    setDetailLoadingId(null);
+    setDetailError(null);
+    setSalaryEmployee(employee);
+    dispatch(fetchEmployeeSalary(employee.id));
+  };
+
+  const closeSalaryModal = () => {
+    setSalaryEmployee(null);
+    dispatch(clearEmployeeSalary());
   };
 
   const handleExportCSV = () => {
@@ -532,12 +589,8 @@ export default function EmployeeDirectoryPage() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl lg:text-4xl font-black text-[#0f172a] tracking-tight">
-                Employee Directory & Workforce Management
+                Employee Management
               </h1>
-              <p className="text-sm font-medium text-[#64748b] mt-1.5 max-w-2xl">
-                Oversee active personnel, organizational roles, contact
-                information, and current gross salary structures.
-              </p>
             </div>
 
             <div className="flex items-center gap-3 flex-wrap">
@@ -595,7 +648,7 @@ export default function EmployeeDirectoryPage() {
             >
               <div>
                 <span className="text-xs font-bold uppercase tracking-wider opacity-70">
-                  Total Active Headcount
+                  Total Employees
                 </span>
                 <div className="flex items-baseline gap-2 mt-2">
                   <span className="text-4xl font-black tracking-tight">
@@ -777,27 +830,31 @@ export default function EmployeeDirectoryPage() {
                   Showing {filteredEmployees.length} records
                 </span>
               </div>
-
-              {/* <div className="text-xs font-mono font-bold text-slate-400">
-                GET{" "}
-                <span className="text-[#1b64da]">
-                  /api/v1/employees/all-employees
-                </span>
-              </div> */}
+           
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+              <table className="w-full min-w-[1255px] table-fixed border-collapse text-left">
+                <colgroup>
+                  <col className="w-[235px]" />
+                  <col className="w-[115px]" />
+                  <col className="w-[185px]" />
+                  <col className="w-[235px]" />
+                  <col className="w-[130px]" />
+                  <col className="w-[110px]" />
+                  <col className="w-[245px]" />
+                </colgroup>
                 <thead>
                   <tr className="bg-[#eaf4fc] border-b border-[#d6e8f7] text-xs font-bold text-slate-600 uppercase tracking-wider">
-                    <th className="py-4 px-6">Employee</th>
-                    <th className="py-4 px-6">Emp Code</th>
-                    <th className="py-4 px-6">Designation</th>
-                    <th className="py-4 px-6">Contact</th>
-                    <th className="py-4 px-6">Joining Date</th>
-                    <th className="py-4 px-6">Gross Salary</th>
-                    <th className="py-4 px-6">Status</th>
-                    <th className="py-4 px-6 text-right">Actions</th>
+                    <th scope="col" className="whitespace-nowrap py-4 pl-[74px] pr-4">Employee</th>
+                    <th scope="col" className="whitespace-nowrap px-4 py-4">Emp Code</th>
+                    <th scope="col" className="whitespace-nowrap px-4 py-4">Designation</th>
+                    <th scope="col" className="whitespace-nowrap px-4 py-4">Contact</th>
+                    <th scope="col" className="whitespace-nowrap px-4 py-4">Joining Date</th>
+                    <th scope="col" className="whitespace-nowrap px-4 py-4">Status</th>
+                    <th scope="col" className="whitespace-nowrap px-4 py-4 text-center">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
 
@@ -805,7 +862,7 @@ export default function EmployeeDirectoryPage() {
                   {loading && employees.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={8}
+                        colSpan={7}
                         className="py-14 text-center text-sm text-slate-500"
                       >
                         <span className="inline-flex items-center gap-2">
@@ -820,8 +877,8 @@ export default function EmployeeDirectoryPage() {
                         key={employee.id}
                         className="hover:bg-[#f5faff] transition-all duration-150 group"
                       >
-                        <td className="py-4 px-6">
-                          <div className="flex items-center gap-3.5 min-w-[200px]">
+                        <td className="px-4 py-4 align-middle">
+                          <div className="flex items-center gap-3.5">
                             <div
                               className={`w-11 h-11 shrink-0 rounded-2xl bg-gradient-to-br ${getAvatarGradient(
                                 employee.name
@@ -829,8 +886,8 @@ export default function EmployeeDirectoryPage() {
                             >
                               {getInitials(employee.name)}
                             </div>
-                            <div>
-                              <div className="font-bold text-[#0f172a] group-hover:text-[#1b64da] transition-colors text-sm">
+                            <div className="min-w-0">
+                              <div className="break-words font-bold text-[#0f172a] group-hover:text-[#1b64da] transition-colors text-sm">
                                 {employee.name}
                               </div>
                               <div className="text-xs text-[#64748b] font-medium">
@@ -840,30 +897,30 @@ export default function EmployeeDirectoryPage() {
                           </div>
                         </td>
 
-                        <td className="py-4 px-6 whitespace-nowrap">
-                          <span className="px-2.5 py-1 rounded-lg bg-[#eaf4fc] border border-[#d6e8f7] font-mono font-bold text-xs text-[#1b64da]">
+                        <td className="px-4 py-4 align-middle">
+                          <span className="inline-block max-w-full break-all rounded-lg border border-[#d6e8f7] bg-[#eaf4fc] px-2.5 py-1 font-mono text-xs font-bold text-[#1b64da]">
                             {employee.emp_code}
                           </span>
                         </td>
 
-                        <td className="py-4 px-6">
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-[#eaf4fc] text-[#1b64da] border border-[#d6e8f7] whitespace-nowrap">
+                        <td className="px-4 py-4 align-middle">
+                          <span className="inline-block max-w-full break-words rounded-xl border border-[#d6e8f7] bg-[#eaf4fc] px-3 py-1 text-xs font-bold text-[#1b64da]">
                             {employee.designation}
                           </span>
                         </td>
 
-                        <td className="py-4 px-6">
-                          <div className="flex flex-col text-xs text-[#475569] space-y-1 min-w-[190px]">
-                            <span className="font-mono text-slate-700">
+                        <td className="px-4 py-4 align-middle">
+                          <div className="flex flex-col space-y-1 text-xs text-[#475569]">
+                            <span className="break-all font-mono text-slate-700">
                               {employee.email}
                             </span>
-                            <span className="font-mono text-slate-500 font-bold">
+                            <span className="break-all font-mono text-slate-500 font-bold">
                               +91 {employee.phone}
                             </span>
                           </div>
                         </td>
 
-                        <td className="py-4 px-6 whitespace-nowrap">
+                        <td className="whitespace-nowrap px-4 py-4 align-middle">
                           <div className="text-xs font-bold text-[#0f172a]">
                             {formatDate(employee.date_of_joining)}
                           </div>
@@ -875,31 +932,7 @@ export default function EmployeeDirectoryPage() {
                           </div>
                         </td>
 
-                        <td className="py-4 px-6 whitespace-nowrap">
-                          {employee.gross !== undefined &&
-                          employee.gross !== null ? (
-                            <div>
-                              <div className="font-black text-[#0f172a] text-sm">
-                                {formatINR(employee.gross)}
-                              </div>
-                              <div className="text-[11px] font-semibold text-slate-500 flex items-center gap-1.5 mt-0.5">
-                                <span>B: {formatK(employee.basic)}</span>
-                                <span>•</span>
-                                <span>H: {formatK(employee.hra)}</span>
-                                <span>•</span>
-                                <span>
-                                  SA: {formatK(employee.special_allowance)}
-                                </span>
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="text-xs font-bold text-[#0a47b3] bg-[#bfe0f5] px-2 py-0.5 rounded-full border border-[#7BBDE8]">
-                              Structure Pending
-                            </span>
-                          )}
-                        </td>
-
-                        <td className="py-4 px-6 whitespace-nowrap">
+                        <td className="whitespace-nowrap px-4 py-4 align-middle">
                           <span
                             className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-xs border shadow-sm ${
                               employee.status === "ACTIVE"
@@ -918,29 +951,31 @@ export default function EmployeeDirectoryPage() {
                           </span>
                         </td>
 
-                        <td className="py-4 px-6 text-right whitespace-nowrap">
-                          <div className="flex items-center justify-end gap-1.5">
+                        <td className="whitespace-nowrap px-4 py-4 align-middle">
+                          <div className="flex items-center justify-center gap-1.5">
                             <button
                               type="button"
-                              title={`View ${employee.name}`}
-                              aria-label={`View ${employee.name}`}
-                              onClick={() => handleViewEmployee(employee.id)}
-                              disabled={detailLoadingId === employee.id}
-                              className="p-2 rounded-xl text-slate-500 hover:text-[#1b64da] hover:bg-[#eaf4fc] transition-colors disabled:opacity-50 disabled:cursor-wait"
+                              title={`View salary for ${employee.name}`}
+                              aria-label={`View salary for ${employee.name}`}
+                              onClick={() => openSalaryModal(employee)}
+                              className="inline-flex h-9 items-center justify-center gap-1 rounded-lg border border-[#c7e1f4] bg-[#eef7fd] px-2 text-xs font-bold text-[#1b64da] transition-colors hover:bg-[#dceffc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1b64da]"
                             >
-                              {detailLoadingId === employee.id ? (
-                                <RefreshCw className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <ExternalLink className="w-4 h-4" />
-                              )}
+                              <IndianRupee className="w-4 h-4" />
+                              Salary
                             </button>
                             <button
                               type="button"
                               title={`Edit ${employee.name}`}
-                              onClick={() => openEditModal(employee)}
-                              className="p-2 rounded-xl text-slate-500 hover:text-[#1b64da] hover:bg-[#eaf4fc] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                              aria-label={`Edit ${employee.name}`}
+                              onClick={() => handleEditEmployee(employee.id)}
+                              disabled={detailLoadingId !== null}
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-700 transition-colors hover:border-[#c7e1f4] hover:bg-[#eef7fd] hover:text-[#1b64da] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1b64da] disabled:cursor-wait disabled:opacity-50"
                             >
-                              <Edit3 className="w-4 h-4" />
+                              {detailLoadingId === employee.id ? (
+                                <RefreshCw className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Edit3 className="w-4 h-4" />
+                              )}
                             </button>
                           </div>
                         </td>
@@ -949,7 +984,7 @@ export default function EmployeeDirectoryPage() {
                   ) : (
                     <tr>
                       <td
-                        colSpan={8}
+                        colSpan={7}
                         className="py-12 text-center text-sm text-slate-400"
                       >
                         {employees.length === 0
@@ -978,7 +1013,53 @@ export default function EmployeeDirectoryPage() {
         </div>
       </main>
 
-      {(viewingEmployee || detailError) && (
+      {salaryEmployee && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-900/50 p-4 backdrop-blur-sm">
+          <section
+            ref={salaryModalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="salary-details-title"
+            className="my-8 w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl"
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-[#d6e8f7] bg-[#f1f8fe] px-5 py-5 sm:px-6">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#1b64da] text-white shadow-sm">
+                  <IndianRupee className="h-5 w-5" />
+                </span>
+                <div className="min-w-0">
+                  <h2 id="salary-details-title" className="text-lg font-black text-[#0f172a]">
+                    Salary details
+                  </h2>
+                  <p className="mt-0.5 truncate text-sm font-medium text-slate-600">
+                    {salaryEmployee.name} <span className="text-slate-400">·</span> {salaryEmployee.emp_code}
+                  </p>
+                </div>
+              </div>
+              <button
+                ref={salaryCloseRef}
+                type="button"
+                onClick={closeSalaryModal}
+                aria-label="Close salary details"
+                className="rounded-xl p-2 text-slate-500 hover:bg-white hover:text-slate-800"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="px-5 py-5 sm:px-6">
+              <SalaryDetails
+                salary={salary}
+                loading={salaryLoading}
+                error={salaryError}
+                onRetry={() => dispatch(fetchEmployeeSalary(salaryEmployee.id))}
+              />
+            </div>
+          </section>
+        </div>
+      )}
+
+      {detailError && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto"
           role="presentation"
@@ -995,18 +1076,12 @@ export default function EmployeeDirectoryPage() {
                   id="employee-details-title"
                   className="font-black text-xl text-[#0f172a]"
                 >
-                  Employee Details
+                  Unable to load employee details
                 </h2>
-                {viewingEmployee && (
-                  <p className="text-xs text-[#64748b] mt-1">
-                    {viewingEmployee.emp_code}
-                  </p>
-                )}
               </div>
               <button
                 type="button"
                 onClick={() => {
-                  setViewingEmployee(null);
                   setDetailError(null);
                 }}
                 className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-[#eaf4fc]"
@@ -1016,38 +1091,9 @@ export default function EmployeeDirectoryPage() {
               </button>
             </div>
 
-            {detailError ? (
-              <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-700">
-                {detailError}
-              </div>
-            ) : viewingEmployee ? (
-              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
-                {[
-                  ["Name", viewingEmployee.name],
-                  ["Employee Code", viewingEmployee.emp_code],
-                  ["Email", viewingEmployee.email],
-                  ["Phone", viewingEmployee.phone || "—"],
-                  ["Designation", viewingEmployee.designation || "—"],
-                  [
-                    "Joining Date",
-                    formatDate(viewingEmployee.date_of_joining),
-                  ],
-                  ["Status", viewingEmployee.status],
-                ].map(([label, value]) => (
-                  <div
-                    key={label}
-                    className="rounded-xl bg-[#f5faff] border border-[#d6e8f7] p-3"
-                  >
-                    <dt className="text-[11px] font-bold uppercase tracking-wider text-[#64748b]">
-                      {label}
-                    </dt>
-                    <dd className="mt-1 text-sm font-semibold text-[#0f172a] break-words">
-                      {value}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            ) : null}
+            <div role="alert" className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-sm text-rose-700">
+              {detailError}
+            </div>
           </section>
         </div>
       )}
@@ -1055,14 +1101,14 @@ export default function EmployeeDirectoryPage() {
       {/* Create or edit employee modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white border border-[#d5dbe1] rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl relative my-8">
+          <div role="dialog" aria-modal="true" aria-labelledby="employee-form-title" className="bg-white border border-[#d5dbe1] rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl relative my-8">
             <div className="flex items-center justify-between pb-4 border-b border-[#e2e8f0]">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-[#eaf4fc] border border-[#d6e8f7] flex items-center justify-center text-[#1b64da]">
                   <UserPlus className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-black text-xl text-[#0f172a]">
+                  <h3 id="employee-form-title" className="font-black text-xl text-[#0f172a]">
                     {editingEmployee ? "Edit Employee" : "Onboard New Employee"}
                   </h3>
                   {editingEmployee ? (
@@ -1084,6 +1130,7 @@ export default function EmployeeDirectoryPage() {
                 type="button"
                 onClick={closeModal}
                 disabled={isSaving}
+                aria-label="Close employee form"
                 className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-[#eaf4fc] disabled:opacity-50"
               >
                 <X className="w-5 h-5" />
@@ -1200,6 +1247,9 @@ export default function EmployeeDirectoryPage() {
                     }
                     className={inputClass("designation")}
                   >
+                    {formData.designation && !DESIGNATIONS.includes(formData.designation) && (
+                      <option value={formData.designation}>{formData.designation}</option>
+                    )}
                     {DESIGNATIONS.map((designation) => (
                       <option key={designation} value={designation}>
                         {designation}
@@ -1312,8 +1362,8 @@ export default function EmployeeDirectoryPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={isSaving}
-                  className="px-6 py-2.5 rounded-xl text-xs font-bold bg-[#1b64da] hover:bg-[#1552b5] text-white shadow-md disabled:opacity-50 transition-all flex items-center gap-2"
+                  disabled={isSaving || (editingEmployee !== null && !hasEmployeeChanges)}
+                  className="px-6 py-2.5 rounded-xl text-xs font-bold bg-[#1b64da] hover:bg-[#1552b5] text-white shadow-md disabled:cursor-not-allowed disabled:opacity-50 transition-all flex items-center gap-2"
                 >
                   {isSaving ? (
                     <>

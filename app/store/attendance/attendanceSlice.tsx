@@ -234,6 +234,10 @@ const attendanceSlice = createSlice({
       state.correctionLoading = false;
       state.correctionError = action.payload;
     },
+    clearCorrectionFeedback: (state) => {
+      state.correctionError = null;
+      state.correctionSuccess = null;
+    },
     voidAttendanceCorrectionStart: (state) => {
       state.voidLoading = true;
       state.voidError = null;
@@ -280,6 +284,7 @@ export const {
   addAttendanceCorrectionStart,
   addAttendanceCorrectionSuccess,
   addAttendanceCorrectionFailure,
+  clearCorrectionFeedback,
   voidAttendanceCorrectionStart,
   voidAttendanceCorrectionSuccess,
   voidAttendanceCorrectionFailure,
@@ -400,9 +405,6 @@ export const addAttendanceCorrection =
 
       const result: { message?: string } = await response.json();
       dispatch(addAttendanceCorrectionSuccess(result));
-
-      const punchDate = payload.punched_at.slice(0, 10);
-      dispatch(fetchDailyAttendance(punchDate));
 
       return result;
     } catch (error) {

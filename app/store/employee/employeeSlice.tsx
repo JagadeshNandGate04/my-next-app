@@ -1,5 +1,5 @@
 
-import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
+import { createAsyncThunk, createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type { AppDispatch } from "../store";
 import type { RootState } from "../store";
 
@@ -51,6 +51,26 @@ export interface FetchEmployeeByIdPayload {
   id: number;
 }
 
+export interface EmployeeSalary {
+  employee: {
+    id: string | number;
+    emp_code: string;
+    name: string;
+    email: string;
+    designation: string;
+    status: string;
+  };
+  salary_structure: {
+    basic: number;
+    hra: number;
+    da: number;
+    special_allowance: number;
+    gross: number;
+    effective_from: string;
+    effective_to: string | null;
+  } | null;
+}
+
 interface ApiError {
   message: string;
   errors?: Record<string, string>;
@@ -66,6 +86,10 @@ interface EmployeeState {
   updateError: string | null;
   validationErrors: Record<string, string>;
   successMessage: string | null;
+  salary: EmployeeSalary | null;
+  salaryLoading: boolean;
+  salaryError: string | null;
+  salaryRequestId: string | null;
 }
 
 // --------------------------------------------------
@@ -164,6 +188,103 @@ const getEmployeeFromResponse = (result: unknown): Employee | null => {
   return parseEmployee(employee);
 };
 
+const parseSalaryResponse = (result: unknown, employeeId: number): EmployeeSalary => {
+  if (!isRecord(result) || !isRecord(result.data)) {
+    throw new Error("Salary lookup returned an unexpected response format.");
+  }
+
+  const { employee, salary_structure: structure } = result.data;
+  if (
+    !isRecord(employee) ||
+    (typeof employee.id !== "string" && typeof employee.id !== "number") ||
+    String(employee.id) !== String(employeeId) ||
+    typeof employee.emp_code !== "string" ||
+    typeof employee.name !== "string" ||
+    typeof employee.email !== "string" ||
+    typeof employee.designation !== "string" ||
+    typeof employee.status !== "string"
+  ) {
+    throw new Error("Salary lookup returned unexpected employee details.");
+  }
+
+  const salaryEmployee = {
+    id: employee.id,
+    emp_code: employee.emp_code,
+    name: employee.name,
+    email: employee.email,
+    designation: employee.designation,
+    status: employee.status,
+  };
+
+  if (structure === null) {
+    return { employee: salaryEmployee, salary_structure: null };
+  }
+  if (
+    !isRecord(structure) ||
+    (typeof structure.user_id !== "string" && typeof structure.user_id !== "number") ||
+    String(structure.user_id) !== String(employeeId) ||
+    typeof structure.effective_from !== "string" ||
+    (typeof structure.effective_to !== "string" && structure.effective_to !== null)
+  ) {
+    throw new Error("Salary lookup returned an unexpected salary structure.");
+  }
+
+  const amount = (value: unknown): number => {
+    if (
+      (typeof value !== "string" && typeof value !== "number") ||
+      (typeof value === "string" && !/^\d+(?:\.\d+)?$/.test(value.trim())) ||
+      !Number.isFinite(Number(value)) ||
+      Number(value) < 0
+    ) {
+      throw new Error("Salary lookup returned an invalid salary amount.");
+    }
+    return Number(value);
+  };
+
+  return {
+    employee: salaryEmployee,
+    salary_structure: {
+      basic: amount(structure.basic),
+      hra: amount(structure.hra),
+      da: amount(structure.da),
+      special_allowance: amount(structure.special_allowance),
+      gross: amount(structure.gross),
+      effective_from: structure.effective_from,
+      effective_to: structure.effective_to,
+    },
+  };
+};
+
+export const fetchEmployeeSalary = createAsyncThunk<
+  EmployeeSalary,
+  number,
+  { state: RootState }
+>("employees/fetchSalary", async (id, { getState, signal }) => {
+  const token = getState().auth.token;
+  if (!token) {
+    throw new Error("Authentication token not found. Please log in again.");
+  }
+
+  const response = await fetch(`${ADMIN_EMPLOYEE_API}/${encodeURIComponent(id)}/salary`, {
+    method: "GET",
+    headers: getAuthHeaders(token),
+    cache: "no-store",
+    signal,
+  });
+  const result: unknown = await response.json().catch(() => null);
+  if (!response.ok || (isRecord(result) && result.success === false)) {
+    throw new Error(
+      isRecord(result) && typeof result.message === "string"
+        ? result.message
+        : `Salary lookup failed (${response.status} ${response.statusText}).`
+    );
+  }
+  if (result === null) {
+    throw new Error("Salary lookup returned an invalid server response.");
+  }
+  return parseSalaryResponse(result, id);
+});
+
 const initialState: EmployeeState = {
   employees: [],
   loading: false,
@@ -174,12 +295,22 @@ const initialState: EmployeeState = {
   updateError: null,
   validationErrors: {},
   successMessage: null,
+  salary: null,
+  salaryLoading: false,
+  salaryError: null,
+  salaryRequestId: null,
 };
 
 const employeeSlice = createSlice({
   name: "employees",
   initialState,
   reducers: {
+    clearEmployeeSalary: (state) => {
+      state.salary = null;
+      state.salaryLoading = false;
+      state.salaryError = null;
+      state.salaryRequestId = null;
+    },
     fetchEmployeesStart: (state) => {
       state.loading = true;
       state.error = null;
@@ -224,7 +355,7 @@ const employeeSlice = createSlice({
     ) => {
       state.updateLoading = false;
       const index = state.employees.findIndex(
-        (employee) => employee.id === action.payload.id
+        (employee) => String(employee.id) === String(action.payload.id)
       );
       if (index !== -1) {
         state.employees[index] = {
@@ -252,9 +383,31 @@ const employeeSlice = createSlice({
       state.validationErrors = {};
     },
   },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchEmployeeSalary.pending, (state, action) => {
+        state.salary = null;
+        state.salaryError = null;
+        state.salaryLoading = true;
+        state.salaryRequestId = action.meta.requestId;
+      })
+      .addCase(fetchEmployeeSalary.fulfilled, (state, action) => {
+        if (state.salaryRequestId !== action.meta.requestId) return;
+        state.salary = action.payload;
+        state.salaryLoading = false;
+        state.salaryRequestId = null;
+      })
+      .addCase(fetchEmployeeSalary.rejected, (state, action) => {
+        if (state.salaryRequestId !== action.meta.requestId) return;
+        state.salaryLoading = false;
+        state.salaryError = action.error.message || "Unable to load salary details.";
+        state.salaryRequestId = null;
+      });
+  },
 });
 
 export const {
+  clearEmployeeSalary,
   clearEmployeeMessages,
   clearEmployeeValidationErrors,
   fetchEmployeesStart,

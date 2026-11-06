@@ -8,6 +8,7 @@ import {
   fetchDailyAttendance,
   fetchMonthlyAttendance,
   addAttendanceCorrection,
+  clearCorrectionFeedback,
   clearMonthlyAttendance,
   type AttendanceDay,
   type EmployeeAttendance,
@@ -97,7 +98,7 @@ const formatMonth = (month: number, year: number) =>
   });
 
 const getMonthDays = (month: number, year: number) => {
-  const firstDay = new Date(year, month - 1, 1).getDay();
+  const firstDay = (new Date(year, month - 1, 1).getDay() + 6) % 7;
   const totalDays = new Date(year, month, 0).getDate();
 
   return {
@@ -151,6 +152,16 @@ const statusStyles: Record<string, string> = {
   INSUFFICIENT: "bg-white text-[#1b64da] border-[#1b64da]",
   NO_RECORD: "bg-slate-50 text-slate-500 border-slate-200",
   UPCOMING: "bg-blue-50 text-blue-700 border-blue-200",
+};
+
+const calendarCellStyles: Record<string, string> = {
+  PRESENT: "border-[#9ccfee] bg-[#dceffa]",
+  HALF_DAY: "border-[#b2d8f1] bg-[#e6f4fc]",
+  ABSENT: "border-[#a9c5f8] bg-[#dce8ff]",
+  LEAVE: "border-blue-200 bg-[#e5edff]",
+  HOLIDAY: "border-sky-200 bg-[#e7f6fc]",
+  WEEKLY_OFF: "border-slate-200 bg-slate-100",
+  INSUFFICIENT: "border-blue-300 bg-[#edf4ff]",
 };
 
 // --------------------------------------------------
@@ -287,6 +298,7 @@ export default function AdminAttendanceOperationsPage() {
   // --------------------------------------------------
 
   const [isAddCorrectionOpen, setIsAddCorrectionOpen] = useState(false);
+  const [correctionValidationError, setCorrectionValidationError] = useState("");
 
   const [newCorrection, setNewCorrection] = useState({
     user_id: "",
@@ -546,8 +558,11 @@ export default function AdminAttendanceOperationsPage() {
       !newCorrection.punched_at ||
       !newCorrection.reason.trim()
     ) {
+      setCorrectionValidationError("Select an employee, date and time, and enter an audit reason.");
       return;
     }
+
+    setCorrectionValidationError("");
 
     try {
       await dispatch(
@@ -584,15 +599,21 @@ export default function AdminAttendanceOperationsPage() {
     }
   };
 
-  const openCorrectionForEmployee = (employee: (typeof employees)[number]) => {
+  const openCorrection = (userId: string, date: string) => {
+    dispatch(clearCorrectionFeedback());
+    setCorrectionValidationError("");
     setNewCorrection({
-      user_id: String(employee.user_id),
-      punched_at: `${selectedDate}T09:00`,
+      user_id: userId,
+      punched_at: `${date}T09:00`,
       direction: "IN",
       reason: "",
     });
 
     setIsAddCorrectionOpen(true);
+  };
+
+  const openCorrectionForEmployee = (employee: (typeof employees)[number]) => {
+    openCorrection(String(employee.user_id), selectedDate);
   };
 
   // --------------------------------------------------
@@ -690,7 +711,7 @@ export default function AdminAttendanceOperationsPage() {
               </div>
 
               <h1 className="text-3xl lg:text-4xl font-black text-[#0f172a] tracking-tight">
-                Admin Attendance Operations
+                 Attendance Operations
               </h1>
 
               <p className="text-base font-medium text-[#64748b] mt-2">
@@ -781,7 +802,7 @@ export default function AdminAttendanceOperationsPage() {
                       : "text-[#64748b]"
                   }`}
                 >
-                  Daily Board
+                  Daily Attendance
                 </button>
 
                 <button
@@ -793,14 +814,14 @@ export default function AdminAttendanceOperationsPage() {
                       : "text-[#64748b]"
                   }`}
                 >
-                  Monthly Inspector
+                  Monthly Attendance
                 </button>
               </div>
 
               {activeTab === "DAILY" && (
                 <button
                   type="button"
-                  onClick={() => setIsAddCorrectionOpen(true)}
+                  onClick={() => openCorrection("", selectedDate)}
                   className="inline-flex items-center gap-2 px-5 py-3 bg-[#1b64da] hover:bg-[#1552b5] text-white text-sm font-bold rounded-2xl shadow-sm"
                 >
                   <Plus className="w-4 h-4" />
@@ -823,7 +844,6 @@ export default function AdminAttendanceOperationsPage() {
                   {
                     title: "Total Employees",
                     value: totalEmployees,
-                    subtitle: "Employees returned for this date",
                     bg: SKY_LIGHT,
                     text: INK,
                     muted: "text-black/40",
@@ -832,7 +852,6 @@ export default function AdminAttendanceOperationsPage() {
                   {
                     title: "Present / Live",
                     value: stats.liveIn,
-                    subtitle: `${stats.coverage}% currently in office`,
                     bg: SKY,
                     text: INK,
                     muted: "text-black/40",
@@ -841,7 +860,6 @@ export default function AdminAttendanceOperationsPage() {
                   {
                     title: "Absent",
                     value: stats.absent,
-                    subtitle: `Leave: ${stats.leave} · Half day: ${stats.halfDay}`,
                     bg: BLUE,
                     text: "#ffffff",
                     muted: "text-white/60",
@@ -850,7 +868,6 @@ export default function AdminAttendanceOperationsPage() {
                   {
                     title: "Late Arrivals",
                     value: stats.late,
-                    subtitle: "Based on backend late flag",
                     bg: SKY_LIGHT,
                     text: INK,
                     muted: "text-black/40",
@@ -859,7 +876,6 @@ export default function AdminAttendanceOperationsPage() {
                   {
                     title: "Needs Correction",
                     value: stats.regularization,
-                    subtitle: `Excess break: ${stats.excessBreak}`,
                     bg: SKY,
                     text: INK,
                     muted: "text-black/40",
@@ -868,7 +884,6 @@ export default function AdminAttendanceOperationsPage() {
                   {
                     title: "Payroll Cycle",
                     value: "Date-specific",
-                    subtitle: "Lock status is shown per employee",
                     bg: BLUE,
                     text: "#ffffff",
                     muted: "text-white/60",
@@ -877,25 +892,21 @@ export default function AdminAttendanceOperationsPage() {
                 ].map((item) => (
                   <div
                     key={item.title}
-                    className="rounded-3xl p-5 shadow-sm"
+                    className="rounded-2xl p-3 md:p-4 shadow-sm"
                     style={{ backgroundColor: item.bg, color: item.text }}
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs font-bold uppercase tracking-wide opacity-70">
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="text-[10px] md:text-xs font-bold uppercase tracking-wide opacity-70 leading-tight">
                         {item.title}
                       </span>
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/70 text-slate-600">
-                        <item.Icon className="w-5 h-5" />
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/70 text-slate-600">
+                        <item.Icon className="w-4 h-4" />
                       </span>
                     </div>
 
-                    <div className="text-3xl font-black">
+                    <div className="text-xl md:text-2xl font-black leading-tight">
                       {dailyLoading ? "—" : item.value}
                     </div>
-
-                    <p className={`text-sm font-medium mt-2 ${item.muted}`}>
-                      {item.subtitle}
-                    </p>
                   </div>
                 ))}
               </div>
@@ -992,26 +1003,29 @@ export default function AdminAttendanceOperationsPage() {
                 )}
 
                 {!dailyLoading && !dailyError && (
-                  <div className="w-full">
-                    <table className="w-full table-fixed text-left border-collapse">
+                  <div className="w-full overflow-x-auto">
+                    <table className="w-full min-w-[1400px] table-fixed border-collapse text-left">
+                      <caption className="sr-only">
+                        Daily attendance roster for {formattedSelectedDate}
+                      </caption>
                       <colgroup>
-                        <col className="w-[22%]" />
-                        <col className="w-[15%]" />
-                        <col className="w-[10%]" />
-                        <col className="w-[12%]" />
+                        <col className="w-[20%]" />
                         <col className="w-[14%]" />
-                        <col className="w-[15%]" />
+                        <col className="w-[11%]" />
                         <col className="w-[12%]" />
+                        <col className="w-[13%]" />
+                        <col className="w-[15%]" />
+                        <col className="w-[15%]" />
                       </colgroup>
                       <thead>
-                        <tr className="bg-[#eaf4fc] border-b border-[#d6e8f7] text-xs font-bold text-slate-600 uppercase tracking-wider">
-                          <th className="py-4 px-3">Employee</th>
-                          <th className="py-4 px-3">Status & Live Feed</th>
-                          <th className="py-4 px-3">First In</th>
-                          <th className="py-4 px-3">Last Out</th>
-                          <th className="py-4 px-3">Work Duration</th>
-                          <th className="py-4 px-3">Audit Flags</th>
-                          <th className="py-4 px-3 text-right">Operations</th>
+                        <tr className="border-b border-[#d6e8f7] bg-[#eaf4fc] text-xs font-bold uppercase tracking-wider text-slate-600">
+                          <th scope="col" className="px-4 py-4">Employee</th>
+                          <th scope="col" className="px-4 py-4">Status &amp; Live Feed</th>
+                          <th scope="col" className="px-4 py-4">First In</th>
+                          <th scope="col" className="px-4 py-4">Last Out</th>
+                          <th scope="col" className="px-4 py-4">Work Duration</th>
+                          <th scope="col" className="px-4 py-4">Audit Flags</th>
+                          <th scope="col" className="px-4 py-4 text-right">Operations</th>
                         </tr>
                       </thead>
 
@@ -1050,10 +1064,10 @@ export default function AdminAttendanceOperationsPage() {
                             return (
                               <tr
                                 key={employee.user_id}
-                                className="bg-white hover:bg-[#f5faff] transition-colors"
+                                className="bg-white transition-colors hover:bg-[#f5faff]"
                               >
                                 {/* EMPLOYEE */}
-                                <td className="py-4 px-3">
+                                <td className="px-4 py-4">
                                   <div className="flex min-w-0 items-center gap-2">
                                     <div
                                       className={`w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br ${getAvatarGradient(
@@ -1064,22 +1078,21 @@ export default function AdminAttendanceOperationsPage() {
                                     </div>
 
                                     <div className="min-w-0">
-                                      <div className="font-bold text-slate-900 flex items-center gap-1.5 flex-wrap text-sm">
-                                        <span className="truncate">{employee.name}</span>
-                                        <span className="text-[10px] font-bold text-blue-700 bg-[#dbe5ff] px-2 py-0.5 rounded-full whitespace-nowrap">
+                                      <div className="truncate text-sm font-bold text-slate-900" title={employee.name}>
+                                        {employee.name}
+                                      </div>
+                                      <div className="mt-1 flex min-w-0 items-center gap-1.5 text-xs font-medium text-slate-500">
+                                        <span className="shrink-0 rounded-md bg-[#eaf4fc] px-1.5 py-0.5 font-bold text-blue-700">
                                           {employee.emp_code}
                                         </span>
-                                      </div>
-
-                                      <div className="text-xs text-slate-600 font-medium mt-1 truncate">
-                                        {employee.designation}
+                                        <span className="truncate" title={employee.designation}>{employee.designation}</span>
                                       </div>
                                     </div>
                                   </div>
                                 </td>
 
                                 {/* STATUS & LIVE FEED */}
-                                <td className="py-4 px-3">
+                                <td className="px-4 py-4">
                                   {isLive ? (
                                     <span className="inline-flex items-center gap-2 px-2.5 py-2 rounded-2xl bg-[#e1f1fb] text-[#0a47b3] border border-[#7BBDE8]">
                                       <span className="w-2 h-2 rounded-full bg-[#1b64da] animate-pulse" />
@@ -1122,7 +1135,7 @@ export default function AdminAttendanceOperationsPage() {
                                 </td>
 
                                 {/* FIRST IN */}
-                                <td className="py-4 px-3">
+                                <td className="px-4 py-4">
                                   <TimePill
                                     value={employee.first_in}
                                     tone={isLate ? "late" : isLive ? "live" : "plain"}
@@ -1130,7 +1143,7 @@ export default function AdminAttendanceOperationsPage() {
                                 </td>
 
                                 {/* LAST OUT */}
-                                <td className="py-4 px-3">
+                                <td className="px-4 py-4">
                                   {isLive ? (
                                     <span className="inline-flex items-center gap-2 px-2.5 py-2 rounded-full bg-[#bfe0f5] text-[#0a47b3] text-xs font-semibold">
                                       <span className="w-2 h-2 rounded-full bg-[#1b64da]" />
@@ -1142,7 +1155,7 @@ export default function AdminAttendanceOperationsPage() {
                                 </td>
 
                                 {/* WORK DURATION */}
-                                <td className="py-4 px-3">
+                                <td className="px-4 py-4">
                                   <div className="min-w-0">
                                     <div className="flex items-center justify-between gap-1 flex-wrap">
                                       <span
@@ -1176,7 +1189,7 @@ export default function AdminAttendanceOperationsPage() {
                                 </td>
 
                                 {/* AUDIT FLAGS */}
-                                <td className="py-4 px-3">
+                                <td className="px-4 py-4">
                                   <div className="flex items-center gap-1.5 flex-wrap">
                                     {employee.flags.is_late && (
                                       <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#1b64da] border border-[#1b64da] text-white font-bold text-[10px] whitespace-nowrap">
@@ -1219,13 +1232,13 @@ export default function AdminAttendanceOperationsPage() {
                                 </td>
 
                                 {/* OPERATIONS */}
-                                <td className="py-4 px-3">
+                                <td className="px-4 py-4">
                                   <div className="flex items-center justify-end gap-1">
                                     {employee.flags.needs_regularization ? (
                                       <button
                                         type="button"
                                         onClick={() => openCorrectionForEmployee(employee)}
-                                        className="inline-flex items-center justify-center gap-1 px-2 py-2 rounded-full bg-[#0a47b3] hover:bg-[#083a91] text-white font-bold text-xs text-center leading-tight shadow-sm transition-colors"
+                                        className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-[#0a47b3] px-3 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-[#083a91] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
                                       >
                                         <ClipboardCheck className="w-4 h-4" />
                                         Manual In/Out
@@ -1234,7 +1247,7 @@ export default function AdminAttendanceOperationsPage() {
                                       <button
                                         type="button"
                                         onClick={() => openCorrectionForEmployee(employee)}
-                                        className="inline-flex items-center justify-center gap-1 px-2 py-2 rounded-full bg-[#1b64da] hover:bg-[#1552b5] text-white font-bold text-xs text-center leading-tight shadow-sm transition-colors"
+                                        className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-[#1b64da] px-3 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-[#1552b5] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
                                       >
                                         <PlusCircle className="w-4 h-4" />
                                         Correction
@@ -1243,7 +1256,7 @@ export default function AdminAttendanceOperationsPage() {
                                       <button
                                         type="button"
                                         onClick={() => openCorrectionForEmployee(employee)}
-                                        className="inline-flex items-center justify-center gap-1 px-2 py-2 rounded-full bg-[#bfe0f5] hover:bg-[#a9d6f2] border border-[#7BBDE8] text-[#0a47b3] font-bold text-xs text-center leading-tight transition-colors"
+                                        className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-[#7BBDE8] bg-[#bfe0f5] px-3 py-2 text-xs font-bold text-[#0a47b3] transition-colors hover:bg-[#a9d6f2] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
                                       >
                                         <Pencil className="w-4 h-4" />
                                         Correct Punch
@@ -1252,7 +1265,7 @@ export default function AdminAttendanceOperationsPage() {
                                       <button
                                         type="button"
                                         onClick={() => openCorrectionForEmployee(employee)}
-                                        className="inline-flex items-center justify-center gap-1 px-2 py-2 rounded-full bg-[#dbe7ff] hover:bg-[#c9d9ff] text-blue-700 font-bold text-xs text-center leading-tight transition-colors"
+                                        className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-[#dbe7ff] px-3 py-2 text-xs font-bold text-blue-700 transition-colors hover:bg-[#c9d9ff] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
                                       >
                                         <Plus className="w-4 h-4" />
                                         Punch
@@ -1288,7 +1301,7 @@ export default function AdminAttendanceOperationsPage() {
                 )}
 
                 {!dailyLoading && !dailyError && (
-                  <div className="px-6 py-5 bg-[#f7f9fd] border-t border-[#e8eef5] flex items-center justify-between text-sm font-medium text-slate-600">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#e8eef5] bg-[#f7f9fd] px-6 py-4 text-sm font-medium text-slate-600">
                     <span>
                       Showing {filteredEmployees.length} of {totalEmployees} employee records
                     </span>
@@ -1326,18 +1339,18 @@ export default function AdminAttendanceOperationsPage() {
           ========================================== */}
 
           {activeTab === "MONTHLY" && (
-            <div className="space-y-6">
+            <div className="space-y-4">
 
               {/* EMPLOYEE SELECTOR */}
 
-              <div className="bg-white border border-[#d5dbe1] rounded-3xl p-5 lg:p-6 shadow-sm">
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+              <div className="bg-white border border-[#d5dbe1] rounded-2xl px-5 py-4 lg:px-6 shadow-sm">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
                     <h2 className="text-xl font-black text-slate-900">
                       Monthly Attendance Inspector
                     </h2>
                     <p className="text-sm text-slate-500 mt-1">
-                      Review an employee's attendance summary and daily records.
+                      Review an employee&apos;s attendance summary and daily records.
                     </p>
                   </div>
 
@@ -1352,7 +1365,7 @@ export default function AdminAttendanceOperationsPage() {
                         setMonthlyEmployeeId(event.target.value);
                         dispatch(clearMonthlyAttendance());
                       }}
-                      className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-blue-300"
+                      className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-blue-300"
                     >
                       <option value="">Choose an employee...</option>
 
@@ -1367,6 +1380,43 @@ export default function AdminAttendanceOperationsPage() {
                     </select>
                   </div>
                 </div>
+
+                {monthlyEmployeeId && !monthlyLoading && monthlyAttendance && (
+                  <div className="mt-4 border-t border-slate-100 pt-4">
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+                      <div>
+                        <h3 className="text-base font-bold text-slate-900">
+                          {monthlyEmployee?.name}
+                        </h3>
+                        <p className="text-sm text-slate-500">
+                          {monthlyEmployee?.emp_code} · {monthlyEmployee?.designation}
+                        </p>
+                      </div>
+                      <p className="text-sm font-semibold text-slate-500">
+                        {formatMonth(selectedMonth, selectedYear)}
+                      </p>
+                    </div>
+
+                    <dl className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-9">
+                      {[
+                        { label: "Present", value: monthlyTotals?.present ?? 0, color: "border-[#9ccfee] bg-[#bfe0f5] text-[#073a77]" },
+                        { label: "Half Day", value: monthlyTotals?.half ?? 0, color: "border-[#9dd5ed] bg-[#d0ecf9] text-[#075477]" },
+                        { label: "Absent", value: monthlyTotals?.absent ?? 0, color: "border-[#1b64da] bg-[#1b64da] text-white" },
+                        { label: "Leave", value: monthlyTotals?.leave ?? 0, color: "border-blue-200 bg-[#cbdcff] text-blue-900" },
+                        { label: "Holidays", value: monthlyTotals?.holiday ?? 0, color: "border-sky-200 bg-[#d1edf9] text-sky-900" },
+                        { label: "Weekly Off", value: monthlyTotals?.weekly_off ?? 0, color: "border-slate-300 bg-slate-200 text-slate-800" },
+                        { label: "Insufficient Days", value: monthlyTotals?.insufficient ?? 0, color: "border-blue-300 bg-[#dce8ff] text-[#0a47b3]" },
+                        { label: "Late Arrivals", value: monthlyTotals?.late_count ?? 0, color: "border-[#a5d3ef] bg-[#cce8f8] text-[#073a77]" },
+                        { label: "Total Work Hours", value: `${monthlyTotals?.work_hours ?? 0} hrs`, color: "border-[#0a47b3] bg-[#0a47b3] text-white" },
+                      ].map((item) => (
+                        <div key={item.label} className={`rounded-xl border px-3 py-2 ${item.color}`}>
+                          <dt className="text-xs font-semibold">{item.label}</dt>
+                          <dd className="mt-0.5 text-lg font-bold tabular-nums">{item.value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </div>
+                )}
               </div>
 
               {!monthlyEmployeeId && (
@@ -1416,104 +1466,26 @@ export default function AdminAttendanceOperationsPage() {
 
               {monthlyEmployeeId && !monthlyLoading && monthlyAttendance && (
                 <>
-                  {/* EMPLOYEE PROFILE */}
-
-                  <div className="bg-white border border-[#d5dbe1] rounded-3xl p-5 lg:p-6 shadow-sm">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                      <div>
-                        <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                          Employee
-                        </p>
-                        <h3 className="text-2xl font-black text-slate-900 mt-1">
-                          {monthlyEmployee?.name}
-                        </h3>
-                        <p className="text-sm font-medium text-slate-500 mt-1">
-                          {monthlyEmployee?.emp_code} · {monthlyEmployee?.designation}
-                        </p>
-                      </div>
-
-                      <div className="rounded-2xl bg-blue-50 border border-blue-100 px-5 py-3">
-                        <p className="text-xs font-bold uppercase text-blue-600">
-                          Selected Period
-                        </p>
-                        <p className="text-lg font-black text-blue-900 mt-1">
-                          {formatMonth(selectedMonth, selectedYear)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* MONTHLY TOTALS */}
-
-                  <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-                    {[
-                      { label: "Present", value: monthlyTotals?.present ?? 0, color: "text-[#1b64da]" },
-                      { label: "Half Day", value: monthlyTotals?.half ?? 0, color: "text-[#4aa3df]" },
-                      { label: "Absent", value: monthlyTotals?.absent ?? 0, color: "text-[#0a47b3]" },
-                      { label: "Leave", value: monthlyTotals?.leave ?? 0, color: "text-sky-700" },
-                      { label: "Holidays", value: monthlyTotals?.holiday ?? 0, color: "text-sky-600" },
-                      { label: "Weekly Off", value: monthlyTotals?.weekly_off ?? 0, color: "text-slate-700" },
-                    ].map((item) => (
-                      <div
-                        key={item.label}
-                        className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm"
-                      >
-                        <p className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                          {item.label}
-                        </p>
-                        <p className={`text-3xl font-black mt-2 ${item.color}`}>
-                          {item.value}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-white border border-slate-200 rounded-2xl p-5">
-                      <p className="text-sm font-bold text-slate-500">
-                        Insufficient Days
-                      </p>
-                      <p className="text-2xl font-black text-[#0a47b3] mt-2">
-                        {monthlyTotals?.insufficient ?? 0}
-                      </p>
-                    </div>
-
-                    <div className="bg-white border border-slate-200 rounded-2xl p-5">
-                      <p className="text-sm font-bold text-slate-500">
-                        Late Arrivals
-                      </p>
-                      <p className="text-2xl font-black text-[#1b64da] mt-2">
-                        {monthlyTotals?.late_count ?? 0}
-                      </p>
-                    </div>
-
-                    <div className="bg-white border border-slate-200 rounded-2xl p-5">
-                      <p className="text-sm font-bold text-slate-500">
-                        Total Work Hours
-                      </p>
-                      <p className="text-2xl font-black text-blue-700 mt-2">
-                        {monthlyTotals?.work_hours ?? 0} hrs
-                      </p>
-                    </div>
-                  </div>
-
                   {/* CALENDAR */}
 
-                  <div className="bg-white border border-[#d5dbe1] rounded-3xl shadow-sm overflow-hidden">
-                    <div className="p-5 lg:p-6 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  <div className="bg-white border border-[#d5dbe1] rounded-2xl shadow-sm overflow-hidden">
+                    <div className="px-5 py-4 lg:px-6 border-b border-slate-100 flex flex-col xl:flex-row xl:items-center justify-between gap-3">
                       <div className="flex items-center gap-3">
                         <CalendarDays className="w-6 h-6 text-blue-600" />
                         <div>
-                          <h3 className="text-xl font-black text-slate-900">
+                          <h3 className="text-lg font-bold text-slate-900">
                             Attendance Calendar
                           </h3>
                           <p className="text-sm text-slate-500 mt-1">
                             {formatMonth(selectedMonth, selectedYear)}
                           </p>
+                          <p className="mt-1 text-xs text-slate-500 sm:hidden">
+                            Swipe to see the full week
+                          </p>
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap gap-2 text-xs font-bold">
+                      <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs font-medium text-slate-600">
                         {[
                           ["PRESENT", "Present"],
                           ["HALF_DAY", "Half Day"],
@@ -1521,12 +1493,13 @@ export default function AdminAttendanceOperationsPage() {
                           ["LEAVE", "Leave"],
                           ["HOLIDAY", "Holiday"],
                           ["WEEKLY_OFF", "Weekly Off"],
+                          ["INSUFFICIENT", "Insufficient"],
                           ["NO_RECORD", "No Record"],
                           ["UPCOMING", "Upcoming"],
                         ].map(([key, label]) => (
                           <span
                             key={key}
-                            className={`px-2.5 py-1.5 rounded-lg border ${statusStyles[key]}`}
+                            className={`inline-flex rounded-md border px-2 py-1 font-bold ${statusStyles[key]}`}
                           >
                             {label}
                           </span>
@@ -1534,123 +1507,148 @@ export default function AdminAttendanceOperationsPage() {
                       </div>
                     </div>
 
-                    <div className="p-4 lg:p-6">
-                      <div className="grid grid-cols-7 gap-2 mb-2">
-                        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-                          (day) => (
-                            <div
-                              key={day}
-                              className="text-center py-2 text-xs font-black uppercase text-slate-500"
-                            >
-                              {day}
-                            </div>
-                          )
-                        )}
-                      </div>
+                    <div className="overflow-x-auto px-5 pb-3 lg:px-6">
+                      <div className="min-w-[700px]">
+                        <div className="grid grid-cols-7 gap-2 pb-2 pt-4">
+                          {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(
+                            (day) => (
+                              <div
+                                key={day}
+                                className="rounded-full bg-[#eef4fa] py-2 text-center text-xs font-bold uppercase tracking-wider text-slate-500"
+                              >
+                                {day}
+                              </div>
+                            )
+                          )}
+                        </div>
 
-                      <div className="grid grid-cols-7 gap-2">
-                        {calendarCells.map((dayNumber, index) => {
-                          if (!dayNumber) {
-                            return <div key={`empty-${index}`} />;
-                          }
+                        <div className="grid grid-cols-7 gap-2">
+                          {calendarCells.map((dayNumber, index) => {
+                            if (!dayNumber) {
+                              return <div key={`empty-${index}`} />;
+                            }
 
-                          const dateString = [
-                            selectedYear,
-                            String(selectedMonth).padStart(2, "0"),
-                            String(dayNumber).padStart(2, "0"),
-                          ].join("-");
+                            const dateString = [
+                              selectedYear,
+                              String(selectedMonth).padStart(2, "0"),
+                              String(dayNumber).padStart(2, "0"),
+                            ].join("-");
 
-                          const dayData = monthlyDayMap.get(dateString);
-                          const status = getDayStatus(
-                            dayData,
-                            dateString,
-                            todayDate
-                          );
+                            const dayData = monthlyDayMap.get(dateString);
+                            const status = getDayStatus(
+                              dayData,
+                              dateString,
+                              todayDate
+                            );
 
-                          const isToday = dateString === todayDate;
+                            const isToday = dateString === todayDate;
+                            const isWeekend = index % 7 >= 5;
 
-                          return (
-                            <div
-                              key={dateString}
-                              className={`min-h-[100px] sm:min-h-[120px] rounded-xl border p-2 sm:p-3 ${
-                                statusStyles[status]
-                              } ${
-                                isToday ? "ring-2 ring-blue-500 ring-offset-1" : ""
-                              }`}
-                            >
-                              <div className="flex items-center justify-between gap-1">
-                                <span className="text-sm sm:text-base font-black">
-                                  {dayNumber}
-                                </span>
-
-                                {isToday && (
-                                  <span className="text-[9px] sm:text-[10px] font-black uppercase">
-                                    Today
+                            return (
+                              <div
+                                key={dateString}
+                                className={`flex min-h-[96px] flex-col rounded-2xl border p-3 ${
+                                  calendarCellStyles[status] ??
+                                    (isWeekend
+                                      ? "border-transparent bg-[#f5faff]"
+                                      : "border-[#eef2f7] bg-white")
+                                } ${isToday ? "ring-2 ring-[#1b64da] ring-offset-1" : ""}`}
+                              >
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className={`flex h-7 min-w-7 items-center justify-center rounded-full px-1 text-sm font-black ${isToday ? "bg-[#1b64da] text-white" : "text-slate-800"}`}>
+                                    {String(dayNumber).padStart(2, "0")}
                                   </span>
+
+                                  {isToday && (
+                                    <span className="text-[10px] font-bold uppercase text-blue-700">
+                                      Today
+                                    </span>
+                                  )}
+                                </div>
+
+                                <p className={`mt-2 rounded-lg border px-2 py-1 text-[11px] font-semibold leading-tight ${statusStyles[status]}`}>
+                                  {status.replace("_", " ")}
+                                </p>
+
+                                {dayData?.summary && (
+                                  <p className="mt-1 px-2 text-xs font-medium text-slate-500">
+                                    {Number(
+                                      dayData.summary.work_min ??
+                                        dayData.summary.work_minutes ??
+                                        0
+                                    ) > 0
+                                      ? formatDuration(
+                                          Number(
+                                            dayData.summary.work_min ??
+                                              dayData.summary.work_minutes ??
+                                              0
+                                          )
+                                        )
+                                      : ""}
+                                  </p>
                                 )}
                               </div>
-
-                              <p className="text-[10px] sm:text-xs font-bold mt-2 leading-tight">
-                                {status.replace("_", " ")}
-                              </p>
-
-                              {dayData?.summary && (
-                                <p className="text-[10px] sm:text-xs font-semibold mt-1 opacity-80">
-                                  {Number(
-                                    dayData.summary.work_min ??
-                                      dayData.summary.work_minutes ??
-                                      0
-                                  ) > 0
-                                    ? formatDuration(
-                                        Number(
-                                          dayData.summary.work_min ??
-                                            dayData.summary.work_minutes ??
-                                            0
-                                        )
-                                      )
-                                    : ""}
-                                </p>
-                              )}
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
                   </div>
 
                   {/* MONTHLY DAY DETAILS */}
 
-                  <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
-                    <div className="p-5 border-b border-slate-200">
-                      <h3 className="text-xl font-black text-slate-900">
-                        Daily Attendance Details
-                      </h3>
-                      <p className="text-sm text-slate-500 mt-1">
-                        Records returned by the monthly attendance API.
-                      </p>
+                  <div className="overflow-hidden rounded-2xl border border-[#d5dbe1] bg-white shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 lg:px-6">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#eaf4fc] text-[#1b64da]">
+                        <ClipboardCheck className="h-5 w-5" />
+                        </div>
+                        <div>
+                        <h3 className="text-lg font-bold text-slate-900">
+                          Daily Attendance Details
+                        </h3>
+                        <p className="text-sm text-slate-500">
+                          Daily records for {formatMonth(selectedMonth, selectedYear)}
+                        </p>
+                        </div>
+                      </div>
+                      <span className="rounded-full bg-[#eef4fa] px-3 py-1.5 text-xs font-bold text-slate-600">
+                        {monthlyDays.length} {monthlyDays.length === 1 ? "record" : "records"}
+                      </span>
                     </div>
 
                     <div className="overflow-x-auto">
-                      <table className="w-full text-left">
+                      <table className="w-full min-w-[800px] text-left">
+                        <caption className="sr-only">
+                        Daily attendance records for {formatMonth(selectedMonth, selectedYear)}
+                        </caption>
                         <thead>
-                          <tr className="bg-[#eaf4fc] text-xs uppercase tracking-wide text-slate-500">
-                            <th className="px-5 py-4 font-bold">Date</th>
-                            <th className="px-5 py-4 font-bold">Status</th>
-                            <th className="px-5 py-4 font-bold">Work Duration</th>
-                            <th className="px-5 py-4 font-bold">Punches</th>
-                            <th className="px-5 py-4 font-bold">Sessions</th>
-                          </tr>
+                        <tr className="border-b border-[#d6e8f7] bg-[#eaf4fc] text-xs uppercase tracking-wider text-slate-600">
+                          <th scope="col" className="px-5 py-3 font-bold">Date</th>
+                          <th scope="col" className="px-5 py-3 font-bold">Status</th>
+                          <th scope="col" className="px-5 py-3 font-bold">Work Duration</th>
+                          <th scope="col" className="px-5 py-3 text-center font-bold">Punches</th>
+                          <th scope="col" className="px-5 py-3 text-center font-bold">Sessions</th>
+                          <th scope="col" className="px-5 py-3 text-right font-bold">Action</th>
+                        </tr>
                         </thead>
 
                         <tbody className="divide-y divide-slate-100 text-sm">
-                          {monthlyDays.map((day) => {
+                        {monthlyDays.length === 0 && (
+                          <tr>
+                            <td colSpan={6} className="px-5 py-10 text-center text-sm text-slate-500">
+                              No daily records available for this month.
+                            </td>
+                          </tr>
+                        )}
+                        {monthlyDays.map((day) => {
                             const status = getDayStatus(
                               day,
                               day.date,
                               todayDate
                             );
 
-                            const summary = day.summary as any;
+                            const summary = day.summary;
 
                             const workMinutes = Number(
                               summary?.work_min ??
@@ -1659,29 +1657,49 @@ export default function AdminAttendanceOperationsPage() {
                             );
 
                             return (
-                              <tr key={day.date} className="hover:bg-[#f5faff]">
-                                <td className="px-5 py-4 font-bold text-slate-800 whitespace-nowrap">
-                                  {formatDate(day.date)}
+                              <tr key={day.date} className="bg-white transition-colors hover:bg-[#f5faff]">
+                                <td className="px-5 py-3.5">
+                                  <div className="flex items-center gap-3 whitespace-nowrap">
+                                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#eaf4fc] text-[#1b64da]">
+                                      <CalendarIcon className="h-4 w-4" />
+                                    </span>
+                                    <span className="font-bold text-slate-800">{formatDate(day.date)}</span>
+                                  </div>
                                 </td>
 
-                                <td className="px-5 py-4">
+                                <td className="px-5 py-3.5">
                                   <span
-                                    className={`inline-flex px-3 py-1.5 rounded-full border text-xs font-bold ${statusStyles[status]}`}
+                                    className={`inline-flex whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-bold ${statusStyles[status]}`}
                                   >
                                     {status.replace("_", " ")}
                                   </span>
                                 </td>
 
-                                <td className="px-5 py-4 font-semibold text-slate-700">
-                                  {summary ? formatDuration(workMinutes) : "—"}
+                                <td className="px-5 py-3.5">
+                                  <span className="inline-flex items-center gap-2 whitespace-nowrap font-semibold tabular-nums text-slate-700">
+                                    <Clock className="h-4 w-4 text-slate-400" />
+                                    {summary ? formatDuration(workMinutes) : "—"}
+                                  </span>
                                 </td>
 
-                                <td className="px-5 py-4 text-slate-600">
+                                <td className="px-5 py-3.5 text-center font-semibold tabular-nums text-slate-600">
                                   {day.punches?.length ?? 0}
                                 </td>
 
-                                <td className="px-5 py-4 text-slate-600">
+                                <td className="px-5 py-3.5 text-center font-semibold tabular-nums text-slate-600">
                                   {day.sessions?.length ?? 0}
+                                </td>
+
+                                <td className="px-5 py-3.5 text-right">
+                                  <button
+                                    type="button"
+                                    onClick={() => openCorrection(monthlyEmployeeId, day.date)}
+                                    aria-label={`Add manual punch for ${formatDate(day.date)}`}
+                                    className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-blue-200 bg-blue-50 px-3.5 py-2 text-xs font-bold text-blue-700 transition-colors hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+                                  >
+                                    <Plus className="h-4 w-4" />
+                                    Add Manual Punch
+                                  </button>
                                 </td>
                               </tr>
                             );
@@ -1722,6 +1740,11 @@ export default function AdminAttendanceOperationsPage() {
             </div>
 
             <form onSubmit={handleAddCorrection} className="mt-5 space-y-4">
+              {correctionValidationError && (
+                <div role="alert" className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm text-rose-700">
+                  {correctionValidationError}
+                </div>
+              )}
               {correctionError && (
                 <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-sm text-rose-700">
                   {correctionError}

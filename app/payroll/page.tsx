@@ -12,6 +12,8 @@ import {
   finalizePayroll,
   exportPayroll,
 } from "../store/payroll/payrollSlice";
+import { clearEmployeeSalary, fetchEmployeeSalary } from "../store/employee/employeeSlice";
+import SalaryDetails from "../components/SalaryDetails";
 
 import {
   Calculator,
@@ -179,6 +181,9 @@ export default function PayrollProcessingHub() {
   const dispatch = useDispatch<AppDispatch>();
 
   const payrollState = useSelector((state: RootState) => state.payroll);
+  const { salary, salaryLoading, salaryError } = useSelector(
+    (state: RootState) => state.employees
+  );
 
   const runs: PayrollRun[] = payrollState.runs ?? [];
   const items: PayrollItem[] = payrollState.items ?? [];
@@ -212,6 +217,36 @@ export default function PayrollProcessingHub() {
 
   // Edit payroll item state
   const [editingItem, setEditingItem] = useState<PayrollItem | null>(null);
+  const [salaryItem, setSalaryItem] = useState<PayrollItem | null>(null);
+  const [salarySelectionError, setSalarySelectionError] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      dispatch(clearEmployeeSalary());
+    };
+  }, [dispatch]);
+
+  const loadSalary = (item: PayrollItem) => {
+    const userId = Number(item.user_id);
+    dispatch(clearEmployeeSalary());
+    if (!Number.isSafeInteger(userId) || userId <= 0) {
+      setSalarySelectionError("This payroll item has no valid employee ID. Salary details cannot be loaded.");
+      return;
+    }
+    setSalarySelectionError(null);
+    dispatch(fetchEmployeeSalary(userId));
+  };
+
+  const openSalary = (item: PayrollItem) => {
+    setSalaryItem(item);
+    loadSalary(item);
+  };
+
+  const closeSalary = () => {
+    setSalaryItem(null);
+    setSalarySelectionError(null);
+    dispatch(clearEmployeeSalary());
+  };
 
   const [tempEarnings, setTempEarnings] = useState<OtherEarning[]>([]);
 
@@ -241,6 +276,11 @@ export default function PayrollProcessingHub() {
 
   const availableYears = useMemo(() => {
     const uniqueYears = new Set<number>();
+    const currentYear = new Date().getFullYear();
+
+    for (let y = currentYear - 5; y <= currentYear + 1; y++) {
+      uniqueYears.add(y);
+    }
 
     if (selectedYear !== null) {
       uniqueYears.add(selectedYear);
@@ -599,6 +639,7 @@ export default function PayrollProcessingHub() {
 
       setIsCreateModalOpen(false);
 
+      closeSalary();
       setSelectedYear(newRunYear);
 
       if (createdRun?.id) {
@@ -636,7 +677,7 @@ export default function PayrollProcessingHub() {
                 <span className="w-2.5 h-2.5 rounded-full bg-[#7BBDE8]" />
 
                 <h1 className="text-3xl lg:text-4xl font-black text-[#0f172a] tracking-tight">
-                  Payroll Processing & Run Management
+                  Payroll Management
                 </h1>
               </div>
             </div>
@@ -747,7 +788,10 @@ export default function PayrollProcessingHub() {
 
                 <select
                   value={selectedYear ?? ""}
-                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  onChange={(e) => {
+                    closeSalary();
+                    setSelectedYear(Number(e.target.value));
+                  }}
                   className="bg-transparent font-black focus:outline-none"
                 >
                   {availableYears.map((year) => (
@@ -762,7 +806,10 @@ export default function PayrollProcessingHub() {
                 <button
                   key={run.id}
                   type="button"
-                  onClick={() => setActiveRunId(Number(run.id))}
+                  onClick={() => {
+                    if (Number(activeRunId) !== Number(run.id)) closeSalary();
+                    setActiveRunId(Number(run.id));
+                  }}
                   className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
                     Number(activeRunId) === Number(run.id)
                       ? "bg-[#1b64da] text-white shadow-sm"
@@ -825,53 +872,16 @@ export default function PayrollProcessingHub() {
             </div>
           )}
 
-          {/* RUN STATUS */}
-
-          <div className="px-4 py-2.5 rounded-full bg-white/60 border border-[#e6edf4] flex flex-col sm:flex-row sm:items-center justify-between text-xs text-slate-500 gap-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="w-2 h-2 rounded-full bg-[#7BBDE8]" />
-
-              <span>
-                Viewing Payroll Run ID:{" "}
-                <strong className="font-mono text-[#0f172a]">
-                  {activeRun
-                    ? `RUN#${activeRun.year}-${String(activeRun.month).padStart(2, "0")} (#${activeRun.id})`
-                    : "—"}
-                </strong>
-              </span>
-
-              <span>•</span>
-
-              <span>
-                Status:{" "}
-                <strong
-                  className={`px-2 py-0.5 rounded-full border ${
-                    activeRun?.status === "FINALIZED"
-                      ? "text-white bg-[#1b64da] border-[#1b64da]"
-                      : "text-[#0f172a] bg-[#bfe0f5] border-[#7BBDE8]"
-                  }`}
-                >
-                  {activeRun?.status || "NO RUN"}
-                </strong>
-              </span>
-
-              <span>•</span>
-            </div>
-
-            <div className="font-mono text-slate-400 text-[11px]">
-              Audit Actor: Admin
-            </div>
-          </div>
-
           {/* PAYROLL TABLE */}
 
-          <div className="bg-white border border-[#e6edf4] rounded-[32px] shadow-sm overflow-hidden">
+          <div className="flex min-w-0 flex-col items-start gap-4 xl:flex-row">
+          <div className="min-w-0 w-full flex-1 bg-white border border-[#e6edf4] rounded-[32px] shadow-sm overflow-hidden">
             <div className="p-5 lg:p-6 border-b border-[#e6edf4] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#7BBDE8]" />
 
                 <h2 className="text-lg font-black text-[#0f172a] tracking-tight">
-                  Payroll Items & Line-Item Adjustments
+                  Payroll Breakdown & Adjustments
                 </h2>
 
                 <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#bfe0f5] text-[#1b64da]">
@@ -887,20 +897,23 @@ export default function PayrollProcessingHub() {
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+            <div className="border-b border-[#e6edf4] px-5 py-2 text-xs text-slate-500">
+              Scroll horizontally to see payroll details; actions stay visible.
+            </div>
+            <div className="overflow-x-auto" role="region" aria-label="Payroll breakdown table" tabIndex={0}>
+              <table className="w-full border-separate border-spacing-0 text-left">
                 <thead>
                   <tr className="bg-[#f0f6fa] border-b border-[#bfe0f5] text-xs font-bold text-[#0f172a] uppercase tracking-wider">
                     <th className="py-4 px-6">Employee</th>
                     <th className="py-4 px-6">Emp Code</th>
-                    <th className="py-4 px-6">Gross (₹)</th>
+                    {/* <th className="py-4 px-6">Gross (₹)</th> */}
                     <th className="py-4 px-6">Cal / Pay Days</th>
                     <th className="py-4 px-6">LOP Days</th>
                     <th className="py-4 px-6">Per Day Rate</th>
                     <th className="py-4 px-6">LOP Deduction (₹)</th>
-                    <th className="py-4 px-6">Adjustments</th>
+                    {/* <th className="py-4 px-6">Adjustments</th> */}
                     <th className="py-4 px-6">Net Pay (₹)</th>
-                    <th className="py-4 px-6 text-right">Actions</th>
+                    <th scope="col" className="sticky right-0 z-10 whitespace-nowrap bg-[#f0f6fa] px-3 py-4 text-center shadow-[-4px_0_8px_-6px_rgba(15,23,42,0.3)]">Actions</th>
                   </tr>
                 </thead>
 
@@ -908,7 +921,7 @@ export default function PayrollProcessingHub() {
                   {filteredItems.map((item) => (
                     <tr
                       key={item.id}
-                      className="hover:bg-[#bfe0f5]/20 transition-all duration-150"
+                      className="group hover:bg-[#bfe0f5]/20 transition-all duration-150"
                     >
                       {/* EMPLOYEE */}
 
@@ -945,11 +958,11 @@ export default function PayrollProcessingHub() {
                         </span>
                       </td>
 
-                      {/* GROSS */}
-
+                      {/*
                       <td className="py-4 px-6 whitespace-nowrap font-bold text-[#0f172a]">
                         {formatINR(Number(item.gross))}
                       </td>
+                      */}
 
                       {/* CALENDAR / PAYABLE DAYS */}
 
@@ -992,8 +1005,7 @@ export default function PayrollProcessingHub() {
                         )}
                       </td>
 
-                      {/* ADJUSTMENTS */}
-
+                      {/*
                       <td className="py-4 px-6 whitespace-nowrap">
                         {(item.other_earnings || []).length > 0 ? (
                           <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#7BBDE8] text-[#0f172a]">
@@ -1009,6 +1021,7 @@ export default function PayrollProcessingHub() {
                           </span>
                         )}
                       </td>
+                      */}
 
                       {/* NET PAY */}
 
@@ -1018,10 +1031,23 @@ export default function PayrollProcessingHub() {
                         </span>
                       </td>
 
-                      {/* ACTIONS - ONLY EYE ICON */}
-
-                      <td className="py-4 px-6 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end">
+                      <td className="sticky right-0 z-10 whitespace-nowrap bg-white px-3 py-4 text-right shadow-[-4px_0_8px_-6px_rgba(15,23,42,0.3)] transition-colors group-hover:bg-[#f2f9fd]">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => openSalary(item)}
+                            aria-label={`View current salary for ${item.name}`}
+                            aria-controls="payroll-salary-panel"
+                            aria-pressed={salaryItem?.id === item.id}
+                            className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1.5 text-xs font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1b64da] ${
+                              salaryItem?.id === item.id
+                                ? "border-[#1b64da] bg-[#1b64da] text-white"
+                                : "border-[#c7e1f4] bg-[#eef7fd] text-[#1b64da] hover:bg-[#dceffc]"
+                            }`}
+                          >
+                            <IndianRupee className="h-3.5 w-3.5" />
+                            Salary
+                          </button>
                           <button
                             type="button"
                             title={
@@ -1047,7 +1073,7 @@ export default function PayrollProcessingHub() {
                   {filteredItems.length === 0 && (
                     <tr>
                       <td
-                        colSpan={10}
+                        colSpan={8}
                         className="py-10 text-center text-sm text-slate-400"
                       >
                         {items.length === 0
@@ -1063,13 +1089,64 @@ export default function PayrollProcessingHub() {
             <div className="p-4 bg-[#f0f6fa] border-t border-[#e6edf4] flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
               <span>
                 Displaying {filteredItems.length} of {items.length} employees
-                • Auto-locked on Finalize (Day Summaries `is_locked: true`)
               </span>
 
               <span className="font-semibold text-[#1b64da]">
                 {activeRun?.status || "No run selected"}
               </span>
             </div>
+          </div>
+            <section
+              id="payroll-salary-panel"
+              aria-labelledby="payroll-salary-title"
+              className="w-full shrink-0 overflow-hidden rounded-3xl border border-[#d6e8f7] bg-white shadow-sm xl:sticky xl:top-4 xl:w-[320px]"
+            >
+              <div className="flex items-start justify-between gap-3 border-b border-[#d6e8f7] bg-[#f1f8fe] px-4 py-4">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#1b64da] text-white">
+                    <IndianRupee className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0">
+                    <h2 id="payroll-salary-title" className="text-sm font-black text-[#0f172a]">Salary details</h2>
+                    {salaryItem && (
+                      <p className="mt-1 break-words text-xs font-medium text-slate-600">
+                        {salaryItem.name} <span className="text-slate-400">·</span> {salaryItem.emp_code}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                {salaryItem && (
+                  <button
+                    type="button"
+                    onClick={closeSalary}
+                    aria-label="Close salary details"
+                    className="rounded-lg p-2 text-slate-500 hover:bg-white hover:text-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1b64da]"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              <div className="p-4">
+                <p className="mb-4 text-xs leading-relaxed text-slate-500">
+                  Current salary structure; amounts may differ from this payroll run.
+                </p>
+                {salaryItem ? (
+                  <SalaryDetails
+                    salary={salary}
+                    loading={salaryLoading}
+                    error={salarySelectionError || salaryError}
+                    onRetry={() => loadSalary(salaryItem)}
+                  />
+                ) : (
+                  <div className="rounded-2xl border border-dashed border-[#c7e1f4] bg-[#f7fbff] px-4 py-8 text-center">
+                    <p className="text-sm font-bold text-slate-700">Select an employee</p>
+                    <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                      Choose Salary in the Actions column to view the employee&apos;s current salary breakdown.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </section>
           </div>
 
           {/* LINE ITEM EDITOR / BREAKDOWN */}
@@ -1088,7 +1165,7 @@ export default function PayrollProcessingHub() {
 
                   <div>
                     <h3 className="font-black text-xl text-[#0f172a]">
-                      Line-Item Adjuster & Breakdown — {editingItem.name} (
+                      Salary Breakdown — {editingItem.name} (
                       {editingItem.emp_code})
                     </h3>
 
@@ -1563,6 +1640,7 @@ export default function PayrollProcessingHub() {
           )}
         </div>
       </main>
+
     </div>
   );
 }
