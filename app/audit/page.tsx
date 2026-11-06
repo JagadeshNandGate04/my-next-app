@@ -244,10 +244,10 @@ function CountCard({
 }) {
   return (
     <div
-      className="relative flex min-h-[170px] flex-col justify-end rounded-[32px] p-5 shadow-sm"
+      className="relative flex min-h-[170px] flex-col rounded-[32px] p-5 shadow-sm"
       style={{ backgroundColor: color, color: text }}
     >
-      <p className="absolute left-5 top-5 max-w-[65%] text-[13px] font-bold leading-tight">
+      <p className="max-w-[65%] text-xs font-bold leading-tight">
         {label}
       </p>
 
@@ -255,9 +255,9 @@ function CountCard({
         <Icon className="h-4 w-4" />
       </span>
 
-      <p className={`${valueClass} font-black leading-none`}>{value}</p>
+      <p className={`${valueClass} mt-auto pt-4 font-black leading-none`}>{value}</p>
 
-      <p className={`mt-4 text-[11px] font-medium leading-snug ${muted}`}>
+      <p className={`mt-4 text-xs font-medium leading-snug ${muted}`}>
         {note}
       </p>
     </div>
@@ -372,11 +372,11 @@ function ChangeComparison({
               </span>
 
               {item.changed ? (
-                <span className="text-[10px] font-bold uppercase text-white bg-[#1b64da] px-2 py-1 rounded-full shrink-0">
+                <span className="text-xs font-bold uppercase text-white bg-[#1b64da] px-2 py-1 rounded-full shrink-0">
                   Changed
                 </span>
               ) : (
-                <span className="text-[10px] text-slate-400 uppercase shrink-0">
+                <span className="text-xs text-slate-400 uppercase shrink-0">
                   Unchanged
                 </span>
               )}
@@ -384,7 +384,7 @@ function ChangeComparison({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div className="rounded-xl bg-white border border-[#bfe0f5] p-2 min-w-0">
-                <p className="text-[10px] uppercase font-bold text-slate-500 mb-1">
+                <p className="text-xs uppercase font-bold text-slate-500 mb-1">
                   Before
                 </p>
 
@@ -396,7 +396,7 @@ function ChangeComparison({
               </div>
 
               <div className="rounded-xl bg-[#bfe0f5]/60 border border-[#7BBDE8] p-2 min-w-0">
-                <p className="text-[10px] uppercase font-bold text-[#1b64da] mb-1">
+                <p className="text-xs uppercase font-bold text-[#1b64da] mb-1">
                   After
                 </p>
 
@@ -883,7 +883,7 @@ export default function AuditLogsPage() {
 
               {/* ACTION */}
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 mb-1.5 uppercase">
+                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase">
                   Action Type
                 </label>
 
@@ -898,7 +898,7 @@ export default function AuditLogsPage() {
 
               {/* ENTITY */}
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 mb-1.5 uppercase">
+                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase">
                   Entity Type
                 </label>
 
@@ -913,7 +913,7 @@ export default function AuditLogsPage() {
 
               {/* ACTOR ID */}
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 mb-1.5 uppercase">
+                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase">
                   Actor ID
                 </label>
 
@@ -930,7 +930,7 @@ export default function AuditLogsPage() {
                 </div>
 
                 {invalidActorId && (
-                  <p className="text-[10px] text-[#1b64da] font-semibold mt-1">
+                  <p className="text-xs text-[#1b64da] font-semibold mt-1">
                     Actor ID must contain numbers only.
                   </p>
                 )}
@@ -938,7 +938,7 @@ export default function AuditLogsPage() {
 
               {/* FROM DATE */}
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 mb-1.5 uppercase">
+                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase">
                   From Date
                 </label>
 
@@ -952,7 +952,7 @@ export default function AuditLogsPage() {
 
               {/* TO DATE */}
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 mb-1.5 uppercase">
+                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase">
                   To Date
                 </label>
 
@@ -965,7 +965,7 @@ export default function AuditLogsPage() {
                 />
 
                 {invalidDateRange && (
-                  <p className="text-[10px] text-[#1b64da] font-semibold mt-1">
+                  <p className="text-xs text-[#1b64da] font-semibold mt-1">
                     To Date cannot be earlier than From Date.
                   </p>
                 )}
@@ -973,7 +973,7 @@ export default function AuditLogsPage() {
 
               {/* LIMIT */}
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 mb-1.5 uppercase">
+                <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase">
                   Records Per Page
                 </label>
 
@@ -1034,7 +1034,7 @@ export default function AuditLogsPage() {
               <table className="w-full text-left border-collapse min-w-[850px]">
 
                 <thead>
-                  <tr className="bg-[#f0f6fa] border-b border-[#bfe0f5] text-[11px] font-bold text-[#0f172a] uppercase tracking-wider">
+                  <tr className="bg-[#f0f6fa] border-b border-[#bfe0f5] text-xs font-bold text-[#0f172a] uppercase tracking-wider">
                     <th className="py-4 px-5">Event / Action</th>
                     <th className="py-4 px-4">Entity</th>
                     <th className="py-4 px-4">Actor</th>
@@ -1091,7 +1091,7 @@ export default function AuditLogsPage() {
                           {/* ACTION */}
                           <td className="py-4 px-5">
                             <span
-                              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full font-mono text-[10px] font-bold border whitespace-nowrap ${getActionBadgeStyle(
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full font-mono text-xs font-bold border whitespace-nowrap ${getActionBadgeStyle(
                                 log.action
                               )}`}
                             >
@@ -1110,7 +1110,7 @@ export default function AuditLogsPage() {
                           {/* ACTOR */}
                           <td className="py-4 px-4">
                             <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-full bg-[#1b64da] text-white font-bold flex items-center justify-center text-[10px] shrink-0 shadow-sm">
+                              <div className="w-8 h-8 rounded-full bg-[#1b64da] text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-sm">
                                 {getInitials(log.actor_name)}
                               </div>
 
@@ -1119,7 +1119,7 @@ export default function AuditLogsPage() {
                                   {log.actor_name || "Unknown Actor"}
                                 </p>
 
-                                <p className="text-[10px] text-slate-500 font-mono">
+                                <p className="text-xs text-slate-500 font-mono">
                                   {log.actor_emp_code ||
                                     (log.actor_id
                                       ? `ID: ${log.actor_id}`
@@ -1145,7 +1145,7 @@ export default function AuditLogsPage() {
                               {formatDate(log.created_at)}
                             </p>
 
-                            <p className="text-[10px] text-slate-500 mt-1">
+                            <p className="text-xs text-slate-500 mt-1">
                               {formatTime(log.created_at)} IST
                             </p>
                           </td>
@@ -1301,7 +1301,7 @@ export default function AuditLogsPage() {
                   {/* ACTION */}
                   <div className="space-y-3">
                     <span
-                      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[11px] font-bold border ${getActionBadgeStyle(
+                      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border ${getActionBadgeStyle(
                         activeLog.action
                       )}`}
                     >
@@ -1329,7 +1329,7 @@ export default function AuditLogsPage() {
                       <div>
                         <div className="flex items-center gap-2 text-slate-400 mb-1">
                           <User className="w-3.5 h-3.5" />
-                          <span className="text-[10px] font-bold uppercase">
+                          <span className="text-xs font-bold uppercase">
                             Performed By
                           </span>
                         </div>
@@ -1338,7 +1338,7 @@ export default function AuditLogsPage() {
                           {activeLog.actor_name || "Unknown Actor"}
                         </p>
 
-                        <p className="text-[11px] text-slate-500 mt-0.5">
+                        <p className="text-xs text-slate-500 mt-0.5">
                           {activeLog.actor_emp_code ||
                             (activeLog.actor_id
                               ? `Actor ID: ${activeLog.actor_id}`
@@ -1349,7 +1349,7 @@ export default function AuditLogsPage() {
                       <div>
                         <div className="flex items-center gap-2 text-slate-400 mb-1">
                           <Clock className="w-3.5 h-3.5" />
-                          <span className="text-[10px] font-bold uppercase">
+                          <span className="text-xs font-bold uppercase">
                             Date & Time
                           </span>
                         </div>
@@ -1358,13 +1358,13 @@ export default function AuditLogsPage() {
                           {formatDate(activeLog.created_at)}
                         </p>
 
-                        <p className="text-[11px] text-slate-500 mt-0.5">
+                        <p className="text-xs text-slate-500 mt-0.5">
                           {formatTime(activeLog.created_at)} IST
                         </p>
                       </div>
 
                       <div>
-                        <p className="text-[10px] font-bold uppercase text-slate-400 mb-1">
+                        <p className="text-xs font-bold uppercase text-slate-400 mb-1">
                           Actor ID
                         </p>
 
@@ -1374,7 +1374,7 @@ export default function AuditLogsPage() {
                       </div>
 
                       <div>
-                        <p className="text-[10px] font-bold uppercase text-slate-400 mb-1">
+                        <p className="text-xs font-bold uppercase text-slate-400 mb-1">
                           Entity Type
                         </p>
 
@@ -1387,7 +1387,7 @@ export default function AuditLogsPage() {
 
                   {/* REASON */}
                   <div className="rounded-3xl border border-[#7BBDE8] bg-[#bfe0f5]/40 p-4">
-                    <p className="text-[10px] uppercase tracking-wider font-bold text-[#1b64da] mb-2">
+                    <p className="text-xs uppercase tracking-wider font-bold text-[#1b64da] mb-2">
                       Reason / Context
                     </p>
 
@@ -1404,7 +1404,7 @@ export default function AuditLogsPage() {
                         State Modification
                       </h4>
 
-                      <span className="text-[10px] font-mono text-slate-400">
+                      <span className="text-xs font-mono text-slate-400">
                         {activeLog.entity_type || "Entity"}
                       </span>
                     </div>

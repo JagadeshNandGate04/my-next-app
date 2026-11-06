@@ -3,6 +3,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "@/app/store/store";
+import {
+  clearRequestMessages,
+  fetchAdminLeaveRequests,
+  fetchAdminPermissionRequests,
+  fetchAdminRegularizationRequests,
+  type DecisionAction,
+} from "@/app/store/requests/requestSlice";
+import AttendanceRequestModal from "./AttendanceRequestModal";
+import LopAdjustmentModal, { type LopAdjustmentSelection } from "./LopAdjustmentModal";
+import { requestTypeLabel, requestsForDay, validateRequestDates, type AttendanceRequest } from "@/app/store/attendance/attendanceRequests";
 
 import {
   fetchDailyAttendance,
@@ -11,6 +21,8 @@ import {
   clearCorrectionFeedback,
   clearMonthlyAttendance,
   type AttendanceDay,
+  type AttendanceFlags,
+  type AttendanceLopValues,
   type EmployeeAttendance,
 } from "@/app/store/attendance/attendanceSlice";
 
@@ -32,9 +44,6 @@ import {
   Users,
   // --- icons added only for the new roster table design ---
   ListFilter,
-  CheckCircle2,
-  TimerOff,
-  Flag,
   Pencil,
   ClipboardCheck,
   PlusCircle,
@@ -78,6 +87,55 @@ const formatDuration = (mins: number) => {
 
   return `${hours}h ${String(minutes).padStart(2, "0")}m`;
 };
+
+const formatLop = (value: number | string | null | undefined) => {
+  if (value === null || value === undefined) return "—";
+  if ((typeof value === "string" && !/^\d+(?:\.\d+)?$/.test(value.trim())) ||
+      !Number.isFinite(Number(value)) || Number(value) < 0) return "Invalid value";
+  return `${Number(value)} ${Number(value) === 1 ? "day" : "days"}`;
+};
+
+const positiveLop = (value: number | string | null | undefined) => {
+  const parsed = typeof value === "number" || (typeof value === "string" && /^\d+(?:\.\d+)?$/.test(value.trim()))
+    ? Number(value) : NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+};
+
+function LopDetails({
+  values,
+  onAdjust,
+}: {
+  values?: AttendanceLopValues | null;
+  onAdjust: (currentLop: number) => void;
+}) {
+  if (!values) return <span className="text-slate-400">—</span>;
+  const { lop_value, calculated_lop_value, adjusted_lop_value } = values;
+  const numericLop = positiveLop(lop_value);
+  return (
+    <div className="min-w-[7rem] text-sm">
+      <div className="flex items-center gap-2">
+        <span className="font-bold tabular-nums text-slate-800">{formatLop(lop_value)}</span>
+        {numericLop !== null && (
+          <button
+            type="button"
+            onClick={() => onAdjust(numericLop)}
+            aria-label="Adjust LOP"
+            title="Adjust LOP"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
+          >
+            <Pencil aria-hidden="true" className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+      {calculated_lop_value != null && (
+        <span className="mt-1 block text-xs text-slate-500">Calculated: {formatLop(calculated_lop_value)}</span>
+      )}
+      {adjusted_lop_value != null && (
+        <span className="mt-1 block text-xs font-semibold text-blue-700">Adjusted: {formatLop(adjusted_lop_value)}</span>
+      )}
+    </div>
+  );
+}
 
 const formatPunchTime = (value: string | null) => {
   if (!value) return "--:--:--";
@@ -256,6 +314,39 @@ function TimePill({
   );
 }
 
+function CorrectionButton({
+  flags,
+  onClick,
+  date,
+  manual = false,
+}: {
+  flags?: Partial<AttendanceFlags> | null;
+  onClick: () => void;
+  date?: string;
+  manual?: boolean;
+}) {
+  const config = manual || flags?.needs_regularization
+    ? { label: "Manual In/Out", Icon: ClipboardCheck, color: "bg-[#0a47b3] text-white shadow-sm hover:bg-[#083a91]" }
+    : flags?.excess_break
+      ? { label: "Correction", Icon: PlusCircle, color: "bg-[#1b64da] text-white shadow-sm hover:bg-[#1552b5]" }
+      : flags?.is_late
+        ? { label: "Correct Punch", Icon: Pencil, color: "border border-[#7BBDE8] bg-[#bfe0f5] text-[#0a47b3] hover:bg-[#a9d6f2]" }
+        : { label: "Punch", Icon: Plus, color: "bg-[#dbe7ff] text-blue-700 hover:bg-[#c9d9ff]" };
+  const { Icon } = config;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={date ? `${config.label} for ${formatDate(date)}` : undefined}
+      className={`inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3 py-2 text-xs font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${config.color}`}
+    >
+      <Icon className="h-4 w-4" />
+      {config.label}
+    </button>
+  );
+}
+
 export default function AdminAttendanceOperationsPage() {
   const dispatch = useDispatch<AppDispatch>();
 
@@ -292,6 +383,14 @@ export default function AdminAttendanceOperationsPage() {
   const [selectedMonth, setSelectedMonth] = useState(1);
   const [selectedYear, setSelectedYear] = useState(2026);
   const [monthlyInitialized, setMonthlyInitialized] = useState(false);
+  const [attendanceRequests, setAttendanceRequests] = useState<AttendanceRequest[]>([]);
+  const [requestLoading, setRequestLoading] = useState(false);
+  const [requestError, setRequestError] = useState<string | null>(null);
+  const [requestReload, setRequestReload] = useState(0);
+  const [requestDate, setRequestDate] = useState<string | null>(null);
+  const [requestNotice, setRequestNotice] = useState<string | null>(null);
+  const [lopSelection, setLopSelection] = useState<LopAdjustmentSelection | null>(null);
+  const [lopNotice, setLopNotice] = useState<string | null>(null);
 
   // --------------------------------------------------
   // CORRECTION MODAL
@@ -371,6 +470,44 @@ export default function AdminAttendanceOperationsPage() {
     selectedMonth,
     selectedYear,
   ]);
+
+  useEffect(() => {
+    if (activeTab !== "MONTHLY" || !monthlyEmployeeId) return;
+    let cancelled = false;
+    const loadRequests = async () => {
+      setRequestLoading(true);
+      setRequestError(null);
+      setAttendanceRequests([]);
+      try {
+        const statuses = ["PENDING", "APPROVED", "REJECTED"] as const;
+        const results = await Promise.all(statuses.map(async (status) => {
+          const [leaves, permissions, regularizations] = await Promise.all([
+            dispatch(fetchAdminLeaveRequests({ status })),
+            dispatch(fetchAdminPermissionRequests({ status })),
+            dispatch(fetchAdminRegularizationRequests({ status })),
+          ]);
+          return [
+            ...leaves.data.requests.map((request): AttendanceRequest => ({ type: "leave", request })),
+            ...permissions.data.requests.map((request): AttendanceRequest => ({ type: "permission", request })),
+            ...regularizations.data.requests.map((request): AttendanceRequest => ({ type: "regularization", request })),
+          ];
+        }));
+        if (!cancelled) {
+          const requests = results.flat();
+          validateRequestDates(requests);
+          setAttendanceRequests(requests);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setRequestError(error instanceof Error ? error.message : "Unable to load attendance requests.");
+        }
+      } finally {
+        if (!cancelled) setRequestLoading(false);
+      }
+    };
+    void loadRequests();
+    return () => { cancelled = true; };
+  }, [dispatch, activeTab, monthlyEmployeeId, requestReload]);
 
   // --------------------------------------------------
   // DAILY STATISTICS
@@ -519,7 +656,10 @@ export default function AdminAttendanceOperationsPage() {
     setSelectedYear(now.getFullYear());
   };
 
-  const monthlyDays: AttendanceDay[] = monthlyAttendance?.days ?? [];
+  const monthlyDays = useMemo<AttendanceDay[]>(
+    () => monthlyAttendance?.days ?? [],
+    [monthlyAttendance?.days]
+  );
   const monthlyTotals = monthlyAttendance?.totals;
 
   const monthlyDayMap = useMemo(() => {
@@ -537,12 +677,74 @@ export default function AdminAttendanceOperationsPage() {
     selectedYear
   );
 
+  const monthlyTableDays = useMemo(() => {
+    const days: { date: string; day: AttendanceDay | undefined }[] =
+      monthlyDays.map((day) => ({ date: day.date, day }));
+    const existingDates = new Set(monthlyDays.map((day) => day.date.slice(0, 10)));
+
+    for (let dayNumber = 1; dayNumber <= totalDays; dayNumber++) {
+      const date = [
+        selectedYear,
+        String(selectedMonth).padStart(2, "0"),
+        String(dayNumber).padStart(2, "0"),
+      ].join("-");
+      if (!existingDates.has(date) && requestsForDay(attendanceRequests, monthlyEmployeeId, date).length > 0) {
+        days.push({ date, day: undefined });
+      }
+    }
+
+    return days.length === monthlyDays.length
+      ? days
+      : days.sort((a, b) => a.date.localeCompare(b.date));
+  }, [monthlyDays, monthlyEmployeeId, attendanceRequests, selectedMonth, selectedYear, totalDays]);
+
   const calendarCells = [
     ...Array.from({ length: firstDay }, () => null),
     ...Array.from({ length: totalDays }, (_, index) => index + 1),
   ];
 
   const monthlyEmployee = monthlyAttendance?.employee;
+  const selectedDayRequests = requestDate
+    ? requestsForDay(attendanceRequests, monthlyEmployeeId, requestDate)
+    : [];
+
+  const handleRequestDecision = async (item: AttendanceRequest, action: DecisionAction) => {
+    setRequestDate(null);
+    setAttendanceRequests((previous) => previous.filter(
+      (candidate) => candidate.type !== item.type || String(candidate.request.id) !== String(item.request.id)
+    ));
+    setRequestNotice(`${requestTypeLabel(item.type)} request ${action === "APPROVE" ? "approved" : "rejected"}.`);
+    dispatch(clearRequestMessages());
+    setRequestReload((value) => value + 1);
+    const [daily, monthly] = await Promise.all([
+      dispatch(fetchDailyAttendance(selectedDate)),
+      dispatch(fetchMonthlyAttendance({
+        user_id: Number(monthlyEmployeeId),
+        month: selectedMonth,
+        year: selectedYear,
+      })),
+    ]);
+    if (!daily || !monthly) {
+      setRequestNotice(`${requestTypeLabel(item.type)} request ${action === "APPROVE" ? "approved" : "rejected"}, but attendance could not be fully refreshed. Please retry the attendance load.`);
+    }
+  };
+
+  const handleLopSaved = async () => {
+    setLopSelection(null);
+    setLopNotice("LOP adjustment saved. Refreshing attendance...");
+    const refreshes: Promise<unknown>[] = [dispatch(fetchDailyAttendance(selectedDate))];
+    if (monthlyEmployeeId) {
+      refreshes.push(dispatch(fetchMonthlyAttendance({
+        user_id: Number(monthlyEmployeeId),
+        month: selectedMonth,
+        year: selectedYear,
+      })));
+    }
+    const results = await Promise.all(refreshes);
+    setLopNotice(results.every(Boolean)
+      ? "LOP adjustment saved successfully."
+      : "LOP adjustment saved, but attendance could not be fully refreshed. Please reload attendance.");
+  };
 
   // --------------------------------------------------
   // CORRECTION
@@ -831,6 +1033,13 @@ export default function AdminAttendanceOperationsPage() {
             </div>
           </div>
 
+          {lopNotice && (
+            <div role="status" className="flex items-center justify-between gap-3 rounded-xl border border-blue-100 bg-blue-50 px-5 py-3 text-sm text-blue-800">
+              <span>{lopNotice}</span>
+              <button type="button" onClick={() => setLopNotice(null)} aria-label="Dismiss LOP message" className="rounded-lg p-1 hover:bg-blue-100"><X className="h-4 w-4" /></button>
+            </div>
+          )}
+
           {/* ==========================================
               DAILY BOARD
           ========================================== */}
@@ -896,7 +1105,7 @@ export default function AdminAttendanceOperationsPage() {
                     style={{ backgroundColor: item.bg, color: item.text }}
                   >
                     <div className="flex items-center justify-between gap-2 mb-2">
-                      <span className="text-[10px] md:text-xs font-bold uppercase tracking-wide opacity-70 leading-tight">
+                      <span className="text-xs md:text-xs font-bold uppercase tracking-wide opacity-70 leading-tight">
                         {item.title}
                       </span>
                       <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/70 text-slate-600">
@@ -1004,18 +1213,18 @@ export default function AdminAttendanceOperationsPage() {
 
                 {!dailyLoading && !dailyError && (
                   <div className="w-full overflow-x-auto">
-                    <table className="w-full min-w-[1400px] table-fixed border-collapse text-left">
+                    <table className="w-full min-w-[1200px] table-fixed border-collapse text-left">
                       <caption className="sr-only">
                         Daily attendance roster for {formattedSelectedDate}
                       </caption>
                       <colgroup>
-                        <col className="w-[20%]" />
+                        <col className="w-[21%]" />
+                        <col className="w-[15%]" />
+                        <col className="w-[10%]" />
+                        <col className="w-[12%]" />
                         <col className="w-[14%]" />
                         <col className="w-[11%]" />
-                        <col className="w-[12%]" />
-                        <col className="w-[13%]" />
-                        <col className="w-[15%]" />
-                        <col className="w-[15%]" />
+                        <col className="w-[17%]" />
                       </colgroup>
                       <thead>
                         <tr className="border-b border-[#d6e8f7] bg-[#eaf4fc] text-xs font-bold uppercase tracking-wider text-slate-600">
@@ -1024,8 +1233,8 @@ export default function AdminAttendanceOperationsPage() {
                           <th scope="col" className="px-4 py-4">First In</th>
                           <th scope="col" className="px-4 py-4">Last Out</th>
                           <th scope="col" className="px-4 py-4">Work Duration</th>
-                          <th scope="col" className="px-4 py-4">Audit Flags</th>
-                          <th scope="col" className="px-4 py-4 text-right">Operations</th>
+                          <th scope="col" className="px-4 py-4">LOP (Days)</th>
+                          <th scope="col" className="sticky right-0 z-10 bg-[#eaf4fc] px-4 py-4 text-right">Operations</th>
                         </tr>
                       </thead>
 
@@ -1064,7 +1273,7 @@ export default function AdminAttendanceOperationsPage() {
                             return (
                               <tr
                                 key={employee.user_id}
-                                className="bg-white transition-colors hover:bg-[#f5faff]"
+                                className="group bg-white transition-colors hover:bg-[#f5faff]"
                               >
                                 {/* EMPLOYEE */}
                                 <td className="px-4 py-4">
@@ -1165,7 +1374,7 @@ export default function AdminAttendanceOperationsPage() {
                                       </span>
 
                                       {isHalfDay ? (
-                                        <span className="px-2 py-0.5 rounded-full bg-[#bfe0f5] text-[#0a47b3] text-[10px] font-bold whitespace-nowrap">
+                                        <span className="px-2 py-0.5 rounded-full bg-[#bfe0f5] text-[#0a47b3] text-xs font-bold whitespace-nowrap">
                                           Half Day
                                         </span>
                                       ) : (
@@ -1188,89 +1397,17 @@ export default function AdminAttendanceOperationsPage() {
                                   </div>
                                 </td>
 
-                                {/* AUDIT FLAGS */}
                                 <td className="px-4 py-4">
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    {employee.flags.is_late && (
-                                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#1b64da] border border-[#1b64da] text-white font-bold text-[10px] whitespace-nowrap">
-                                        <AlertTriangle className="w-3 h-3 text-white" />
-                                        Late
-                                      </span>
-                                    )}
-
-                                    {employee.flags.excess_break && (
-                                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#dcecf9] border border-[#7BBDE8] text-[#0a47b3] font-bold text-[10px] whitespace-nowrap">
-                                        <TimerOff className="w-3 h-3" />
-                                        Excess Break
-                                      </span>
-                                    )}
-
-                                    {employee.flags.needs_regularization && (
-                                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-[#bfe0f5] border border-[#7BBDE8] text-[#0a47b3] font-bold text-[10px]">
-                                        <Flag className="w-3 h-3 shrink-0" />
-                                        Needs Regularization
-                                      </span>
-                                    )}
-
-                                    {!employee.flags.is_late &&
-                                      !employee.flags.excess_break &&
-                                      !employee.flags.needs_regularization &&
-                                      employee.status === "PRESENT" && (
-                                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-50 border border-slate-300 text-slate-600 font-bold text-[10px] whitespace-nowrap">
-                                          <CheckCircle2 className="w-3.5 h-3.5 text-[#1b64da]" />
-                                          Compliant
-                                        </span>
-                                      )}
-
-                                    {employee.is_locked && (
-                                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-600 font-bold text-[10px] whitespace-nowrap">
-                                        <Lock className="w-3 h-3" />
-                                        Locked
-                                      </span>
-                                    )}
-                                  </div>
+                                  <LopDetails values={employee} onAdjust={(currentLop) => {
+                                    setLopNotice(null);
+                                    setLopSelection({ userId: String(employee.user_id), employeeName: employee.name, date: selectedDate, currentLop });
+                                  }} />
                                 </td>
 
                                 {/* OPERATIONS */}
-                                <td className="px-4 py-4">
+                                <td className="sticky right-0 bg-white px-4 py-4 group-hover:bg-[#f5faff]">
                                   <div className="flex items-center justify-end gap-1">
-                                    {employee.flags.needs_regularization ? (
-                                      <button
-                                        type="button"
-                                        onClick={() => openCorrectionForEmployee(employee)}
-                                        className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-[#0a47b3] px-3 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-[#083a91] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-                                      >
-                                        <ClipboardCheck className="w-4 h-4" />
-                                        Manual In/Out
-                                      </button>
-                                    ) : employee.flags.excess_break ? (
-                                      <button
-                                        type="button"
-                                        onClick={() => openCorrectionForEmployee(employee)}
-                                        className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-[#1b64da] px-3 py-2 text-xs font-bold text-white shadow-sm transition-colors hover:bg-[#1552b5] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-                                      >
-                                        <PlusCircle className="w-4 h-4" />
-                                        Correction
-                                      </button>
-                                    ) : employee.flags.is_late ? (
-                                      <button
-                                        type="button"
-                                        onClick={() => openCorrectionForEmployee(employee)}
-                                        className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-[#7BBDE8] bg-[#bfe0f5] px-3 py-2 text-xs font-bold text-[#0a47b3] transition-colors hover:bg-[#a9d6f2] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-                                      >
-                                        <Pencil className="w-4 h-4" />
-                                        Correct Punch
-                                      </button>
-                                    ) : (
-                                      <button
-                                        type="button"
-                                        onClick={() => openCorrectionForEmployee(employee)}
-                                        className="inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-[#dbe7ff] px-3 py-2 text-xs font-bold text-blue-700 transition-colors hover:bg-[#c9d9ff] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-                                      >
-                                        <Plus className="w-4 h-4" />
-                                        Punch
-                                      </button>
-                                    )}
+                                    <CorrectionButton flags={employee.flags} onClick={() => openCorrectionForEmployee(employee)} />
 
                                     <button
                                       type="button"
@@ -1419,6 +1556,12 @@ export default function AdminAttendanceOperationsPage() {
                 )}
               </div>
 
+              {requestNotice && (
+                <div role="status" className="flex items-center justify-between gap-3 rounded-xl border border-blue-100 bg-blue-50 px-5 py-3 text-sm text-blue-800">
+                  <span>{requestNotice}</span>
+                  <button type="button" onClick={() => setRequestNotice(null)} aria-label="Dismiss request message" className="rounded-lg p-1 hover:bg-blue-100"><X className="h-4 w-4" /></button>
+                </div>
+              )}
               {!monthlyEmployeeId && (
                 <div className="bg-white border border-dashed border-slate-300 rounded-3xl p-12 text-center">
                   <Users className="w-10 h-10 text-slate-300 mx-auto mb-3" />
@@ -1560,13 +1703,13 @@ export default function AdminAttendanceOperationsPage() {
                                   </span>
 
                                   {isToday && (
-                                    <span className="text-[10px] font-bold uppercase text-blue-700">
+                                    <span className="text-xs font-bold uppercase text-blue-700">
                                       Today
                                     </span>
                                   )}
                                 </div>
 
-                                <p className={`mt-2 rounded-lg border px-2 py-1 text-[11px] font-semibold leading-tight ${statusStyles[status]}`}>
+                                <p className={`mt-2 rounded-lg border px-2 py-1 text-xs font-semibold leading-tight ${statusStyles[status]}`}>
                                   {status.replace("_", " ")}
                                 </p>
 
@@ -1610,15 +1753,27 @@ export default function AdminAttendanceOperationsPage() {
                         <p className="text-sm text-slate-500">
                           Daily records for {formatMonth(selectedMonth, selectedYear)}
                         </p>
+                        <p className="mt-1 text-sm text-slate-500">
+                          Select a request beside a date&apos;s status to view details or review a pending request.
+                        </p>
                         </div>
                       </div>
                       <span className="rounded-full bg-[#eef4fa] px-3 py-1.5 text-xs font-bold text-slate-600">
-                        {monthlyDays.length} {monthlyDays.length === 1 ? "record" : "records"}
+                        {monthlyTableDays.length} {monthlyTableDays.length === 1 ? "day" : "days"}
                       </span>
                     </div>
 
+                    {requestLoading && (
+                      <p role="status" className="border-b border-blue-100 bg-blue-50 px-5 py-3 text-sm text-blue-700">Loading attendance requests...</p>
+                    )}
+                    {requestError && (
+                      <div role="alert" className="flex flex-wrap items-center gap-3 border-b border-rose-100 bg-rose-50 px-5 py-3 text-sm text-rose-700">
+                        <span>Unable to load attendance requests: {requestError}</span>
+                        <button type="button" onClick={() => setRequestReload((value) => value + 1)} className="font-bold underline underline-offset-2">Try again</button>
+                      </div>
+                    )}
                     <div className="overflow-x-auto">
-                      <table className="w-full min-w-[800px] text-left">
+                      <table className="w-full min-w-[1200px] text-left">
                         <caption className="sr-only">
                         Daily attendance records for {formatMonth(selectedMonth, selectedYear)}
                         </caption>
@@ -1626,29 +1781,42 @@ export default function AdminAttendanceOperationsPage() {
                         <tr className="border-b border-[#d6e8f7] bg-[#eaf4fc] text-xs uppercase tracking-wider text-slate-600">
                           <th scope="col" className="px-5 py-3 font-bold">Date</th>
                           <th scope="col" className="px-5 py-3 font-bold">Status</th>
+                          <th scope="col" className="px-5 py-3 font-bold">First In</th>
+                          <th scope="col" className="px-5 py-3 font-bold">Last Out</th>
                           <th scope="col" className="px-5 py-3 font-bold">Work Duration</th>
+                          <th scope="col" className="px-5 py-3 font-bold">LOP (Days)</th>
                           <th scope="col" className="px-5 py-3 text-center font-bold">Punches</th>
                           <th scope="col" className="px-5 py-3 text-center font-bold">Sessions</th>
-                          <th scope="col" className="px-5 py-3 text-right font-bold">Action</th>
+                          <th scope="col" className="sticky right-0 z-10 bg-[#eaf4fc] px-5 py-3 text-right font-bold">Action</th>
                         </tr>
                         </thead>
 
                         <tbody className="divide-y divide-slate-100 text-sm">
-                        {monthlyDays.length === 0 && (
+                        {monthlyTableDays.length === 0 && (
                           <tr>
-                            <td colSpan={6} className="px-5 py-10 text-center text-sm text-slate-500">
+                            <td colSpan={9} className="px-5 py-10 text-center text-sm text-slate-500">
                               No daily records available for this month.
                             </td>
                           </tr>
                         )}
-                        {monthlyDays.map((day) => {
+                        {monthlyTableDays.map(({ date, day }) => {
                             const status = getDayStatus(
                               day,
-                              day.date,
+                              date,
                               todayDate
                             );
 
-                            const summary = day.summary;
+                            const summary = day?.summary;
+                            const firstIn = summary?.first_in?.trim() || null;
+                            const lastOut = summary?.last_out?.trim() || null;
+                            const lopValues = day ? {
+                              lop_value: day.lop_value === undefined ? summary?.lop_value : day.lop_value,
+                              calculated_lop_value: day.calculated_lop_value === undefined ? summary?.calculated_lop_value : day.calculated_lop_value,
+                              adjusted_lop_value: day.adjusted_lop_value === undefined ? summary?.adjusted_lop_value : day.adjusted_lop_value,
+                            } : null;
+                            const canAddManualPunch = !firstIn || !lastOut || positiveLop(lopValues?.lop_value) !== null;
+                            const dayRequests = requestsForDay(attendanceRequests, monthlyEmployeeId, date);
+                            const pendingCount = dayRequests.filter((item) => item.request.status === "PENDING").length;
 
                             const workMinutes = Number(
                               summary?.work_min ??
@@ -1657,22 +1825,53 @@ export default function AdminAttendanceOperationsPage() {
                             );
 
                             return (
-                              <tr key={day.date} className="bg-white transition-colors hover:bg-[#f5faff]">
+                              <tr key={date} className="group bg-white transition-colors hover:bg-[#f5faff]">
                                 <td className="px-5 py-3.5">
                                   <div className="flex items-center gap-3 whitespace-nowrap">
                                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#eaf4fc] text-[#1b64da]">
                                       <CalendarIcon className="h-4 w-4" />
                                     </span>
-                                    <span className="font-bold text-slate-800">{formatDate(day.date)}</span>
+                                    <span className="font-bold text-slate-800">{formatDate(date)}</span>
                                   </div>
                                 </td>
 
                                 <td className="px-5 py-3.5">
+                                  <div className="flex flex-wrap items-center gap-2">
                                   <span
                                     className={`inline-flex whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-bold ${statusStyles[status]}`}
                                   >
                                     {status.replace("_", " ")}
                                   </span>
+                                  {pendingCount > 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => { setRequestNotice(null); setRequestDate(date); }}
+                                      aria-label={`Review pending requests for ${formatDate(date)}`}
+                                      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-800 hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600"
+                                    >
+                                      Review pending ({pendingCount})
+                                    </button>
+                                  )}
+                                  {dayRequests.filter((item) => item.request.status !== "PENDING").map((item) => (
+                                    <button
+                                      key={`${item.type}-${item.request.id}`}
+                                      type="button"
+                                      onClick={() => { setRequestNotice(null); setRequestDate(date); }}
+                                      aria-label={`View ${item.request.status.toLowerCase()} ${requestTypeLabel(item.type).toLowerCase()} request #${item.request.id} for ${formatDate(date)}`}
+                                      className={`inline-flex items-center whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-bold focus-visible:outline-2 focus-visible:outline-offset-2 ${item.request.status === "APPROVED" ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100" : "border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100"}`}
+                                    >
+                                      {requestTypeLabel(item.type)} · {item.request.status === "APPROVED" ? "Approved" : "Rejected"}
+                                    </button>
+                                  ))}
+                                  </div>
+                                </td>
+
+                                <td className="px-5 py-3.5">
+                                  <TimePill value={firstIn} tone="plain" />
+                                </td>
+
+                                <td className="px-5 py-3.5">
+                                  <TimePill value={lastOut} tone="plain" />
                                 </td>
 
                                 <td className="px-5 py-3.5">
@@ -1682,24 +1881,25 @@ export default function AdminAttendanceOperationsPage() {
                                   </span>
                                 </td>
 
-                                <td className="px-5 py-3.5 text-center font-semibold tabular-nums text-slate-600">
-                                  {day.punches?.length ?? 0}
+                                <td className="px-5 py-3.5">
+                                  <LopDetails values={lopValues} onAdjust={(currentLop) => {
+                                    setLopNotice(null);
+                                    setLopSelection({ userId: monthlyEmployeeId, employeeName: monthlyEmployee?.name || "Employee", date: date.slice(0, 10), currentLop });
+                                  }} />
                                 </td>
 
                                 <td className="px-5 py-3.5 text-center font-semibold tabular-nums text-slate-600">
-                                  {day.sessions?.length ?? 0}
+                                  {day?.punches?.length ?? 0}
                                 </td>
 
-                                <td className="px-5 py-3.5 text-right">
-                                  <button
-                                    type="button"
-                                    onClick={() => openCorrection(monthlyEmployeeId, day.date)}
-                                    aria-label={`Add manual punch for ${formatDate(day.date)}`}
-                                    className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-blue-200 bg-blue-50 px-3.5 py-2 text-xs font-bold text-blue-700 transition-colors hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600"
-                                  >
-                                    <Plus className="h-4 w-4" />
-                                    Add Manual Punch
-                                  </button>
+                                <td className="px-5 py-3.5 text-center font-semibold tabular-nums text-slate-600">
+                                  {day?.sessions?.length ?? 0}
+                                </td>
+
+                                <td className="sticky right-0 bg-white px-5 py-3.5 text-right group-hover:bg-[#f5faff]">
+                                  {canAddManualPunch ? (
+                                    <CorrectionButton manual date={date} onClick={() => openCorrection(monthlyEmployeeId, date)} />
+                                  ) : <span className="text-slate-400">—</span>}
                                 </td>
                               </tr>
                             );
@@ -1714,6 +1914,20 @@ export default function AdminAttendanceOperationsPage() {
           )}
         </div>
       </main>
+
+      {lopSelection && (
+        <LopAdjustmentModal selection={lopSelection} onClose={() => setLopSelection(null)} onSaved={handleLopSaved} />
+      )}
+
+      {requestDate && selectedDayRequests.length > 0 && (
+        <AttendanceRequestModal
+          date={formatDate(requestDate)}
+          employeeName={monthlyEmployee?.name || "Employee"}
+          requests={selectedDayRequests}
+          onClose={() => setRequestDate(null)}
+          onDecided={handleRequestDecision}
+        />
+      )}
 
       {/* ==========================================
           CORRECTION MODAL

@@ -171,14 +171,14 @@ function ActiveShiftCard() {
       <div className="flex items-center justify-between">
         <div className="flex items-start gap-2">
           <span className="mt-[5px] h-2 w-2 rounded-full bg-[#1a5c96]" />
-          <p className="text-[11px] font-bold leading-[1.45] tracking-[0.14em] text-[#1d4f7c]">
+          <p className="text-xs font-bold leading-[1.45] tracking-[0.14em] text-[#1d4f7c]">
             ACTIVE SHIFT
             <br />
             TRACKER
           </p>
         </div>
 
-        <span className="rounded-full bg-white/50 px-3 py-2 text-center text-[10px] font-bold leading-tight tracking-wider text-[#1d4f7c]">
+        <span className="rounded-full bg-white/50 px-3 py-2 text-center text-xs font-bold leading-tight tracking-wider text-[#1d4f7c]">
           ON
           <br />
           TIME
@@ -193,17 +193,17 @@ function ActiveShiftCard() {
               {meridiem}
             </span>
           </p>
-          <p className="text-[11px] font-semibold text-[#2d5f8a]">
+          <p className="text-xs font-semibold text-[#2d5f8a]">
             Shift: Morning A
           </p>
         </div>
 
         <div className="mt-3 flex items-center justify-between rounded-xl bg-white/30 px-3 py-2.5">
-          <span className="flex items-center gap-2 text-[12px] font-semibold text-[#1d4f7c]">
+          <span className="flex items-center gap-2 text-xs font-semibold text-[#1d4f7c]">
             <ClockIcon className="h-4 w-4" />
             Punch In: 08:30 AM
           </span>
-          <span className="text-[12px] font-bold text-[#1a74b8]">
+          <span className="text-xs font-bold text-[#1a74b8]">
             +15m Early
           </span>
         </div>
@@ -223,10 +223,10 @@ function WeeklyTimesheetCard() {
   return (
     <div className={`${glass} w-[282px] rounded-[18px] p-3`}>
       <div className="flex items-center justify-between px-1 pb-2 pt-1">
-        <p className="text-[11px] font-bold tracking-[0.12em] text-[#1d4f7c]">
+        <p className="text-xs font-bold tracking-[0.12em] text-[#1d4f7c]">
           WEEKLY TIMESHEET
         </p>
-        <p className="text-[11px] font-bold text-[#1a74b8]">
+        <p className="text-xs font-bold text-[#1a74b8]">
           38.5 / 40 hrs
         </p>
       </div>
@@ -234,24 +234,24 @@ function WeeklyTimesheetCard() {
       <div className="space-y-1.5">
         {rows.map((r) => (
           <div key={r.day} className="flex items-center justify-between rounded-md bg-white/35 px-2.5 py-[7px]">
-            <span className="text-[11px] font-medium text-[#1d4f7c]">
+            <span className="text-xs font-medium text-[#1d4f7c]">
               {r.day}
             </span>
 
             {r.type === "verified" && (
-              <span className="rounded bg-white/80 px-2 py-0.5 text-[10px] font-bold text-[#1a74b8]">
+              <span className="rounded bg-white/80 px-2 py-0.5 text-xs font-bold text-[#1a74b8]">
                 {r.badge}
               </span>
             )}
 
             {r.type === "ot" && (
-              <span className="rounded bg-[#f6e3a6] px-2 py-0.5 text-[10px] font-bold text-[#8a5a00]">
+              <span className="rounded bg-[#f6e3a6] px-2 py-0.5 text-xs font-bold text-[#8a5a00]">
                 {r.badge}
               </span>
             )}
 
             {r.type === "progress" && (
-              <span className="text-[10px] font-bold text-[#1a74b8]">
+              <span className="text-xs font-bold text-[#1a74b8]">
                 {r.badge}
               </span>
             )}
@@ -266,11 +266,11 @@ function PayrollSnapshotCard() {
   return (
     <div className={`${glass} w-[314px] rounded-[18px] p-4`}>
       <div className="flex items-center justify-between">
-        <span className="flex items-center gap-2 text-[11px] font-bold tracking-[0.1em] text-[#1d4f7c]">
+        <span className="flex items-center gap-2 text-xs font-bold tracking-[0.1em] text-[#1d4f7c]">
           <WalletIcon className="h-4 w-4" />
           PAYROLL SNAPSHOT
         </span>
-        <span className="text-[11px] font-semibold text-[#1a74b8]">
+        <span className="text-xs font-semibold text-[#1a74b8]">
           Bi-Weekly
         </span>
       </div>
@@ -279,12 +279,12 @@ function PayrollSnapshotCard() {
         <p className="text-[26px] font-extrabold tracking-tight text-[#0d3d66]">
           ₹85,450.00
         </p>
-        <span className="rounded bg-white/60 px-2 py-1 text-[11px] font-bold text-[#1a74b8]">
+        <span className="rounded bg-white/60 px-2 py-1 text-xs font-bold text-[#1a74b8]">
           100% Calculated
         </span>
       </div>
 
-      <div className="mt-3 flex items-center justify-between border-t border-white/40 pt-2.5 text-[11px]">
+      <div className="mt-3 flex items-center justify-between border-t border-white/40 pt-2.5 text-xs">
         <span className="font-medium text-[#3a6a93]">
           Auto Disbursement: Friday
         </span>
@@ -807,7 +807,7 @@ export default function LoginPage() {
                 NANDGATE-IT
               </div>
 
-              <p className="mt-3 text-[13px] font-bold tracking-[0.2em] text-[#12507f]">
+              <p className="mt-3 text-xs font-bold tracking-[0.2em] text-[#12507f]">
                 ATTENDANCE &amp; PAYROLL
               </p>
             </div>
@@ -932,7 +932,7 @@ export default function LoginPage() {
 
                 <button
                   type="button"
-                  className="flex items-center gap-1.5 rounded-full border border-[#5aaee3] bg-[#eaf5fd] px-3.5 py-1.5 text-[13px] font-bold text-[#1a6ea8] hover:bg-[#dbeefb]"
+                  className="flex items-center gap-1.5 rounded-full border border-[#5aaee3] bg-[#eaf5fd] px-3.5 py-1.5 text-xs font-bold text-[#1a6ea8] hover:bg-[#dbeefb]"
                 >
                   <ClockIcon className="h-4 w-4" />
                   Auto Clock-In

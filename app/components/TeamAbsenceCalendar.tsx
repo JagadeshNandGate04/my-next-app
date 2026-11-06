@@ -391,7 +391,7 @@ export default function TeamAbsenceCalendar() {
               >
                 <span className={`h-2 w-2 rounded-full ${chip.dot}`} />
                 {chip.label}
-                <span className="rounded-full bg-white/80 px-2 py-0.5 text-[11px]">
+                <span className="rounded-full bg-white/80 px-2 py-0.5 text-xs">
                   {chip.value}
                 </span>
               </span>
@@ -499,12 +499,12 @@ export default function TeamAbsenceCalendar() {
                       {String(day).padStart(2, "0")}
                     </span>
                     {events.length > 0 ? (
-                      <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-[#7BBDE8] px-1.5 text-[11px] font-extrabold text-slate-900">
+                      <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-[#7BBDE8] px-1.5 text-xs font-extrabold text-slate-900">
                         {events.length}
                       </span>
                     ) : (
                       isWeekend && (
-                        <span className="hidden text-[11px] font-medium text-slate-400 xl:block">
+                        <span className="hidden text-xs font-medium text-slate-400 xl:block">
                           Weekend
                         </span>
                       )
@@ -519,7 +519,7 @@ export default function TeamAbsenceCalendar() {
                           key={`${event.date}-${eventIndex}`}
                           onClick={() => setSelectedEvent(event)}
                           title={`${event.title} · ${event.person} · ${event.status}`}
-                          className={`block w-full cursor-pointer truncate rounded-lg border px-2 py-1 text-left text-[11px] font-semibold transition-shadow hover:shadow-md md:text-xs ${getEventColor(
+                          className={`block w-full cursor-pointer truncate rounded-lg border px-2 py-1 text-left text-xs font-semibold transition-shadow hover:shadow-md md:text-xs ${getEventColor(
                             event.type
                           )}`}
                         >
@@ -534,7 +534,7 @@ export default function TeamAbsenceCalendar() {
                         onClick={() =>
                           setExpandedDay(expandedDay === dateKey ? null : dateKey)
                         }
-                        className="px-2 text-[11px] font-bold text-[#1b64da] hover:underline"
+                        className="px-2 text-xs font-bold text-[#1b64da] hover:underline"
                       >
                         {expandedDay === dateKey
                           ? "Show less"

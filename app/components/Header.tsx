@@ -376,7 +376,7 @@ export default function Header({
                       Search Results
                     </p>
 
-                    <p className="text-[10px] text-slate-400 mt-0.5">
+                    <p className="text-xs text-slate-400 mt-0.5">
                       Employees and requests
                     </p>
                   </div>
@@ -389,7 +389,7 @@ export default function Header({
                         Search is temporarily unavailable
                       </p>
 
-                      <p className="text-[10px] text-slate-400 mt-1">
+                      <p className="text-xs text-slate-400 mt-1">
                         Search data will be available when the search service is connected.
                       </p>
                     </div>
@@ -420,7 +420,7 @@ export default function Header({
 
                             {item.status && (
                               <span
-                                className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-bold ${getStatusColor(
+                                className={`shrink-0 rounded-full px-2 py-1 text-xs font-bold ${getStatusColor(
                                   item.status
                                 )}`}
                               >
@@ -429,11 +429,11 @@ export default function Header({
                             )}
                           </div>
 
-                          <p className="text-[10px] font-semibold text-[#0047BA] mt-0.5">
+                          <p className="text-xs font-semibold text-[#0047BA] mt-0.5">
                             {item.category} · {item.subtitle}
                           </p>
 
-                          <p className="text-[10px] text-slate-500 mt-1 line-clamp-2">
+                          <p className="text-xs text-slate-500 mt-1 line-clamp-2">
                             {item.details}
                           </p>
                         </div>
@@ -480,7 +480,7 @@ export default function Header({
                     {displayName}
                   </p>
 
-                  <p className="text-[10px] text-slate-400 truncate">
+                  <p className="text-xs text-slate-400 truncate">
                     {displayEmail || displayRole}
                   </p>
                 </div>
@@ -504,7 +504,7 @@ export default function Header({
                       {displayEmail || "Email unavailable"}
                     </p>
 
-                    <p className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                    <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
                       {displayRole}
                     </p>
                   </div>

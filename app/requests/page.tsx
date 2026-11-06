@@ -913,7 +913,7 @@ export default function AdminRequestsApprovals() {
 
                           <div className="min-w-0 flex-1">
 
-                            <span className="text-[12px] text-slate-500 block uppercase font-bold tracking-wider">
+                            <span className="text-xs text-slate-500 block uppercase font-bold tracking-wider">
                               Request Type
                             </span>
 
@@ -973,7 +973,7 @@ export default function AdminRequestsApprovals() {
 
                     <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-4">
 
-                      <div className="flex items-center gap-2 text-[13px] font-semibold">
+                      <div className="flex items-center gap-2 text-xs font-semibold">
                         <span
                           className={`px-3 py-1.5 rounded-full border ${getStatusStyle(
                             req.status

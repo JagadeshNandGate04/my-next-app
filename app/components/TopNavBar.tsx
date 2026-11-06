@@ -351,7 +351,7 @@ export default function TopNavBar({
                 title={item.name}
                 aria-label={item.name}
                 aria-current={active ? 'page' : undefined}
-                className={`group flex shrink-0 items-center gap-2 rounded-full py-2 text-[12px] font-semibold transition-all duration-300 2xl:px-3 ${
+                className={`group flex shrink-0 items-center gap-2 rounded-full py-2 text-xs font-semibold transition-all duration-300 2xl:px-3 ${
                   active
                     ? 'pl-2 pr-4 text-white shadow-md'
                     : 'px-2 text-slate-500 hover:bg-[#f0f6fa] hover:text-slate-900'
@@ -387,7 +387,7 @@ export default function TopNavBar({
             <BellIcon />
             {notificationCount > 0 && (
               <span
-                className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
+                className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-xs font-bold text-white"
                 style={{ backgroundColor: BLUE }}
               >
                 {notificationCount}

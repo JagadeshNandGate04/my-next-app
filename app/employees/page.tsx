@@ -9,6 +9,7 @@ import {
   Download,
   Search,
   IndianRupee,
+  History,
   Briefcase,
   X,
   Edit3,
@@ -17,7 +18,7 @@ import {
 } from "lucide-react";
 
 import type { AppDispatch, RootState } from "@/app/store/store";
-import SalaryDetails from "@/app/components/SalaryDetails";
+import SalaryDetails, { SalaryHistoryContent } from "@/app/components/SalaryDetails";
 import {
   fetchEmployees,
   fetchEmployeeById,
@@ -176,8 +177,8 @@ export default function EmployeeDirectoryPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [salaryEmployee, setSalaryEmployee] = useState<Employee | null>(null);
-  const salaryModalRef = useRef<HTMLElement>(null);
-  const salaryCloseRef = useRef<HTMLButtonElement>(null);
+  const [historyEmployeeId, setHistoryEmployeeId] = useState<number | null>(null);
+  const salaryPanelRef = useRef<HTMLElement>(null);
   const detailRequestRef = useRef(0);
   const [detailLoadingId, setDetailLoadingId] = useState<number | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
@@ -209,35 +210,6 @@ export default function EmployeeDirectoryPage() {
       dispatch(clearEmployeeSalary());
     };
   }, [dispatch]);
-
-  useEffect(() => {
-    if (!salaryEmployee) return;
-    const previousFocus = document.activeElement;
-    salaryCloseRef.current?.focus();
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setSalaryEmployee(null);
-        dispatch(clearEmployeeSalary());
-      } else if (event.key === "Tab") {
-        const buttons = salaryModalRef.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)");
-        if (!buttons?.length) return;
-        const first = buttons[0];
-        const last = buttons[buttons.length - 1];
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault();
-          last.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault();
-          first.focus();
-        }
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      if (previousFocus instanceof HTMLElement) previousFocus.focus();
-    };
-  }, [dispatch, salaryEmployee]);
 
   const nextEmpCode = useMemo(() => {
     const maxNumber = employees.reduce((max, employee) => {
@@ -513,17 +485,23 @@ export default function EmployeeDirectoryPage() {
     }
   };
 
-  const openSalaryModal = (employee: Employee) => {
+  const openSalaryPanel = (employee: Employee) => {
     detailRequestRef.current += 1;
     setDetailLoadingId(null);
     setDetailError(null);
+    setHistoryEmployeeId(null);
     setSalaryEmployee(employee);
     dispatch(fetchEmployeeSalary(employee.id));
+    salaryPanelRef.current?.focus();
   };
 
-  const closeSalaryModal = () => {
+  const closeSalaryPanel = () => {
+    const employeeId = salaryEmployee?.id;
     setSalaryEmployee(null);
     dispatch(clearEmployeeSalary());
+    if (employeeId !== undefined) {
+      document.getElementById(`employee-salary-button-${employeeId}`)?.focus();
+    }
   };
 
   const handleExportCSV = () => {
@@ -625,7 +603,7 @@ export default function EmployeeDirectoryPage() {
               >
                 <UserPlus className="w-4 h-4" />
                 <span>Onboard Employee</span>
-                <span className="ml-1 px-2 py-0.5 rounded-full bg-white/20 text-[11px] font-mono font-bold tracking-wider">
+                <span className="ml-1 px-2 py-0.5 rounded-full bg-white/20 text-xs font-mono font-bold tracking-wider">
                   {nextEmpCode}
                 </span>
               </button>
@@ -785,7 +763,7 @@ export default function EmployeeDirectoryPage() {
             </div>
 
             <div className="flex items-center gap-2 overflow-x-auto pt-1 pb-1">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mr-1 shrink-0">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 mr-1 shrink-0">
                 Designation:
               </span>
 
@@ -819,7 +797,8 @@ export default function EmployeeDirectoryPage() {
           </div>
 
           {/* Employee table */}
-          <div className="bg-white border border-[#d5dbe1] rounded-3xl shadow-sm overflow-hidden">
+          <div className="flex min-w-0 flex-col items-start gap-4 xl:flex-row">
+          <div className="min-w-0 w-full flex-1 bg-white border border-[#d5dbe1] rounded-3xl shadow-sm overflow-hidden">
             <div className="p-5 lg:p-6 border-b border-[#e2e8f0] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3 flex-wrap">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#1b64da]" />
@@ -873,8 +852,8 @@ export default function EmployeeDirectoryPage() {
                     </tr>
                   ) : filteredEmployees.length > 0 ? (
                     filteredEmployees.map((employee) => (
+                      <React.Fragment key={employee.id}>
                       <tr
-                        key={employee.id}
                         className="hover:bg-[#f5faff] transition-all duration-150 group"
                       >
                         <td className="px-4 py-4 align-middle">
@@ -924,7 +903,7 @@ export default function EmployeeDirectoryPage() {
                           <div className="text-xs font-bold text-[#0f172a]">
                             {formatDate(employee.date_of_joining)}
                           </div>
-                          <div className="text-[11px] font-medium text-slate-500 mt-0.5">
+                          <div className="text-xs font-medium text-slate-500 mt-0.5">
                             {calculateTenure(
                               employee.date_of_joining,
                               currentDate
@@ -954,14 +933,29 @@ export default function EmployeeDirectoryPage() {
                         <td className="whitespace-nowrap px-4 py-4 align-middle">
                           <div className="flex items-center justify-center gap-1.5">
                             <button
+                              id={`employee-salary-button-${employee.id}`}
                               type="button"
                               title={`View salary for ${employee.name}`}
                               aria-label={`View salary for ${employee.name}`}
-                              onClick={() => openSalaryModal(employee)}
+                              aria-controls="employee-salary-panel"
+                              aria-pressed={salaryEmployee?.id === employee.id}
+                              onClick={() => openSalaryPanel(employee)}
                               className="inline-flex h-9 items-center justify-center gap-1 rounded-lg border border-[#c7e1f4] bg-[#eef7fd] px-2 text-xs font-bold text-[#1b64da] transition-colors hover:bg-[#dceffc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1b64da]"
                             >
                               <IndianRupee className="w-4 h-4" />
                               Salary
+                            </button>
+                            <button
+                              id={`salary-history-button-${employee.id}`}
+                              type="button"
+                              title={`Salary history for ${employee.name}`}
+                              aria-label={`Salary history for ${employee.name}`}
+                              aria-expanded={historyEmployeeId === employee.id}
+                              aria-controls={historyEmployeeId === employee.id ? `salary-history-${employee.id}` : undefined}
+                              onClick={() => setHistoryEmployeeId((current) => current === employee.id ? null : employee.id)}
+                              className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1b64da] ${historyEmployeeId === employee.id ? "border-blue-300 bg-blue-100 text-blue-800" : "border-slate-200 bg-white text-slate-700 hover:border-[#c7e1f4] hover:bg-[#eef7fd] hover:text-[#1b64da]"}`}
+                            >
+                              <History className="h-4 w-4" />
                             </button>
                             <button
                               type="button"
@@ -980,6 +974,28 @@ export default function EmployeeDirectoryPage() {
                           </div>
                         </td>
                       </tr>
+                      {historyEmployeeId === employee.id && (
+                        <tr>
+                          <td colSpan={7} className="bg-[#f5faff] px-4 py-4">
+                            <section id={`salary-history-${employee.id}`} aria-label={`Salary history for ${employee.name}`} className="sticky left-4 w-[calc(100vw-4rem)] max-w-[760px] rounded-2xl border border-[#d6e8f7] bg-white p-4 shadow-sm">
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <h3 className="flex items-center gap-2 text-base font-bold text-slate-900"><History className="h-4 w-4 text-blue-600" /> Salary history</h3>
+                                  <p className="mt-1 text-sm text-slate-600">{employee.name} · {employee.emp_code}</p>
+                                </div>
+                                <button type="button" aria-label="Close salary history" onClick={() => {
+                                  setHistoryEmployeeId(null);
+                                  document.getElementById(`salary-history-button-${employee.id}`)?.focus();
+                                }} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-600">
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </div>
+                              <SalaryHistoryContent key={employee.id} employeeId={employee.id} />
+                            </section>
+                          </td>
+                        </tr>
+                      )}
+                      </React.Fragment>
                     ))
                   ) : (
                     <tr>
@@ -1010,54 +1026,60 @@ export default function EmployeeDirectoryPage() {
               </span>
             </div>
           </div>
-        </div>
-      </main>
-
-      {salaryEmployee && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-900/50 p-4 backdrop-blur-sm">
           <section
-            ref={salaryModalRef}
-            role="dialog"
-            aria-modal="true"
+            ref={salaryPanelRef}
+            id="employee-salary-panel"
             aria-labelledby="salary-details-title"
-            className="my-8 w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl"
+            tabIndex={-1}
+            className="w-full shrink-0 overflow-hidden rounded-3xl border border-[#d6e8f7] bg-white shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1b64da] xl:sticky xl:top-4 xl:w-[320px]"
           >
-            <div className="flex items-start justify-between gap-4 border-b border-[#d6e8f7] bg-[#f1f8fe] px-5 py-5 sm:px-6">
+            <div className="flex items-start justify-between gap-3 border-b border-[#d6e8f7] bg-[#f1f8fe] px-4 py-4">
               <div className="flex min-w-0 items-center gap-3">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#1b64da] text-white shadow-sm">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#1b64da] text-white">
                   <IndianRupee className="h-5 w-5" />
                 </span>
                 <div className="min-w-0">
-                  <h2 id="salary-details-title" className="text-lg font-black text-[#0f172a]">
-                    Salary details
-                  </h2>
-                  <p className="mt-0.5 truncate text-sm font-medium text-slate-600">
-                    {salaryEmployee.name} <span className="text-slate-400">·</span> {salaryEmployee.emp_code}
-                  </p>
+                  <h2 id="salary-details-title" className="text-sm font-black text-[#0f172a]">Salary details</h2>
+                  {salaryEmployee && (
+                    <p className="mt-1 break-words text-xs font-medium text-slate-600">
+                      {salaryEmployee.name} <span className="text-slate-400">·</span> {salaryEmployee.emp_code}
+                    </p>
+                  )}
                 </div>
               </div>
-              <button
-                ref={salaryCloseRef}
-                type="button"
-                onClick={closeSalaryModal}
-                aria-label="Close salary details"
-                className="rounded-xl p-2 text-slate-500 hover:bg-white hover:text-slate-800"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              {salaryEmployee && (
+                <button
+                  type="button"
+                  onClick={closeSalaryPanel}
+                  aria-label="Close salary details"
+                  className="rounded-lg p-2 text-slate-500 hover:bg-white hover:text-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1b64da]"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
-
-            <div className="px-5 py-5 sm:px-6">
-              <SalaryDetails
-                salary={salary}
-                loading={salaryLoading}
-                error={salaryError}
-                onRetry={() => dispatch(fetchEmployeeSalary(salaryEmployee.id))}
-              />
+            <div className="p-4">
+              {salaryEmployee ? (
+                <SalaryDetails
+                  key={salaryEmployee.id}
+                  salary={salary}
+                  loading={salaryLoading}
+                  error={salaryError}
+                  onRetry={() => dispatch(fetchEmployeeSalary(salaryEmployee.id))}
+                />
+              ) : (
+                <div className="rounded-2xl border border-dashed border-[#c7e1f4] bg-[#f7fbff] px-4 py-8 text-center">
+                  <p className="text-sm font-bold text-slate-700">Select an employee</p>
+                  <p className="mt-2 text-xs leading-relaxed text-slate-500">
+                    Choose Salary in the Actions column to view the employee&apos;s current salary breakdown.
+                  </p>
+                </div>
+              )}
             </div>
           </section>
+          </div>
         </div>
-      )}
+      </main>
 
       {detailError && (
         <div

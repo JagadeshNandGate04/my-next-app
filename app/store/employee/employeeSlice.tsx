@@ -71,6 +71,32 @@ export interface EmployeeSalary {
   } | null;
 }
 
+export interface UpdateEmployeeSalaryPayload {
+  id: number;
+  basic: number;
+  hra: number;
+  da: number;
+  special_allowance: number;
+  effective_from: string;
+}
+
+export interface SalaryRevision extends NonNullable<EmployeeSalary["salary_structure"]> {
+  id: string | number;
+  previous_gross: number | null;
+  salary_difference: number | null;
+  salary_change_percentage: number | null;
+  change_type: string;
+  status: string;
+  duration_days: number;
+}
+
+export interface EmployeeSalaryHistory {
+  total_salary_revisions: number;
+  initial_gross: number | null;
+  latest_gross: number | null;
+  revisions: SalaryRevision[];
+}
+
 interface ApiError {
   message: string;
   errors?: Record<string, string>;
@@ -188,6 +214,40 @@ const getEmployeeFromResponse = (result: unknown): Employee | null => {
   return parseEmployee(employee);
 };
 
+const parseSalaryStructure = (structure: unknown, employeeId: number): NonNullable<EmployeeSalary["salary_structure"]> => {
+  if (
+    !isRecord(structure) ||
+    (typeof structure.user_id !== "string" && typeof structure.user_id !== "number") ||
+    String(structure.user_id) !== String(employeeId) ||
+    typeof structure.effective_from !== "string" ||
+    (typeof structure.effective_to !== "string" && structure.effective_to !== null)
+  ) {
+    throw new Error("Unexpected salary structure.");
+  }
+
+  const amount = (value: unknown): number => {
+    if (
+      (typeof value !== "string" && typeof value !== "number") ||
+      (typeof value === "string" && !/^\d+(?:\.\d+)?$/.test(value.trim())) ||
+      !Number.isFinite(Number(value)) ||
+      Number(value) < 0
+    ) {
+      throw new Error("Invalid salary amount.");
+    }
+    return Number(value);
+  };
+
+  return {
+    basic: amount(structure.basic),
+    hra: amount(structure.hra),
+    da: amount(structure.da),
+    special_allowance: amount(structure.special_allowance),
+    gross: amount(structure.gross),
+    effective_from: structure.effective_from,
+    effective_to: structure.effective_to,
+  };
+};
+
 const parseSalaryResponse = (result: unknown, employeeId: number): EmployeeSalary => {
   if (!isRecord(result) || !isRecord(result.data)) {
     throw new Error("Salary lookup returned an unexpected response format.");
@@ -219,39 +279,9 @@ const parseSalaryResponse = (result: unknown, employeeId: number): EmployeeSalar
   if (structure === null) {
     return { employee: salaryEmployee, salary_structure: null };
   }
-  if (
-    !isRecord(structure) ||
-    (typeof structure.user_id !== "string" && typeof structure.user_id !== "number") ||
-    String(structure.user_id) !== String(employeeId) ||
-    typeof structure.effective_from !== "string" ||
-    (typeof structure.effective_to !== "string" && structure.effective_to !== null)
-  ) {
-    throw new Error("Salary lookup returned an unexpected salary structure.");
-  }
-
-  const amount = (value: unknown): number => {
-    if (
-      (typeof value !== "string" && typeof value !== "number") ||
-      (typeof value === "string" && !/^\d+(?:\.\d+)?$/.test(value.trim())) ||
-      !Number.isFinite(Number(value)) ||
-      Number(value) < 0
-    ) {
-      throw new Error("Salary lookup returned an invalid salary amount.");
-    }
-    return Number(value);
-  };
-
   return {
     employee: salaryEmployee,
-    salary_structure: {
-      basic: amount(structure.basic),
-      hra: amount(structure.hra),
-      da: amount(structure.da),
-      special_allowance: amount(structure.special_allowance),
-      gross: amount(structure.gross),
-      effective_from: structure.effective_from,
-      effective_to: structure.effective_to,
-    },
+    salary_structure: parseSalaryStructure(structure, employeeId),
   };
 };
 
@@ -283,6 +313,120 @@ export const fetchEmployeeSalary = createAsyncThunk<
     throw new Error("Salary lookup returned an invalid server response.");
   }
   return parseSalaryResponse(result, id);
+});
+
+export const fetchEmployeeSalaryHistory = createAsyncThunk<
+  EmployeeSalaryHistory,
+  number,
+  { state: RootState }
+>("employees/fetchSalaryHistory", async (id, { getState, signal }) => {
+  const token = getState().auth.token;
+  if (!token) throw new Error("Authentication token not found. Please log in again.");
+
+  const response = await fetch(`${ADMIN_EMPLOYEE_API}/${encodeURIComponent(id)}/salary/history`, {
+    method: "GET",
+    headers: getAuthHeaders(token),
+    cache: "no-store",
+    signal,
+  });
+  const result: unknown = await response.json().catch(() => null);
+  if (!response.ok || (isRecord(result) && result.success === false)) {
+    throw new Error(
+      isRecord(result) && typeof result.message === "string"
+        ? result.message
+        : `Salary history lookup failed (${response.status} ${response.statusText}).`
+    );
+  }
+  if (!isRecord(result) || result.success !== true || !isRecord(result.data) ||
+      !isRecord(result.data.employee) || String(result.data.employee.id) !== String(id) ||
+      !isRecord(result.data.summary) || !Array.isArray(result.data.salary_history)) {
+    throw new Error("Salary history returned an unexpected response.");
+  }
+
+  const number = (value: unknown, nullable = false): number | null => {
+    if (value === null && nullable) return null;
+    if ((typeof value !== "number" && typeof value !== "string") ||
+        (typeof value === "string" && !/^-?\d+(?:\.\d+)?$/.test(value.trim())) ||
+        !Number.isFinite(Number(value))) {
+      throw new Error("Salary history returned an invalid numeric value.");
+    }
+    return Number(value);
+  };
+
+  const revisions = result.data.salary_history.map((item: unknown): SalaryRevision => {
+    if (!isRecord(item) || (typeof item.id !== "string" && typeof item.id !== "number") ||
+        typeof item.status !== "string" || typeof item.change_type !== "string") {
+      throw new Error("Salary history returned an invalid revision.");
+    }
+    const duration = number(item.duration_days);
+    if (duration === null || duration < 0 || !Number.isInteger(duration)) {
+      throw new Error("Salary history returned an invalid duration.");
+    }
+    return {
+      ...parseSalaryStructure(item, id),
+      id: item.id,
+      previous_gross: number(item.previous_gross, true),
+      salary_difference: number(item.salary_difference, true),
+      salary_change_percentage: number(item.salary_change_percentage, true),
+      change_type: item.change_type,
+      status: item.status,
+      duration_days: duration,
+    };
+  });
+  const summary = result.data.summary;
+  const total = number(summary.total_salary_revisions);
+  if (total === null || total < 0 || !Number.isInteger(total)) {
+    throw new Error("Salary history returned an invalid revision count.");
+  }
+  return {
+    total_salary_revisions: total,
+    initial_gross: number(summary.initial_gross, true),
+    latest_gross: number(summary.latest_gross, true),
+    revisions,
+  };
+});
+
+export const updateEmployeeSalary = createAsyncThunk<
+  { id: number; salary_structure: NonNullable<EmployeeSalary["salary_structure"]> },
+  UpdateEmployeeSalaryPayload,
+  { state: RootState; rejectValue: { message: string; reloadRequired: boolean } }
+>("employees/updateSalary", async ({ id, ...payload }, { getState, rejectWithValue }) => {
+  const token = getState().auth.token;
+  if (!token) throw new Error("Authentication token not found. Please log in again.");
+
+  let response: Response;
+  try {
+    response = await fetch(`${ADMIN_EMPLOYEE_API}/${encodeURIComponent(id)}/salary`, {
+      method: "PATCH",
+      headers: { ...getAuthHeaders(token), "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    return rejectWithValue({
+      message: "Could not confirm whether the salary was saved. Reload salary details before trying again.",
+      reloadRequired: true,
+    });
+  }
+  const result: unknown = await response.json().catch(() => null);
+  if (!response.ok || (isRecord(result) && result.success === false)) {
+    throw new Error(
+      isRecord(result) && typeof result.message === "string"
+        ? result.message
+        : `Salary update failed (${response.status} ${response.statusText}).`
+    );
+  }
+  try {
+    if (!isRecord(result) || result.success !== true || !isRecord(result.data) ||
+        !isRecord(result.data.employee) || String(result.data.employee.id) !== String(id)) {
+      throw new Error("Unexpected response.");
+    }
+    return { id, salary_structure: parseSalaryStructure(result.data.salary_structure, id) };
+  } catch {
+    return rejectWithValue({
+      message: "The salary may have been saved, but the server response was invalid. Reload salary details before trying again.",
+      reloadRequired: true,
+    });
+  }
 });
 
 const initialState: EmployeeState = {
@@ -402,6 +546,11 @@ const employeeSlice = createSlice({
         state.salaryLoading = false;
         state.salaryError = action.error.message || "Unable to load salary details.";
         state.salaryRequestId = null;
+      })
+      .addCase(updateEmployeeSalary.fulfilled, (state, action) => {
+        if (state.salary && String(state.salary.employee.id) === String(action.payload.id)) {
+          state.salary.salary_structure = action.payload.salary_structure;
+        }
       });
   },
 });

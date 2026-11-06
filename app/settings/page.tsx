@@ -143,7 +143,7 @@ function CountCard({
       className="relative flex min-h-[170px] flex-col justify-end rounded-[32px] p-5 shadow-sm"
       style={{ backgroundColor: color, color: text }}
     >
-      <p className="absolute left-5 top-5 max-w-[65%] text-[12px] font-bold font-mono uppercase leading-tight tracking-wide">
+      <p className="absolute left-5 top-5 max-w-[65%] text-xs font-bold font-mono uppercase leading-tight tracking-wide">
         {label}
       </p>
 
@@ -155,7 +155,7 @@ function CountCard({
         {value}
       </p>
 
-      <p className={`mt-2 text-[11px] font-semibold leading-snug ${muted}`}>
+      <p className={`mt-2 text-xs font-semibold leading-snug ${muted}`}>
         {note}
       </p>
     </div>
@@ -189,7 +189,7 @@ function NumberField({
     <div className="bg-[#f0f6fa] border border-[#bfe0f5] rounded-3xl p-4">
       <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5 font-bold gap-2">
         <span>{label}</span>
-        {/* <span className="font-mono text-[11px]">{settingKey}</span> */}
+        {/* <span className="font-mono text-xs">{settingKey}</span> */}
       </div>
 
       <div className="flex items-center justify-between bg-white border border-[#bfe0f5] rounded-xl px-3 py-2 focus-within:ring-2 focus-within:ring-[#7BBDE8]/40">
@@ -208,7 +208,7 @@ function NumberField({
       </div>
 
       {description && (
-        <p className="text-[11px] text-slate-500 mt-2">{description}</p>
+        <p className="text-xs text-slate-500 mt-2">{description}</p>
       )}
     </div>
   );
@@ -763,7 +763,7 @@ export default function SystemSettingsHub() {
                   <div className="flex items-center justify-between text-xs font-bold text-slate-500 mb-2 font-bold gap-2">
                     <span>Standard Weekly Off Days</span>
 
-                    <span className="font-mono text-[11px]">
+                    <span className="font-mono text-xs">
                       [{settings.weekly_off_days.join(", ")}]
                     </span>
                   </div>
@@ -791,7 +791,7 @@ export default function SystemSettingsHub() {
                     })}
                   </div>
 
-                  <p className="text-[11px] text-slate-500 mt-2">
+                  <p className="text-xs text-slate-500 mt-2">
                     Selected days are treated as weekly off days by attendance
                     computation.
                   </p>
@@ -867,12 +867,12 @@ export default function SystemSettingsHub() {
                         CALENDAR_DAYS
                       </span>
 
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#bfe0f5] text-[#0f172a]">
+                      <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-[#bfe0f5] text-[#0f172a]">
                         IMMUTABLE
                       </span>
                     </div>
 
-                    <p className="text-[11px] text-slate-500 mt-2">
+                    <p className="text-xs text-slate-500 mt-2">
                       Salary divisor uses calendar days.
                     </p>
                   </div>
@@ -934,7 +934,7 @@ export default function SystemSettingsHub() {
                       <option value={60}>60 Minutes</option>
                     </select>
 
-                    <p className="text-[11px] text-slate-500 mt-2">
+                    <p className="text-xs text-slate-500 mt-2">
                       Permission deduction unit.
                     </p>
                   </div>
@@ -1051,7 +1051,7 @@ export default function SystemSettingsHub() {
                             {/* DATE BADGE (filled) */}
 
                             <div className="w-12 h-12 rounded-2xl bg-[#7BBDE8] flex flex-col items-center justify-center text-[#0f172a] shrink-0">
-                              <span className="text-[10px] font-bold uppercase tracking-wider leading-none">
+                              <span className="text-xs font-bold uppercase tracking-wider leading-none">
                                 {month}
                               </span>
 
@@ -1213,7 +1213,7 @@ export default function SystemSettingsHub() {
                   className="w-full px-4 py-2.5 rounded-xl bg-[#f0f6fa] border border-[#bfe0f5] text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]/40"
                 />
 
-                <p className="text-[11px] text-slate-400 mt-1">
+                <p className="text-xs text-slate-400 mt-1">
                   Maximum 80 characters.
                 </p>
               </div>
@@ -1278,7 +1278,7 @@ export default function SystemSettingsHub() {
           <div className="text-xs">
             <p className="font-bold">{successMessage}</p>
 
-            <p className="text-slate-400 text-[11px]">
+            <p className="text-slate-400 text-xs">
               Backend operation completed successfully.
             </p>
           </div>

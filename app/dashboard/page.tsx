@@ -449,7 +449,7 @@ export default function NandgateDashboard() {
                     </div>
                   ))}
                   {activeEmployees.length > 5 && (
-                    <div className="-ml-2 flex h-9 min-w-9 items-center justify-center rounded-full bg-white px-2 text-[11px] font-bold text-slate-500 ring-2 ring-[#f0f6fa]">
+                    <div className="-ml-2 flex h-9 min-w-9 items-center justify-center rounded-full bg-white px-2 text-xs font-bold text-slate-500 ring-2 ring-[#f0f6fa]">
                       +{activeEmployees.length - 5}
                     </div>
                   )}
@@ -526,7 +526,7 @@ export default function NandgateDashboard() {
                   style={{ backgroundColor: card.color, color: card.text }}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-[13px] font-bold leading-tight">
+                    <p className="text-xs font-bold leading-tight">
                       {card.label}
                     </p>
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/70 text-slate-600 ring-4 ring-white/40">
@@ -538,11 +538,11 @@ export default function NandgateDashboard() {
                     {loading ? <Skeleton className="h-7 w-10" /> : card.value}
                   </p>
 
-                  {/* <p className="mt-3 text-[11px] font-bold leading-snug">
+                  {/* <p className="mt-3 text-xs font-bold leading-snug">
                     {card.line}
                   </p> */}
                   {/* <p
-                    className={`text-[11px] font-medium leading-snug ${card.muted}`}
+                    className={`text-xs font-medium leading-snug ${card.muted}`}
                   >
                     {card.note}
                   </p> */}
@@ -669,7 +669,7 @@ export default function NandgateDashboard() {
                           }}
                         />
                       </div>
-                      <p className="mt-2 text-[11px] leading-snug text-slate-400">
+                      <p className="mt-2 text-xs leading-snug text-slate-400">
                         {segment.note}
                       </p>
                     </div>
@@ -687,7 +687,7 @@ export default function NandgateDashboard() {
                     <span
                       key={employee.id}
                       title={employee.name}
-                      className={`flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold text-white ring-2 ring-white ${AVATAR_COLORS[index % AVATAR_COLORS.length]}`}
+                      className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white ring-2 ring-white ${AVATAR_COLORS[index % AVATAR_COLORS.length]}`}
                     >
                       {getInitials(employee.name)}
                     </span>
@@ -907,7 +907,7 @@ export default function NandgateDashboard() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-2.5 text-[13px] font-medium text-slate-600 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2.5 text-xs font-medium text-slate-600 sm:grid-cols-2">
                 {donutItems.map((item) => (
                   <div key={item.label} className="flex items-center gap-2">
                     <span

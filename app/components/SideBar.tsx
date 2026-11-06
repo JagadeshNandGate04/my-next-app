@@ -88,7 +88,7 @@ export default function Sidebar() {
 
                 <div className="flex items-center gap-2">
                   {item.badge && (
-                    <span className="w-5 h-5 rounded-full bg-amber-200 text-amber-900 text-[11px] font-bold flex items-center justify-center">
+                    <span className="w-5 h-5 rounded-full bg-amber-200 text-amber-900 text-xs font-bold flex items-center justify-center">
                       {item.badge}
                     </span>
                   )}

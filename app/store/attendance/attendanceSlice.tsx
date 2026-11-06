@@ -32,8 +32,15 @@ export interface AttendanceFlags {
   needs_regularization: boolean;
 }
 
-export interface EmployeeAttendance {
-  user_id: number;
+export interface AttendanceLopValues {
+  calculated_lop_value?: number | string | null;
+  adjusted_lop_value?: number | string | null;
+  lop_value?: number | string | null;
+  lop_adjustment?: unknown;
+}
+
+export interface EmployeeAttendance extends AttendanceLopValues {
+  user_id: number | string;
   emp_code: string;
   name: string;
   designation: string;
@@ -64,9 +71,15 @@ export interface CorrectionPunch {
   created_at?: string;
 }
 
-export interface AttendanceDay {
+export interface AttendanceDay extends AttendanceLopValues {
   date: string;
-  summary: Record<string, unknown> | null;
+  summary: (Record<string, unknown> & AttendanceLopValues & {
+    first_in?: string | null;
+    last_out?: string | null;
+    is_late?: boolean;
+    excess_break?: boolean;
+    needs_regularization?: boolean;
+  }) | null;
   punches: Record<string, unknown>[];
   raw_punches: Record<string, unknown>[];
   corrections: Record<string, unknown>[];
@@ -123,6 +136,13 @@ interface AddCorrectionPayload {
   user_id: number;
   punched_at: string;
   direction: PunchDirection;
+  reason: string;
+}
+
+interface AdjustLopPayload {
+  user_id: number;
+  work_date: string;
+  new_lop: number;
   reason: string;
 }
 
@@ -381,6 +401,45 @@ export const fetchMonthlyAttendance =
 // --------------------------------------------------
 // 3. ADD MANUAL ATTENDANCE CORRECTION
 // --------------------------------------------------
+
+export const adjustAttendanceLop =
+  (payload: AdjustLopPayload) =>
+  async (_dispatch: AppDispatch, getState: () => RootState): Promise<void> => {
+    const token = getState().auth.token;
+    if (!token) throw new Error("Authentication token not found. Please log in again.");
+
+    let response: Response;
+    try {
+      response = await fetch(`${ATTENDANCE_API}/admin/lop-adjustment`, {
+        method: "POST",
+        headers: getAuthHeaders(token),
+        body: JSON.stringify(payload),
+      });
+    } catch {
+      throw new Error("Unable to confirm whether the LOP adjustment was saved. Refresh attendance before trying again.");
+    }
+
+    let result: unknown;
+    try {
+      result = await response.json();
+    } catch {
+      throw new Error(response.ok
+        ? "The adjustment may have been saved, but the server response was invalid. Refresh attendance before trying again."
+        : `Unable to adjust LOP (HTTP ${response.status}).`);
+    }
+
+    if (!result || typeof result !== "object" || !("success" in result)) {
+      throw new Error(response.ok
+        ? "The adjustment may have been saved, but the server response was invalid. Refresh attendance before trying again."
+        : `Unable to adjust LOP (HTTP ${response.status}).`);
+    }
+    if (!response.ok || result.success !== true) {
+      const message = "message" in result && typeof result.message === "string"
+        ? result.message : `Unable to adjust LOP (HTTP ${response.status}).`;
+      const code = "error" in result && typeof result.error === "string" ? result.error : null;
+      throw new Error(code ? `${message} (${code})` : message);
+    }
+  };
 
 export const addAttendanceCorrection =
   (payload: AddCorrectionPayload) =>

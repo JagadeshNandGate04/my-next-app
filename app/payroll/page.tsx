@@ -13,7 +13,7 @@ import {
   exportPayroll,
 } from "../store/payroll/payrollSlice";
 import { clearEmployeeSalary, fetchEmployeeSalary } from "../store/employee/employeeSlice";
-import SalaryDetails from "../components/SalaryDetails";
+import SalaryDetails, { SalaryHistoryContent } from "../components/SalaryDetails";
 
 import {
   Calculator,
@@ -28,6 +28,7 @@ import {
   FileSpreadsheet,
   X,
   IndianRupee,
+  History,
   TrendingDown,
 } from "lucide-react";
 
@@ -151,10 +152,10 @@ function CountCard({
 }) {
   return (
     <div
-      className="relative flex min-h-[170px] flex-col justify-end rounded-[32px] p-5 shadow-sm"
+      className="relative flex min-h-[170px] flex-col rounded-[32px] p-5 shadow-sm"
       style={{ backgroundColor: color, color: text }}
     >
-      <p className="absolute left-5 top-5 max-w-[65%] text-[13px] font-bold leading-tight">
+      <p className="max-w-[65%] text-xs font-bold leading-tight">
         {label}
       </p>
 
@@ -162,11 +163,11 @@ function CountCard({
         <Icon className="h-4 w-4" />
       </span>
 
-      <p className="text-[30px] font-black leading-none tracking-tight">
+      <p className="mt-auto pt-4 text-[30px] font-black leading-none tracking-tight">
         {value}
       </p>
 
-      <p className={`mt-3 text-[11px] font-bold leading-snug ${muted}`}>
+      <p className={`mt-3 text-xs font-bold leading-snug ${muted}`}>
         {note}
       </p>
     </div>
@@ -204,12 +205,15 @@ export default function PayrollProcessingHub() {
 
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
 
+  const [currentYear, setCurrentYear] = useState<number | null>(null);
+
   const [newRunMonth, setNewRunMonth] = useState<number>(1);
 
   const [newRunYear, setNewRunYear] = useState<number>(2025);
 
   useEffect(() => {
     const now = new Date();
+    setCurrentYear(now.getFullYear());
     setSelectedYear(now.getFullYear());
     setNewRunMonth(now.getMonth() + 1);
     setNewRunYear(now.getFullYear());
@@ -219,6 +223,7 @@ export default function PayrollProcessingHub() {
   const [editingItem, setEditingItem] = useState<PayrollItem | null>(null);
   const [salaryItem, setSalaryItem] = useState<PayrollItem | null>(null);
   const [salarySelectionError, setSalarySelectionError] = useState<string | null>(null);
+  const [historySelection, setHistorySelection] = useState<{ runId: number | null; itemId: number } | null>(null);
 
   useEffect(() => {
     return () => {
@@ -276,10 +281,10 @@ export default function PayrollProcessingHub() {
 
   const availableYears = useMemo(() => {
     const uniqueYears = new Set<number>();
-    const currentYear = new Date().getFullYear();
-
-    for (let y = currentYear - 5; y <= currentYear + 1; y++) {
-      uniqueYears.add(y);
+    if (currentYear !== null) {
+      for (let y = currentYear - 5; y <= currentYear + 1; y++) {
+        uniqueYears.add(y);
+      }
     }
 
     if (selectedYear !== null) {
@@ -289,7 +294,7 @@ export default function PayrollProcessingHub() {
     runs.forEach((run) => uniqueYears.add(Number(run.year)));
 
     return [...uniqueYears].sort((a, b) => b - a);
-  }, [runs, selectedYear]);
+  }, [runs, selectedYear, currentYear]);
 
   // ==========================================================
   // FETCH PAYROLL RUNS
@@ -790,6 +795,7 @@ export default function PayrollProcessingHub() {
                   value={selectedYear ?? ""}
                   onChange={(e) => {
                     closeSalary();
+                    setHistorySelection(null);
                     setSelectedYear(Number(e.target.value));
                   }}
                   className="bg-transparent font-black focus:outline-none"
@@ -807,7 +813,10 @@ export default function PayrollProcessingHub() {
                   key={run.id}
                   type="button"
                   onClick={() => {
-                    if (Number(activeRunId) !== Number(run.id)) closeSalary();
+                    if (Number(activeRunId) !== Number(run.id)) {
+                      closeSalary();
+                      setHistorySelection(null);
+                    }
                     setActiveRunId(Number(run.id));
                   }}
                   className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
@@ -919,8 +928,8 @@ export default function PayrollProcessingHub() {
 
                 <tbody className="divide-y divide-[#e6edf4] text-sm">
                   {filteredItems.map((item) => (
+                    <React.Fragment key={item.id}>
                     <tr
-                      key={item.id}
                       className="group hover:bg-[#bfe0f5]/20 transition-all duration-150"
                     >
                       {/* EMPLOYEE */}
@@ -1049,6 +1058,21 @@ export default function PayrollProcessingHub() {
                             Salary
                           </button>
                           <button
+                            id={`payroll-history-button-${item.id}`}
+                            type="button"
+                            title={`Salary history for ${item.name}`}
+                            aria-label={`Salary history for ${item.name}`}
+                            aria-expanded={historySelection?.runId === activeRunId && historySelection?.itemId === item.id}
+                            aria-controls={historySelection?.runId === activeRunId && historySelection?.itemId === item.id ? `payroll-history-${item.id}` : undefined}
+                            onClick={() => setHistorySelection((current) =>
+                              current?.runId === activeRunId && current.itemId === item.id
+                                ? null : { runId: activeRunId, itemId: item.id }
+                            )}
+                            className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1b64da] ${historySelection?.runId === activeRunId && historySelection?.itemId === item.id ? "border-blue-300 bg-blue-100 text-blue-800" : "border-slate-200 bg-white text-slate-700 hover:border-[#c7e1f4] hover:bg-[#eef7fd] hover:text-[#1b64da]"}`}
+                          >
+                            <History className="h-4 w-4" />
+                          </button>
+                          <button
                             type="button"
                             title={
                               isFinalized
@@ -1068,6 +1092,32 @@ export default function PayrollProcessingHub() {
                         </div>
                       </td>
                     </tr>
+                    {historySelection?.runId === activeRunId && historySelection?.itemId === item.id && (
+                      <tr>
+                        <td colSpan={8} className="bg-[#f5faff] px-4 py-4">
+                          <section id={`payroll-history-${item.id}`} aria-label={`Salary history for ${item.name}`} className="sticky left-4 w-[calc(100vw-4rem)] max-w-[760px] rounded-2xl border border-[#d6e8f7] bg-white p-4 shadow-sm">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <h3 className="flex items-center gap-2 text-base font-bold text-slate-900"><History className="h-4 w-4 text-blue-600" /> Salary history</h3>
+                                <p className="mt-1 text-sm text-slate-600">{item.name} · {item.emp_code}</p>
+                              </div>
+                              <button type="button" aria-label="Close salary history" onClick={() => {
+                                setHistorySelection(null);
+                                document.getElementById(`payroll-history-button-${item.id}`)?.focus();
+                              }} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-600">
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+                            {Number.isSafeInteger(Number(item.user_id)) && Number(item.user_id) > 0 ? (
+                              <SalaryHistoryContent key={`${activeRunId}-${item.user_id}`} employeeId={Number(item.user_id)} />
+                            ) : (
+                              <p role="alert" className="mt-3 text-sm text-rose-700">This payroll item has no valid employee ID. Salary history cannot be loaded.</p>
+                            )}
+                          </section>
+                        </td>
+                      </tr>
+                    )}
+                    </React.Fragment>
                   ))}
 
                   {filteredItems.length === 0 && (
@@ -1128,10 +1178,11 @@ export default function PayrollProcessingHub() {
               </div>
               <div className="p-4">
                 <p className="mb-4 text-xs leading-relaxed text-slate-500">
-                  Current salary structure; amounts may differ from this payroll run.
+                  Salary structure and effective dates may differ from this payroll run.
                 </p>
                 {salaryItem ? (
                   <SalaryDetails
+                    key={salaryItem.user_id}
                     salary={salary}
                     loading={salaryLoading}
                     error={salarySelectionError || salaryError}
@@ -1261,7 +1312,7 @@ export default function PayrollProcessingHub() {
                   {editingItem.lop_dates &&
                     editingItem.lop_dates.length > 0 && (
                       <div className="pt-3 border-t border-[#bfe0f5]">
-                        <h5 className="text-[11px] font-bold uppercase tracking-wider text-[#1b64da] mb-2">
+                        <h5 className="text-xs font-bold uppercase tracking-wider text-[#1b64da] mb-2">
                           LOP Dates
                         </h5>
 
@@ -1464,7 +1515,7 @@ export default function PayrollProcessingHub() {
                   )}
 
                   <div>
-                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">
                       Remarks (Optional)
                     </label>
 

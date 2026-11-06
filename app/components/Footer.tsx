@@ -45,11 +45,11 @@
 //             </div>
 
 //             <div>
-//               <p className="text-[11px] font-extrabold tracking-[0.12em] text-[#17365D]">
+//               <p className="text-xs font-extrabold tracking-[0.12em] text-[#17365D]">
 //                 NANDGATE-IT SERVICES PVT LTD
 //               </p>
 
-//               <p className="text-[10px] text-slate-400 mt-0.5">
+//               <p className="text-xs text-slate-400 mt-0.5">
 //                 Powered by technology. Driven by innovation.
 //               </p>
 //             </div>
@@ -96,7 +96,7 @@
 //         {/* Bottom Copyright */}
 //         <div className="mt-5 pt-4 border-t border-[#edf3fb] flex flex-col sm:flex-row items-center justify-between gap-2">
 
-//           <p className="text-[10px] text-slate-400 font-medium">
+//           <p className="text-xs text-slate-400 font-medium">
 //             © {year ?? "2026"} NANDGATE-IT SERVICES PVT LTD. All rights reserved.
 //           </p>
 
