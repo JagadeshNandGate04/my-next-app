@@ -8,6 +8,7 @@ import payrollReducer from "../store/payroll/payrollSlice";
 import auditReducer from "../store/audit/auditSlice";
 import settingsReducer from "../store/settings/settingsSlice";
 import dashboardReducer from "../store/dashboard/dashboardSlice";
+import notificationReducer from "./notifications/notification";
 
 // Combined reducers
 const rootReducer = combineReducers({
@@ -19,6 +20,7 @@ const rootReducer = combineReducers({
   audit: auditReducer,
   settings: settingsReducer,
   dashboard: dashboardReducer,
+  notifications: notificationReducer,
 });
 
 export const store = configureStore({

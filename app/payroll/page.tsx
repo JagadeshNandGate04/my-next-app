@@ -906,23 +906,20 @@ export default function PayrollProcessingHub() {
               </div>
             </div>
 
-            <div className="border-b border-[#e6edf4] px-5 py-2 text-xs text-slate-500">
-              Scroll horizontally to see payroll details; actions stay visible.
-            </div>
             <div className="overflow-x-auto" role="region" aria-label="Payroll breakdown table" tabIndex={0}>
               <table className="w-full border-separate border-spacing-0 text-left">
                 <thead>
                   <tr className="bg-[#f0f6fa] border-b border-[#bfe0f5] text-xs font-bold text-[#0f172a] uppercase tracking-wider">
-                    <th className="py-4 px-6">Employee</th>
-                    <th className="py-4 px-6">Emp Code</th>
-                    {/* <th className="py-4 px-6">Gross (₹)</th> */}
-                    <th className="py-4 px-6">Cal / Pay Days</th>
-                    <th className="py-4 px-6">LOP Days</th>
-                    <th className="py-4 px-6">Per Day Rate</th>
-                    <th className="py-4 px-6">LOP Deduction (₹)</th>
-                    {/* <th className="py-4 px-6">Adjustments</th> */}
-                    <th className="py-4 px-6">Net Pay (₹)</th>
-                    <th scope="col" className="sticky right-0 z-10 whitespace-nowrap bg-[#f0f6fa] px-3 py-4 text-center shadow-[-4px_0_8px_-6px_rgba(15,23,42,0.3)]">Actions</th>
+                    <th className="py-4 px-3">Employee</th>
+                    <th className="py-4 px-3">Emp Code</th>
+                    {/* <th className="py-4 px-3">Gross (₹)</th> */}
+                    <th className="py-4 px-3">Cal / Pay Days</th>
+                    <th className="py-4 px-3">LOP Days</th>
+                    <th className="py-4 px-3">Per Day Rate</th>
+                    <th className="py-4 px-3">LOP Deduction (₹)</th>
+                    {/* <th className="py-4 px-3">Adjustments</th> */}
+                    <th className="py-4 px-3">Net Pay (₹)</th>
+                    <th scope="col" className="whitespace-nowrap px-3 py-4 text-center">Actions</th>
                   </tr>
                 </thead>
 
@@ -934,8 +931,8 @@ export default function PayrollProcessingHub() {
                     >
                       {/* EMPLOYEE */}
 
-                      <td className="py-4 px-6">
-                        <div className="flex items-center gap-3 min-w-[200px]">
+                      <td className="py-4 px-3">
+                        <div className="flex items-center gap-3">
                           <div
                             className={`w-10 h-10 shrink-0 rounded-full ${getAvatarBg(
                               item.name || item.emp_code || "Employee"
@@ -961,28 +958,28 @@ export default function PayrollProcessingHub() {
 
                       {/* EMP CODE */}
 
-                      <td className="py-4 px-6 whitespace-nowrap">
+                      <td className="py-4 px-3 whitespace-nowrap">
                         <span className="font-mono text-xs font-bold text-[#1b64da]">
                           {item.emp_code}
                         </span>
                       </td>
 
                       {/*
-                      <td className="py-4 px-6 whitespace-nowrap font-bold text-[#0f172a]">
+                      <td className="py-4 px-3 whitespace-nowrap font-bold text-[#0f172a]">
                         {formatINR(Number(item.gross))}
                       </td>
                       */}
 
                       {/* CALENDAR / PAYABLE DAYS */}
 
-                      <td className="py-4 px-6 whitespace-nowrap text-xs font-mono text-slate-700">
+                      <td className="py-4 px-3 whitespace-nowrap text-xs font-mono text-slate-700">
                         <strong>{item.payable_days}</strong> /{" "}
                         {item.calendar_days}
                       </td>
 
                       {/* LOP DAYS */}
 
-                      <td className="py-4 px-6 whitespace-nowrap">
+                      <td className="py-4 px-3 whitespace-nowrap">
                         {Number(item.lop_days) > 0 ? (
                           <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#1b64da] text-white">
                             • {item.lop_days} d LOP
@@ -996,13 +993,13 @@ export default function PayrollProcessingHub() {
 
                       {/* PER DAY */}
 
-                      <td className="py-4 px-6 whitespace-nowrap text-xs font-mono text-slate-600">
+                      <td className="py-4 px-3 whitespace-nowrap text-xs font-mono text-slate-600">
                         ₹ {Number(item.per_day || 0).toFixed(2)}
                       </td>
 
                       {/* LOP AMOUNT */}
 
-                      <td className="py-4 px-6 whitespace-nowrap font-mono text-xs">
+                      <td className="py-4 px-3 whitespace-nowrap font-mono text-xs">
                         {Number(item.lop_amount) > 0 ? (
                           <span className="text-[#1b64da] font-bold">
                             - ₹ {Number(item.lop_amount).toFixed(2)}
@@ -1015,7 +1012,7 @@ export default function PayrollProcessingHub() {
                       </td>
 
                       {/*
-                      <td className="py-4 px-6 whitespace-nowrap">
+                      <td className="py-4 px-3 whitespace-nowrap">
                         {(item.other_earnings || []).length > 0 ? (
                           <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#7BBDE8] text-[#0f172a]">
                             Earnings
@@ -1034,13 +1031,13 @@ export default function PayrollProcessingHub() {
 
                       {/* NET PAY */}
 
-                      <td className="py-4 px-6 whitespace-nowrap">
+                      <td className="py-4 px-3 whitespace-nowrap">
                         <span className="font-black text-[#0f172a] text-sm">
                           {formatINR(Number(item.net_pay), true)}
                         </span>
                       </td>
 
-                      <td className="sticky right-0 z-10 whitespace-nowrap bg-white px-3 py-4 text-right shadow-[-4px_0_8px_-6px_rgba(15,23,42,0.3)] transition-colors group-hover:bg-[#f2f9fd]">
+                      <td className="whitespace-nowrap px-3 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button
                             type="button"
@@ -1056,21 +1053,6 @@ export default function PayrollProcessingHub() {
                           >
                             <IndianRupee className="h-3.5 w-3.5" />
                             Salary
-                          </button>
-                          <button
-                            id={`payroll-history-button-${item.id}`}
-                            type="button"
-                            title={`Salary history for ${item.name}`}
-                            aria-label={`Salary history for ${item.name}`}
-                            aria-expanded={historySelection?.runId === activeRunId && historySelection?.itemId === item.id}
-                            aria-controls={historySelection?.runId === activeRunId && historySelection?.itemId === item.id ? `payroll-history-${item.id}` : undefined}
-                            onClick={() => setHistorySelection((current) =>
-                              current?.runId === activeRunId && current.itemId === item.id
-                                ? null : { runId: activeRunId, itemId: item.id }
-                            )}
-                            className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1b64da] ${historySelection?.runId === activeRunId && historySelection?.itemId === item.id ? "border-blue-300 bg-blue-100 text-blue-800" : "border-slate-200 bg-white text-slate-700 hover:border-[#c7e1f4] hover:bg-[#eef7fd] hover:text-[#1b64da]"}`}
-                          >
-                            <History className="h-4 w-4" />
                           </button>
                           <button
                             type="button"
@@ -1149,7 +1131,7 @@ export default function PayrollProcessingHub() {
             <section
               id="payroll-salary-panel"
               aria-labelledby="payroll-salary-title"
-              className="w-full shrink-0 overflow-hidden rounded-3xl border border-[#d6e8f7] bg-white shadow-sm xl:sticky xl:top-4 xl:w-[320px]"
+              className="w-full shrink-0 overflow-hidden rounded-3xl border border-[#d6e8f7] bg-white shadow-sm xl:sticky xl:top-4 xl:w-[280px] 2xl:w-[320px]"
             >
               <div className="flex items-start justify-between gap-3 border-b border-[#d6e8f7] bg-[#f1f8fe] px-4 py-4">
                 <div className="flex min-w-0 items-center gap-3">

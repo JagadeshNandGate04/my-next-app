@@ -102,8 +102,26 @@ interface ApiError {
   errors?: Record<string, string>;
 }
 
+export interface EmployeePagination {
+  page: number;
+  limit: number;
+  total: number;
+  total_pages: number;
+}
+
+export interface FetchEmployeesParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  designation?: string;
+}
+
 interface EmployeeState {
   employees: Employee[];
+  pagination: EmployeePagination | null;
+  overallTotal: number | null;
+  knownDesignations: string[];
+  maxEmpNumber: number;
   loading: boolean;
   createLoading: boolean;
   updateLoading: boolean;
@@ -202,6 +220,42 @@ const getEmployeesFromResponse = (result: unknown): Employee[] | null => {
   }
 
   return null;
+};
+
+const getEmpNumber = (empCode: string | null | undefined): number => {
+  const match = empCode?.match(/EMP(\d+)/i);
+  return match ? Number(match[1]) : 0;
+};
+
+const toPositiveInt = (value: unknown): number | null => {
+  const number =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && /^\d+$/.test(value.trim())
+        ? Number(value)
+        : NaN;
+  return Number.isInteger(number) && number >= 0 ? number : null;
+};
+
+const getPaginationFromResponse = (result: unknown): EmployeePagination | null => {
+  if (!isRecord(result)) return null;
+
+  const raw = isRecord(result.data) && isRecord(result.data.pagination)
+    ? result.data.pagination
+    : isRecord(result.pagination)
+      ? result.pagination
+      : null;
+  if (!raw) return null;
+
+  const page = toPositiveInt(raw.page);
+  const limit = toPositiveInt(raw.limit);
+  const total = toPositiveInt(raw.total);
+  const totalPages = toPositiveInt(raw.total_pages ?? raw.totalPages);
+  if (page === null || limit === null || total === null || totalPages === null) {
+    return null;
+  }
+
+  return { page, limit, total, total_pages: totalPages };
 };
 
 const getEmployeeFromResponse = (result: unknown): Employee | null => {
@@ -431,6 +485,10 @@ export const updateEmployeeSalary = createAsyncThunk<
 
 const initialState: EmployeeState = {
   employees: [],
+  pagination: null,
+  overallTotal: null,
+  knownDesignations: [],
+  maxEmpNumber: 0,
   loading: false,
   createLoading: false,
   updateLoading: false,
@@ -459,9 +517,29 @@ const employeeSlice = createSlice({
       state.loading = true;
       state.error = null;
     },
-    fetchEmployeesSuccess: (state, action: PayloadAction<Employee[]>) => {
+    fetchEmployeesSuccess: (
+      state,
+      action: PayloadAction<{
+        employees: Employee[];
+        pagination: EmployeePagination | null;
+        unfiltered: boolean;
+      }>
+    ) => {
+      const { employees, pagination, unfiltered } = action.payload;
       state.loading = false;
-      state.employees = action.payload;
+      state.employees = employees;
+      state.pagination = pagination;
+      if (pagination && unfiltered) state.overallTotal = pagination.total;
+      state.knownDesignations = Array.from(
+        new Set([
+          ...state.knownDesignations,
+          ...employees.map((employee) => employee.designation).filter(Boolean),
+        ])
+      ).sort((a, b) => a.localeCompare(b));
+      state.maxEmpNumber = employees.reduce(
+        (max, employee) => Math.max(max, getEmpNumber(employee.emp_code)),
+        state.maxEmpNumber
+      );
       state.error = null;
     },
     fetchEmployeesFailure: (state, action: PayloadAction<string>) => {
@@ -478,6 +556,10 @@ const employeeSlice = createSlice({
       state.createLoading = false;
       state.employees.push(action.payload);
       state.employees.sort((a, b) => a.name.localeCompare(b.name));
+      state.maxEmpNumber = Math.max(
+        state.maxEmpNumber,
+        getEmpNumber(action.payload.emp_code)
+      );
       state.successMessage = "Employee created successfully";
       state.createError = null;
       state.validationErrors = {};
@@ -626,9 +708,12 @@ export const fetchEmployeeById =
 // Fetch All Employees
 // --------------------------------------------------
 
+let latestEmployeesRequest = 0;
+
 export const fetchEmployees =
-  () =>
+  (params: FetchEmployeesParams = {}) =>
   async (dispatch: AppDispatch, getState: () => RootState): Promise<Employee[] | null> => {
+    const requestId = ++latestEmployeesRequest;
     dispatch(fetchEmployeesStart());
 
     try {
@@ -638,7 +723,17 @@ export const fetchEmployees =
         throw new Error("Authentication token not found. Please log in again.");
       }
 
-      const requestUrl = `${EMPLOYEE_API}/all-employees`;
+      const query = new URLSearchParams();
+      if (params.page) query.set("page", String(params.page));
+      if (params.limit) query.set("limit", String(params.limit));
+      const search = params.search?.trim();
+      if (search) query.set("search", search);
+      if (params.designation && params.designation !== "All") {
+        query.set("designation", params.designation);
+      }
+      const queryString = query.toString();
+
+      const requestUrl = `${EMPLOYEE_API}/all-employees${queryString ? `?${queryString}` : ""}`;
 
       console.log("Fetching employees from:", requestUrl);
 
@@ -670,9 +765,18 @@ export const fetchEmployees =
         );
       }
 
-      dispatch(fetchEmployeesSuccess(employees));
+      if (requestId !== latestEmployeesRequest) return employees;
+
+      dispatch(
+        fetchEmployeesSuccess({
+          employees,
+          pagination: getPaginationFromResponse(result),
+          unfiltered: !search && (!params.designation || params.designation === "All"),
+        })
+      );
       return employees;
     } catch (error) {
+      if (requestId !== latestEmployeesRequest) return null;
       console.error("Fetch employees error:", error);
       const message = error instanceof Error
         ? error.message

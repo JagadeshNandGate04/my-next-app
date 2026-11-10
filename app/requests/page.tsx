@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { Suspense, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "@/app/store/store";
 
@@ -342,7 +343,7 @@ function MetricBubble({
 // MAIN PAGE
 // --------------------------------------------------
 
-export default function AdminRequestsApprovals() {
+function AdminRequestsApprovals() {
   const dispatch = useDispatch<AppDispatch>();
 
   // Redux state
@@ -391,13 +392,16 @@ export default function AdminRequestsApprovals() {
   const [highlightedRequest, setHighlightedRequest] = useState<{
     key: string;
     status: StatusFilter;
+    fromNotification: boolean;
   } | null>(null);
   const [deepLinkInitialized, setDeepLinkInitialized] = useState(false);
+  const [deepLinkVersion, setDeepLinkVersion] = useState(0);
   const scrolledToRequest = useRef(false);
+  const searchKey = useSearchParams().toString();
 
   useEffect(() => {
     const timerId = window.setTimeout(() => {
-      const params = new URLSearchParams(window.location.search);
+      const params = new URLSearchParams(searchKey);
       const tab = params.get("tab");
       const status = params.get("status");
       const id = params.get("id");
@@ -413,13 +417,19 @@ export default function AdminRequestsApprovals() {
         (tab === "leaves" || tab === "permissions" || tab === "regularizations") &&
         (status === "pending" || status === "approved" || status === "rejected")
       ) {
-        setHighlightedRequest({ key: `${tab}-${id}`, status });
+        scrolledToRequest.current = false;
+        setHighlightedRequest({
+          key: `${tab}-${id}`,
+          status,
+          fromNotification: params.get("from") === "notification",
+        });
+        setDeepLinkVersion((version) => version + 1);
       }
       setDeepLinkInitialized(true);
     }, 0);
 
     return () => window.clearTimeout(timerId);
-  }, []);
+  }, [searchKey]);
 
   // --------------------------------------------------
   // FETCH REQUESTS
@@ -434,7 +444,7 @@ export default function AdminRequestsApprovals() {
     dispatch(fetchAdminPermissionRequests({ status })).catch(() => {});
 
     dispatch(fetchAdminRegularizationRequests({ status })).catch(() => {});
-  }, [dispatch, statusFilter, deepLinkInitialized]);
+  }, [dispatch, statusFilter, deepLinkInitialized, deepLinkVersion]);
 
   // --------------------------------------------------
   // CLEAR DECISION MESSAGES
@@ -855,7 +865,7 @@ export default function AdminRequestsApprovals() {
                       {highlightedRequest?.key === cardKey && highlightedRequest.status === statusFilter && (
                         <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-[#1b64da] px-3 py-1 text-xs font-bold text-white">
                           <CheckCircle2 className="h-3.5 w-3.5" />
-                          Selected from calendar
+                          {highlightedRequest.fromNotification ? "Opened from notification" : "Selected from calendar"}
                         </div>
                       )}
 
@@ -1176,5 +1186,13 @@ export default function AdminRequestsApprovals() {
       )}
 
     </div>
+  );
+}
+
+export default function RequestsPage() {
+  return (
+    <Suspense fallback={null}>
+      <AdminRequestsApprovals />
+    </Suspense>
   );
 }

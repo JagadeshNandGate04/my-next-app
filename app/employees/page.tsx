@@ -13,6 +13,9 @@ import {
   Briefcase,
   X,
   Edit3,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   AlertCircle,
   CheckCircle2,
 } from "lucide-react";
@@ -31,6 +34,17 @@ import {
 } from "@/app/store/employee/employeeSlice";
 
 type PayrollFilter = "ALL" | "WITH_STRUCTURE" | "PENDING";
+
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+
+const getPageItems = (current: number, total: number): (number | "ellipsis-start" | "ellipsis-end")[] => {
+  if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
+  if (current <= 4) return [1, 2, 3, 4, 5, "ellipsis-end", total];
+  if (current >= total - 3) {
+    return [1, "ellipsis-start", total - 4, total - 3, total - 2, total - 1, total];
+  }
+  return [1, "ellipsis-start", current - 1, current, current + 1, "ellipsis-end", total];
+};
 
 interface EmployeeFormData {
   emp_code: string;
@@ -169,11 +183,18 @@ export default function EmployeeDirectoryPage() {
     salary,
     salaryLoading,
     salaryError,
+    pagination,
+    overallTotal,
+    knownDesignations,
+    maxEmpNumber,
   } = useSelector((state: RootState) => state.employees);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDesignation, setSelectedDesignation] = useState("All");
   const [payrollFilter, setPayrollFilter] = useState<PayrollFilter>("ALL");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [salaryEmployee, setSalaryEmployee] = useState<Employee | null>(null);
@@ -198,10 +219,34 @@ export default function EmployeeDirectoryPage() {
 
   useEffect(() => {
     const timerId = window.setTimeout(() => setCurrentDate(new Date()), 0);
-    dispatch(fetchEmployees());
 
     return () => window.clearTimeout(timerId);
-  }, [dispatch]);
+  }, []);
+
+  useEffect(() => {
+    const timerId = window.setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+      setPage(1);
+    }, 350);
+
+    return () => window.clearTimeout(timerId);
+  }, [searchQuery]);
+
+  const employeeQuery = useMemo(
+    () => ({
+      page,
+      limit: pageSize,
+      search: debouncedSearch,
+      designation: selectedDesignation,
+    }),
+    [page, pageSize, debouncedSearch, selectedDesignation]
+  );
+
+  useEffect(() => {
+    dispatch(fetchEmployees(employeeQuery));
+  }, [dispatch, employeeQuery]);
+
+  const reloadEmployees = () => dispatch(fetchEmployees(employeeQuery));
 
   useEffect(() => {
     return () => {
@@ -211,14 +256,24 @@ export default function EmployeeDirectoryPage() {
     };
   }, [dispatch]);
 
-  const nextEmpCode = useMemo(() => {
-    const maxNumber = employees.reduce((max, employee) => {
-      const match = employee.emp_code?.match(/EMP(\d+)/i);
-      return match ? Math.max(max, Number(match[1])) : max;
-    }, 0);
+  useEffect(() => {
+    if (!salaryEmployee) return;
 
-    return `EMP${String(maxNumber + 1).padStart(3, "0")}`;
-  }, [employees]);
+    salaryPanelRef.current?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      const employeeId = salaryEmployee.id;
+      setSalaryEmployee(null);
+      dispatch(clearEmployeeSalary());
+      document.getElementById(`employee-salary-button-${employeeId}`)?.focus();
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [dispatch, salaryEmployee]);
+
+  const nextEmpCode = `EMP${String(maxEmpNumber + 1).padStart(3, "0")}`;
 
   const activeEmployees = useMemo(
     () => employees.filter((employee) => employee.status === "ACTIVE"),
@@ -260,19 +315,21 @@ export default function EmployeeDirectoryPage() {
     [activeEmployees]
   );
 
-  const designationCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    activeEmployees.forEach((employee) => {
-      counts[employee.designation] =
-        (counts[employee.designation] || 0) + 1;
-    });
-    return counts;
-  }, [activeEmployees]);
+  const serverPaginated = pagination !== null;
 
   const filteredEmployees = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
 
     return employees.filter((employee) => {
+      if (serverPaginated) {
+        const hasStructure = Boolean(employee.salary_structure_id);
+        return payrollFilter === "ALL"
+          ? true
+          : payrollFilter === "WITH_STRUCTURE"
+            ? hasStructure
+            : !hasStructure;
+      }
+
       const matchesSearch =
         !query ||
         employee.name.toLowerCase().includes(query) ||
@@ -296,7 +353,23 @@ export default function EmployeeDirectoryPage() {
 
       return matchesSearch && matchesDesignation && matchesPayroll;
     });
-  }, [employees, searchQuery, selectedDesignation, payrollFilter]);
+  }, [employees, searchQuery, selectedDesignation, payrollFilter, serverPaginated]);
+
+  const totalRecords = pagination ? pagination.total : filteredEmployees.length;
+  const totalPages = pagination
+    ? Math.max(1, pagination.total_pages)
+    : Math.max(1, Math.ceil(filteredEmployees.length / pageSize));
+  const currentPage = pagination ? pagination.page : Math.min(page, totalPages);
+  const pageStartIndex = (currentPage - 1) * pageSize;
+  const paginatedEmployees = pagination
+    ? filteredEmployees
+    : filteredEmployees.slice(pageStartIndex, pageStartIndex + pageSize);
+  const pageRowCount = pagination ? employees.length : paginatedEmployees.length;
+  const pageRangeStart = pageRowCount === 0 ? 0 : pageStartIndex + 1;
+  const pageRangeEnd = pageStartIndex + pageRowCount;
+  const hasActiveFilters =
+    searchQuery.trim() !== "" || selectedDesignation !== "All" || payrollFilter !== "ALL";
+  const designationOptions = serverPaginated ? knownDesignations : distinctDesignations;
 
   const validateForm = () => {
     const errors: Record<string, string> = {};
@@ -419,6 +492,7 @@ export default function EmployeeDirectoryPage() {
       setIsModalOpen(false);
       setEditingEmployee(null);
       resetForm();
+      reloadEmployees();
     } catch (err) {
       console.error(
         editingEmployee
@@ -492,7 +566,6 @@ export default function EmployeeDirectoryPage() {
     setHistoryEmployeeId(null);
     setSalaryEmployee(employee);
     dispatch(fetchEmployeeSalary(employee.id));
-    salaryPanelRef.current?.focus();
   };
 
   const closeSalaryPanel = () => {
@@ -574,7 +647,7 @@ export default function EmployeeDirectoryPage() {
             <div className="flex items-center gap-3 flex-wrap">
               <button
                 type="button"
-                onClick={() => dispatch(fetchEmployees())}
+                onClick={reloadEmployees}
                 disabled={loading}
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white border border-[#d5dbe1] text-xs font-bold text-[#475569] hover:bg-[#f1f6fc] shadow-sm transition-all disabled:opacity-50"
               >
@@ -630,7 +703,7 @@ export default function EmployeeDirectoryPage() {
                 </span>
                 <div className="flex items-baseline gap-2 mt-2">
                   <span className="text-4xl font-black tracking-tight">
-                    {loading ? "—" : totalHeadcount}
+                    {loading ? "—" : serverPaginated ? overallTotal ?? pagination.total : totalHeadcount}
                   </span>
                   <span className="text-xs font-bold opacity-60">
                     active employees
@@ -652,7 +725,7 @@ export default function EmployeeDirectoryPage() {
                 </span>
                 <div className="flex items-baseline gap-2 mt-2">
                   <span className="text-4xl font-black tracking-tight">
-                    {currentQuarterJoiners}
+                    {serverPaginated ? "—" : currentQuarterJoiners}
                   </span>
                   <span className="text-xs font-bold opacity-60">
                     this quarter
@@ -675,7 +748,7 @@ export default function EmployeeDirectoryPage() {
                 <div className="flex items-baseline gap-1 mt-2">
                   <span className="text-2xl font-black">₹</span>
                   <span className="text-3xl font-black tracking-tight">
-                    {new Intl.NumberFormat("en-IN").format(totalGrossPayroll)}
+                    {serverPaginated ? "—" : new Intl.NumberFormat("en-IN").format(totalGrossPayroll)}
                   </span>
                 </div>
               </div>
@@ -694,7 +767,7 @@ export default function EmployeeDirectoryPage() {
                 </span>
                 <div className="flex items-baseline gap-2 mt-2">
                   <span className="text-4xl font-black tracking-tight">
-                    {distinctDesignations.length}
+                    {designationOptions.length}
                   </span>
                   <span className="text-xs font-bold opacity-60">
                     role groups
@@ -708,91 +781,63 @@ export default function EmployeeDirectoryPage() {
           </div>
 
           {/* Search and filters */}
-          <div className="bg-white border border-[#d5dbe1] rounded-3xl p-5 shadow-sm space-y-4">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-              <div className="relative flex-1 max-w-xl">
+          <div className="bg-white border border-[#d5dbe1] rounded-3xl p-4 sm:p-5 shadow-sm">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_16rem_14rem] lg:items-center">
+              <div className="relative min-w-0 sm:col-span-2 lg:col-span-1">
                 <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   placeholder="Search by employee name, EMP code, email, phone, or designation..."
+                  aria-label="Search employees"
                   value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
+                  onChange={(event) => {
+                    setSearchQuery(event.target.value);
+                  }}
                   className="w-full pl-11 pr-4 py-2.5 rounded-2xl bg-[#f8fafc] border border-[#d5dbe1] text-sm font-medium text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]"
                 />
               </div>
 
-              <div className="flex items-center gap-2 flex-wrap">
-                {[
-                  {
-                    key: "ALL",
-                    label: `All Payroll (${employees.length})`,
-                  },
-                  {
-                    key: "WITH_STRUCTURE",
-                    label: `With Structure (${
-                      employees.filter((employee) =>
-                        Boolean(employee.salary_structure_id)
-                      ).length
-                    })`,
-                  },
-                  {
-                    key: "PENDING",
-                    label: `Pending Structure (${
-                      employees.filter(
-                        (employee) => !employee.salary_structure_id
-                      ).length
-                    })`,
-                  },
-                ].map((pill) => (
-                  <button
-                    key={pill.key}
-                    type="button"
-                    onClick={() =>
-                      setPayrollFilter(pill.key as PayrollFilter)
-                    }
-                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-                      payrollFilter === pill.key
-                        ? "bg-[#1b64da] text-white shadow-sm"
-                        : "bg-[#eaf4fc] text-slate-600 hover:bg-[#dcecf9]"
-                    }`}
-                  >
-                    {pill.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 overflow-x-auto pt-1 pb-1">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 mr-1 shrink-0">
-                Designation:
-              </span>
-
-              <button
-                type="button"
-                onClick={() => setSelectedDesignation("All")}
-                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 ${
-                  selectedDesignation === "All"
-                    ? "bg-[#1b64da] text-white"
-                    : "bg-[#eaf4fc] text-slate-600 hover:bg-[#dcecf9]"
-                }`}
-              >
-                All ({employees.length})
-              </button>
-
-              {distinctDesignations.map((designation) => (
-                <button
-                  key={designation}
-                  type="button"
-                  onClick={() => setSelectedDesignation(designation)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 ${
-                    selectedDesignation === designation
-                      ? "bg-[#1b64da] text-white"
-                      : "bg-[#eaf4fc] text-slate-600 hover:bg-[#dcecf9]"
-                  }`}
+              <div className="relative min-w-0">
+                <Briefcase className="pointer-events-none w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                <select
+                  aria-label="Filter by designation"
+                  value={selectedDesignation}
+                  onChange={(event) => {
+                    setSelectedDesignation(event.target.value);
+                    setPage(1);
+                  }}
+                  className="w-full appearance-none truncate pl-11 pr-10 py-2.5 rounded-2xl bg-[#f8fafc] border border-[#d5dbe1] text-sm font-semibold text-slate-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]"
                 >
-                  {designation} ({designationCounts[designation] || 0})
-                </button>
-              ))}
+                  <option value="All">All designations</option>
+                  {(selectedDesignation !== "All" && !designationOptions.includes(selectedDesignation)
+                    ? [...designationOptions, selectedDesignation]
+                    : designationOptions
+                  ).map((designation) => (
+                    <option key={designation} value={designation}>
+                      {designation}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2" />
+              </div>
+
+              <div className="relative min-w-0">
+                <IndianRupee className="pointer-events-none w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                <select
+                  aria-label="Filter by payroll structure"
+                  value={payrollFilter}
+                  onChange={(event) => {
+                    setPayrollFilter(event.target.value as PayrollFilter);
+                    setPage(1);
+                  }}
+                  className="w-full appearance-none truncate pl-11 pr-10 py-2.5 rounded-2xl bg-[#f8fafc] border border-[#d5dbe1] text-sm font-semibold text-slate-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]"
+                >
+                  <option value="ALL">All payroll</option>
+                  <option value="WITH_STRUCTURE">With structure</option>
+                  <option value="PENDING">Pending structure</option>
+                </select>
+                <ChevronDown className="pointer-events-none w-4 h-4 text-slate-400 absolute right-4 top-1/2 -translate-y-1/2" />
+              </div>
             </div>
           </div>
 
@@ -806,7 +851,7 @@ export default function EmployeeDirectoryPage() {
                   Employee Roster & Salary Structure
                 </h2>
                 <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-[#eaf4fc] text-[#1b64da] border border-[#d6e8f7]">
-                  Showing {filteredEmployees.length} records
+                  Showing {totalRecords} records
                 </span>
               </div>
            
@@ -851,7 +896,7 @@ export default function EmployeeDirectoryPage() {
                       </td>
                     </tr>
                   ) : filteredEmployees.length > 0 ? (
-                    filteredEmployees.map((employee) => (
+                    paginatedEmployees.map((employee) => (
                       <React.Fragment key={employee.id}>
                       <tr
                         className="hover:bg-[#f5faff] transition-all duration-150 group"
@@ -937,25 +982,12 @@ export default function EmployeeDirectoryPage() {
                               type="button"
                               title={`View salary for ${employee.name}`}
                               aria-label={`View salary for ${employee.name}`}
-                              aria-controls="employee-salary-panel"
-                              aria-pressed={salaryEmployee?.id === employee.id}
+                              aria-haspopup="dialog"
+                              aria-expanded={salaryEmployee?.id === employee.id}
                               onClick={() => openSalaryPanel(employee)}
-                              className="inline-flex h-9 items-center justify-center gap-1 rounded-lg border border-[#c7e1f4] bg-[#eef7fd] px-2 text-xs font-bold text-[#1b64da] transition-colors hover:bg-[#dceffc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1b64da]"
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#c7e1f4] bg-[#eef7fd] text-[#1b64da] transition-colors hover:bg-[#dceffc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1b64da]"
                             >
                               <IndianRupee className="w-4 h-4" />
-                              Salary
-                            </button>
-                            <button
-                              id={`salary-history-button-${employee.id}`}
-                              type="button"
-                              title={`Salary history for ${employee.name}`}
-                              aria-label={`Salary history for ${employee.name}`}
-                              aria-expanded={historyEmployeeId === employee.id}
-                              aria-controls={historyEmployeeId === employee.id ? `salary-history-${employee.id}` : undefined}
-                              onClick={() => setHistoryEmployeeId((current) => current === employee.id ? null : employee.id)}
-                              className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1b64da] ${historyEmployeeId === employee.id ? "border-blue-300 bg-blue-100 text-blue-800" : "border-slate-200 bg-white text-slate-700 hover:border-[#c7e1f4] hover:bg-[#eef7fd] hover:text-[#1b64da]"}`}
-                            >
-                              <History className="h-4 w-4" />
                             </button>
                             <button
                               type="button"
@@ -1003,7 +1035,7 @@ export default function EmployeeDirectoryPage() {
                         colSpan={7}
                         className="py-12 text-center text-sm text-slate-400"
                       >
-                        {employees.length === 0
+                        {totalRecords === 0 && !hasActiveFilters
                           ? "No employees have been added yet."
                           : "No employees found matching the search criteria."}
                       </td>
@@ -1013,9 +1045,83 @@ export default function EmployeeDirectoryPage() {
               </table>
             </div>
 
+            {totalRecords > 0 && (
+              <nav
+                aria-label="Employee pagination"
+                className="flex flex-col items-center justify-between gap-3 border-t border-[#e2e8f0] bg-white px-4 py-3 text-xs text-[#64748b] sm:flex-row"
+              >
+                <label className="flex items-center gap-2 font-semibold">
+                  Rows per page
+                  <select
+                    value={pageSize}
+                    onChange={(event) => {
+                      setPageSize(Number(event.target.value));
+                      setPage(1);
+                    }}
+                    className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-bold text-slate-700 outline-none focus:border-[#7BBDE8] focus:ring-2 focus:ring-[#7BBDE8]/30"
+                  >
+                    {PAGE_SIZE_OPTIONS.map((size) => (
+                      <option key={size} value={size}>
+                        {size}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <span className="font-semibold">
+                  {pageRangeStart}–{pageRangeEnd} of {totalRecords}
+                </span>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setPage(currentPage - 1)}
+                    disabled={currentPage <= 1}
+                    aria-label="Previous page"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-[#eef7fd] hover:text-[#1b64da] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-slate-600"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+
+                  {getPageItems(currentPage, totalPages).map((item) =>
+                    typeof item === "string" ? (
+                      <span key={item} className="px-1 text-slate-400" aria-hidden="true">
+                        …
+                      </span>
+                    ) : (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => setPage(item)}
+                        aria-label={`Page ${item}`}
+                        aria-current={item === currentPage ? "page" : undefined}
+                        className={`inline-flex h-8 min-w-8 items-center justify-center rounded-lg border px-2 text-xs font-bold transition-colors ${
+                          item === currentPage
+                            ? "border-[#1b64da] bg-[#1b64da] text-white"
+                            : "border-slate-200 bg-white text-slate-600 hover:bg-[#eef7fd] hover:text-[#1b64da]"
+                        }`}
+                      >
+                        {item}
+                      </button>
+                    )
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setPage(currentPage + 1)}
+                    disabled={currentPage >= totalPages}
+                    aria-label="Next page"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-[#eef7fd] hover:text-[#1b64da] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-slate-600"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </nav>
+            )}
+
             <div className="p-4 bg-[#f7f9fd] border-t border-[#e2e8f0] flex flex-col sm:flex-row items-center justify-between text-xs text-[#64748b] gap-2">
               <span>
-                Showing {filteredEmployees.length} of {employees.length}{" "}
+                Showing {pageRowCount} of {totalRecords}{" "}
                 employees
               </span>
               <span>
@@ -1026,57 +1132,54 @@ export default function EmployeeDirectoryPage() {
               </span>
             </div>
           </div>
-          <section
-            ref={salaryPanelRef}
-            id="employee-salary-panel"
-            aria-labelledby="salary-details-title"
-            tabIndex={-1}
-            className="w-full shrink-0 overflow-hidden rounded-3xl border border-[#d6e8f7] bg-white shadow-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1b64da] xl:sticky xl:top-4 xl:w-[320px]"
-          >
-            <div className="flex items-start justify-between gap-3 border-b border-[#d6e8f7] bg-[#f1f8fe] px-4 py-4">
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#1b64da] text-white">
-                  <IndianRupee className="h-5 w-5" />
-                </span>
-                <div className="min-w-0">
-                  <h2 id="salary-details-title" className="text-sm font-black text-[#0f172a]">Salary details</h2>
-                  {salaryEmployee && (
-                    <p className="mt-1 break-words text-xs font-medium text-slate-600">
-                      {salaryEmployee.name} <span className="text-slate-400">·</span> {salaryEmployee.emp_code}
-                    </p>
-                  )}
+          {salaryEmployee && (
+            <div
+              className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm"
+              onMouseDown={(event) => {
+                if (event.target === event.currentTarget) closeSalaryPanel();
+              }}
+            >
+              <section
+                ref={salaryPanelRef}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="salary-details-title"
+                tabIndex={-1}
+                className="flex max-h-[85vh] w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-[#d6e8f7] bg-white shadow-2xl focus:outline-none"
+              >
+                <div className="flex items-start justify-between gap-3 border-b border-[#d6e8f7] bg-[#f1f8fe] px-4 py-3.5">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#1b64da] text-white">
+                      <IndianRupee className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <h2 id="salary-details-title" className="text-sm font-black text-[#0f172a]">Salary details</h2>
+                      <p className="mt-0.5 break-words text-xs font-medium text-slate-600">
+                        {salaryEmployee.name} <span className="text-slate-400">·</span> {salaryEmployee.emp_code}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closeSalaryPanel}
+                    aria-label="Close salary details"
+                    className="rounded-lg p-2 text-slate-500 hover:bg-white hover:text-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1b64da]"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
                 </div>
-              </div>
-              {salaryEmployee && (
-                <button
-                  type="button"
-                  onClick={closeSalaryPanel}
-                  aria-label="Close salary details"
-                  className="rounded-lg p-2 text-slate-500 hover:bg-white hover:text-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1b64da]"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-            <div className="p-4">
-              {salaryEmployee ? (
-                <SalaryDetails
-                  key={salaryEmployee.id}
-                  salary={salary}
-                  loading={salaryLoading}
-                  error={salaryError}
-                  onRetry={() => dispatch(fetchEmployeeSalary(salaryEmployee.id))}
-                />
-              ) : (
-                <div className="rounded-2xl border border-dashed border-[#c7e1f4] bg-[#f7fbff] px-4 py-8 text-center">
-                  <p className="text-sm font-bold text-slate-700">Select an employee</p>
-                  <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                    Choose Salary in the Actions column to view the employee&apos;s current salary breakdown.
-                  </p>
+                <div className="overflow-y-auto p-4">
+                  <SalaryDetails
+                    key={salaryEmployee.id}
+                    salary={salary}
+                    loading={salaryLoading}
+                    error={salaryError}
+                    onRetry={() => dispatch(fetchEmployeeSalary(salaryEmployee.id))}
+                  />
                 </div>
-              )}
+              </section>
             </div>
-          </section>
+          )}
           </div>
         </div>
       </main>

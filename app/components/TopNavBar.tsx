@@ -8,11 +8,14 @@ import { useDispatch, useSelector } from 'react-redux';
 import {
   AlertCircle,
   CheckCircle2,
+  CheckCheck,
   ChevronDown,
   Eye,
   EyeOff,
   KeyRound,
+  LoaderCircle,
   LogOut,
+  RefreshCw,
   X,
 } from 'lucide-react';
 import type { AppDispatch, RootState } from '../store/store';
@@ -21,6 +24,15 @@ import {
   clearPasswordMessages,
   performLogout,
 } from '../store/auth/authSlice';
+import {
+  clearAdminNotifications,
+  getNotificationHref,
+  fetchAdminNotifications,
+  fetchAdminUnreadCount,
+  markAdminNotificationRead,
+  markAllAdminNotificationsRead,
+} from '../store/notifications/notification';
+import type { AdminNotification } from '../store/notifications/notification';
 
 const NAV_ITEMS = [
   { name: 'Overview', href: '/dashboard', icon: 'home' },
@@ -120,6 +132,18 @@ function BellIcon() {
   );
 }
 
+function formatNotificationDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Recently';
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date);
+}
+
 function MenuIcon({ open }: { open: boolean }) {
   return (
     <svg
@@ -189,7 +213,7 @@ function PasswordField({
 }
 
 export default function TopNavBar({
-  notificationCount = 0,
+  notificationCount,
   userName = 'Admin',
 }: {
   notificationCount?: number;
@@ -201,8 +225,21 @@ export default function TopNavBar({
   const { changingPassword, passwordError, passwordSuccess } = useSelector(
     (state: RootState) => state.auth
   );
+  const { isAuthenticated, token } = useSelector(
+    (state: RootState) => state.auth
+  );
+  const {
+    notifications,
+    unreadCount,
+    loading: notificationsLoading,
+    unreadLoading,
+    markingAll,
+    markingId,
+    error: notificationError,
+  } = useSelector((state: RootState) => state.notifications);
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -211,6 +248,14 @@ export default function TopNavBar({
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [passwordValidationError, setPasswordValidationError] = useState('');
   const profileMenuRef = useRef<HTMLDivElement>(null);
+  const notificationRef = useRef<HTMLDivElement>(null);
+  const displayedNotificationCount = notificationCount ?? unreadCount;
+
+  useEffect(() => {
+    if (!isAuthenticated || !token) return;
+    dispatch(fetchAdminNotifications());
+    dispatch(fetchAdminUnreadCount());
+  }, [dispatch, isAuthenticated, token]);
 
   const isActive = (href: string) =>
     pathname === href ||
@@ -218,7 +263,7 @@ export default function TopNavBar({
     (href !== '/dashboard' && pathname.startsWith(`${href}/`));
 
   useEffect(() => {
-    if (!profileOpen && !passwordOpen) return;
+    if (!profileOpen && !passwordOpen && !notificationOpen) return;
 
     const handlePointerDown = (event: PointerEvent) => {
       if (
@@ -228,11 +273,19 @@ export default function TopNavBar({
       ) {
         setProfileOpen(false);
       }
+      if (
+        notificationOpen &&
+        notificationRef.current &&
+        !notificationRef.current.contains(event.target as Node)
+      ) {
+        setNotificationOpen(false);
+      }
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setProfileOpen(false);
+        setNotificationOpen(false);
         if (!changingPassword) setPasswordOpen(false);
       }
     };
@@ -243,7 +296,24 @@ export default function TopNavBar({
       document.removeEventListener('pointerdown', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [changingPassword, passwordOpen, profileOpen]);
+  }, [changingPassword, notificationOpen, passwordOpen, profileOpen]);
+
+  const refreshNotifications = () => {
+    dispatch(fetchAdminNotifications());
+    dispatch(fetchAdminUnreadCount());
+  };
+
+  const handleNotificationClick = (notification: AdminNotification) => {
+    if (!notification.is_read) {
+      dispatch(markAdminNotificationRead(notification.id));
+    }
+
+    const href = getNotificationHref(notification);
+    if (href) {
+      setNotificationOpen(false);
+      router.push(href);
+    }
+  };
 
   const openPasswordModal = () => {
     setProfileOpen(false);
@@ -286,6 +356,7 @@ export default function TopNavBar({
   };
 
   const handleLogout = () => {
+    dispatch(clearAdminNotifications());
     dispatch(performLogout());
     setProfileOpen(false);
     router.push('/login');
@@ -351,7 +422,7 @@ export default function TopNavBar({
                 title={item.name}
                 aria-label={item.name}
                 aria-current={active ? 'page' : undefined}
-                className={`group flex shrink-0 items-center gap-2 rounded-full py-2 text-xs font-semibold transition-all duration-300 2xl:px-3 ${
+                className={`group flex shrink-0 items-center gap-2 rounded-full py-2 text-xs font-semibold transition-all duration-300 2xl:px-2 ${
                   active
                     ? 'pl-2 pr-4 text-white shadow-md'
                     : 'px-2 text-slate-500 hover:bg-[#f0f6fa] hover:text-slate-900'
@@ -379,21 +450,149 @@ export default function TopNavBar({
         {/* Right side actions */}
         <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
           {/* Notifications */}
-          <Link
-            href="/requests"
-            aria-label="Pending requests"
-            className="relative flex h-10 w-10 items-center justify-center rounded-full border border-[#dcebf7] bg-white text-[#1b64da] shadow-sm transition-all hover:bg-[#bfe0f5] sm:h-11 sm:w-11"
-          >
-            <BellIcon />
-            {notificationCount > 0 && (
-              <span
-                className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-xs font-bold text-white"
-                style={{ backgroundColor: BLUE }}
+          <div className="relative" ref={notificationRef}>
+            <button
+              type="button"
+              onClick={() => setNotificationOpen((open) => !open)}
+              aria-label={`Notifications, ${displayedNotificationCount} unread`}
+              aria-expanded={notificationOpen}
+              aria-haspopup="dialog"
+              className="relative flex h-10 w-10 items-center justify-center rounded-full border border-[#dcebf7] bg-white text-[#1b64da] shadow-sm transition-all hover:bg-[#bfe0f5] sm:h-11 sm:w-11"
+            >
+              <BellIcon />
+              {displayedNotificationCount > 0 && (
+                <span
+                  className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-xs font-bold text-white"
+                  style={{ backgroundColor: BLUE }}
+                >
+                  {displayedNotificationCount > 99 ? '99+' : displayedNotificationCount}
+                </span>
+              )}
+            </button>
+
+            {notificationOpen && (
+              <section
+                role="dialog"
+                aria-label="Notifications"
+                className="absolute right-0 top-full z-[70] mt-3 flex max-h-[min(72vh,38rem)] w-[min(90vw,26rem)] flex-col overflow-hidden rounded-2xl border border-[#dcebf7] bg-white shadow-2xl"
               >
-                {notificationCount}
-              </span>
+                <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3.5">
+                  <div>
+                    <h2 className="text-sm font-bold text-slate-900">Notifications</h2>
+                    <p className="mt-0.5 text-xs text-slate-500">
+                      {unreadLoading ? 'Updating unread count…' : `${unreadCount} unread`}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={refreshNotifications}
+                      disabled={notificationsLoading || unreadLoading}
+                      aria-label="Refresh notifications"
+                      title="Refresh"
+                      className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100 hover:text-[#1b64da] disabled:opacity-50"
+                    >
+                      <RefreshCw
+                        className={`h-4 w-4 ${notificationsLoading || unreadLoading ? 'animate-spin' : ''}`}
+                      />
+                    </button>
+                    {unreadCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => dispatch(markAllAdminNotificationsRead())}
+                        disabled={markingAll}
+                        className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-[#1b64da] transition hover:bg-blue-50 disabled:opacity-50"
+                      >
+                        {markingAll ? (
+                          <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <CheckCheck className="h-3.5 w-3.5" />
+                        )}
+                        Mark all read
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {notificationError && (
+                  <div
+                    role="alert"
+                    className="flex items-start justify-between gap-3 border-b border-rose-100 bg-rose-50 px-4 py-3 text-xs text-rose-700"
+                  >
+                    <span>{notificationError}</span>
+                    <button
+                      type="button"
+                      onClick={refreshNotifications}
+                      className="shrink-0 font-semibold underline"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                )}
+
+                <div className="overflow-y-auto">
+                  {notificationsLoading && notifications.length === 0 ? (
+                    <div className="flex items-center justify-center gap-2 px-4 py-10 text-sm text-slate-500">
+                      <LoaderCircle className="h-4 w-4 animate-spin" />
+                      Loading notifications…
+                    </div>
+                  ) : notifications.length === 0 ? (
+                    <div className="px-5 py-10 text-center">
+                      <span className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-blue-50 text-[#1b64da]">
+                        <BellIcon />
+                      </span>
+                      <p className="text-sm font-semibold text-slate-700">You’re all caught up</p>
+                      <p className="mt-1 text-xs text-slate-500">New admin notifications will appear here.</p>
+                    </div>
+                  ) : (
+                    <ul className="divide-y divide-slate-100">
+                      {notifications.map((notification) => (
+                        <li key={notification.id}>
+                          <button
+                            type="button"
+                            onClick={() => handleNotificationClick(notification)}
+                            disabled={markingId === notification.id}
+                            className={`flex w-full items-start gap-3 px-4 py-3.5 text-left transition hover:bg-slate-50 disabled:opacity-70 ${
+                              notification.is_read ? 'bg-white' : 'bg-blue-50/60'
+                            }`}
+                          >
+                            <span
+                              className={`mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full ${
+                                notification.is_read ? 'bg-slate-200' : 'bg-[#1b64da]'
+                              }`}
+                              aria-hidden="true"
+                            />
+                            <span className="min-w-0 flex-1">
+                              <span className="flex items-start justify-between gap-2">
+                                <span className="text-sm font-semibold text-slate-800">
+                                  {notification.title}
+                                </span>
+                                {markingId === notification.id && (
+                                  <LoaderCircle className="h-4 w-4 shrink-0 animate-spin text-[#1b64da]" />
+                                )}
+                              </span>
+                              <span className="mt-1 block text-xs leading-5 text-slate-600">
+                                {notification.message}
+                              </span>
+                              <span className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-400">
+                                <span className="font-semibold uppercase tracking-wide text-[#3974a8]">
+                                  {notification.type.replace(/_/g, ' ')}
+                                </span>
+                                <span aria-hidden="true">·</span>
+                                <time dateTime={notification.created_at}>
+                                  {formatNotificationDate(notification.created_at)}
+                                </time>
+                              </span>
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </section>
             )}
-          </Link>
+          </div>
 
           {/* Account menu */}
           <div className="relative" ref={profileMenuRef}>
@@ -427,7 +626,7 @@ export default function TopNavBar({
                 role="menu"
                 className="account-menu-enter absolute right-0 top-full z-[60] mt-3 w-60 overflow-hidden rounded-2xl border border-[#dcebf7] bg-white p-2 shadow-xl"
               >
-                <div className="border-b border-slate-100 px-3 py-2.5">
+                <div className="border-b border-slate-100 px-6 py-6">
                   <p className="text-sm font-bold text-slate-800">{userName}</p>
                   <p className="mt-0.5 text-xs text-slate-500">Account settings</p>
                 </div>
