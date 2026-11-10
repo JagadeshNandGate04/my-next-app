@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "../store/store";
 import {
@@ -30,7 +30,20 @@ import {
   IndianRupee,
   History,
   TrendingDown,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
+
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+
+const getPageItems = (current: number, total: number): (number | "ellipsis-start" | "ellipsis-end")[] => {
+  if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
+  if (current <= 4) return [1, 2, 3, 4, 5, "ellipsis-end", total];
+  if (current >= total - 3) {
+    return [1, "ellipsis-start", total - 4, total - 3, total - 2, total - 1, total];
+  }
+  return [1, "ellipsis-start", current - 1, current, current + 1, "ellipsis-end", total];
+};
 
 // ============================================================
 // THEME (same three colours as the dashboard)
@@ -225,6 +238,19 @@ export default function PayrollProcessingHub() {
   const [salarySelectionError, setSalarySelectionError] = useState<string | null>(null);
   const [historySelection, setHistorySelection] = useState<{ runId: number | null; itemId: number } | null>(null);
 
+  // Auto-scroll to the details section when the eye icon is clicked
+  const breakdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (editingItem) {
+      // Small timeout to ensure the element is fully rendered in the DOM before scrolling
+      const timer = setTimeout(() => {
+        breakdownRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [editingItem]);
+
   useEffect(() => {
     return () => {
       dispatch(clearEmployeeSalary());
@@ -414,6 +440,21 @@ export default function PayrollProcessingHub() {
       );
     });
   }, [items, searchQuery]);
+
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
+  const [pageState, setPageState] = useState({ key: "", page: 1 });
+  // The page returns to 1 whenever the reset key changes.
+  const pageResetKey = `${activeRunId}|${searchQuery}`;
+  const totalRecords = filteredItems.length;
+  const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
+  const currentPage = Math.min(
+    pageState.key === pageResetKey ? pageState.page : 1,
+    totalPages
+  );
+  const pageStartIndex = (currentPage - 1) * pageSize;
+  const pageEndIndex = Math.min(pageStartIndex + pageSize, totalRecords);
+  const setPage = (page: number) => setPageState({ key: pageResetKey, page });
+  const pagedItems = filteredItems.slice(pageStartIndex, pageEndIndex);
 
   // ==========================================================
   // SELECT EMPLOYEE FOR VIEWING / EDITING
@@ -924,7 +965,7 @@ export default function PayrollProcessingHub() {
                 </thead>
 
                 <tbody className="divide-y divide-[#e6edf4] text-sm">
-                  {filteredItems.map((item) => (
+                  {pagedItems.map((item) => (
                     <React.Fragment key={item.id}>
                     <tr
                       className="group hover:bg-[#bfe0f5]/20 transition-all duration-150"
@@ -1118,9 +1159,83 @@ export default function PayrollProcessingHub() {
               </table>
             </div>
 
+            {totalRecords > 0 && (
+            <nav
+              aria-label="Payroll pagination"
+              className="flex flex-col items-center justify-between gap-3 bg-white px-4 py-3 text-xs text-[#64748b] sm:flex-row border-t border-[#e6edf4]"
+            >
+              <label className="flex items-center gap-2 font-semibold">
+                Rows per page
+                <select
+                  value={pageSize}
+                  onChange={(event) => {
+                    setPageSize(Number(event.target.value));
+                    setPage(1);
+                  }}
+                  className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-bold text-slate-700 outline-none focus:border-[#7BBDE8] focus:ring-2 focus:ring-[#7BBDE8]/30"
+                >
+                  {PAGE_SIZE_OPTIONS.map((size) => (
+                    <option key={size} value={size}>
+                      {size}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <span className="font-semibold">
+                {pageStartIndex + 1}–{pageEndIndex} of {totalRecords}
+              </span>
+
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setPage(currentPage - 1)}
+                  disabled={currentPage <= 1}
+                  aria-label="Previous page"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-[#eef7fd] hover:text-[#1b64da] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-slate-600"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+
+                {getPageItems(currentPage, totalPages).map((item) =>
+                  typeof item === "string" ? (
+                    <span key={item} className="px-1 text-slate-400" aria-hidden="true">
+                      …
+                    </span>
+                  ) : (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => setPage(item)}
+                      aria-label={`Page ${item}`}
+                      aria-current={item === currentPage ? "page" : undefined}
+                      className={`inline-flex h-8 min-w-8 items-center justify-center rounded-lg border px-2 text-xs font-bold transition-colors ${
+                        item === currentPage
+                          ? "border-[#1b64da] bg-[#1b64da] text-white"
+                          : "border-slate-200 bg-white text-slate-600 hover:bg-[#eef7fd] hover:text-[#1b64da]"
+                      }`}
+                    >
+                      {item}
+                    </button>
+                  )
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setPage(currentPage + 1)}
+                  disabled={currentPage >= totalPages}
+                  aria-label="Next page"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-[#eef7fd] hover:text-[#1b64da] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-slate-600"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </nav>
+            )}
+
             <div className="p-4 bg-[#f0f6fa] border-t border-[#e6edf4] flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
               <span>
-                Displaying {filteredItems.length} of {items.length} employees
+                Displaying {pagedItems.length} of {filteredItems.length} employees
               </span>
 
               <span className="font-semibold text-[#1b64da]">
@@ -1185,7 +1300,10 @@ export default function PayrollProcessingHub() {
           {/* LINE ITEM EDITOR / BREAKDOWN */}
 
           {editingItem && (
-            <div className="bg-white border border-[#e6edf4] rounded-[32px] p-6 shadow-sm space-y-6">
+            <div 
+              ref={breakdownRef} 
+              className="bg-white border border-[#e6edf4] rounded-[32px] p-6 shadow-sm space-y-6 scroll-mt-6"
+            >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#e6edf4] gap-2">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-[#bfe0f5] flex items-center justify-center text-[#1b64da]">

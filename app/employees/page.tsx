@@ -13,6 +13,8 @@ import {
   Briefcase,
   X,
   Edit3,
+  PencilLine,
+  Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -194,6 +196,10 @@ export default function EmployeeDirectoryPage() {
   const [payrollFilter, setPayrollFilter] = useState<PayrollFilter>("ALL");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [customDesignation, setCustomDesignation] = useState(false);
+  const [designationOpen, setDesignationOpen] = useState(false);
+  const [designationActive, setDesignationActive] = useState(0);
+  const designationRef = useRef<HTMLDivElement>(null);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
@@ -436,7 +442,75 @@ export default function EmployeeDirectoryPage() {
     return Object.keys(errors).length === 0;
   };
 
+  useEffect(() => {
+    if (!designationOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (
+        designationRef.current &&
+        !designationRef.current.contains(event.target as Node)
+      ) {
+        setDesignationOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [designationOpen]);
+
+  // An existing designation that is not in the list is shown first.
+  const designationItems =
+    formData.designation && !DESIGNATIONS.includes(formData.designation)
+      ? [formData.designation, ...DESIGNATIONS]
+      : DESIGNATIONS;
+  // The last row is "Other (type your own)".
+  const designationOtherIndex = designationItems.length;
+
+  const openDesignationList = () => {
+    const selected = designationItems.indexOf(formData.designation);
+    setDesignationActive(selected >= 0 ? selected : 0);
+    setDesignationOpen(true);
+  };
+
+  const chooseDesignation = (index: number) => {
+    setDesignationOpen(false);
+    if (index === designationOtherIndex) {
+      setCustomDesignation(true);
+      setFormData({ ...formData, designation: "" });
+      return;
+    }
+    setFormData({ ...formData, designation: designationItems[index] });
+  };
+
+  const handleDesignationKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === "Escape" && designationOpen) {
+      event.preventDefault();
+      event.stopPropagation();
+      setDesignationOpen(false);
+      return;
+    }
+
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (!designationOpen) {
+        openDesignationList();
+        return;
+      }
+      const step = event.key === "ArrowDown" ? 1 : -1;
+      const count = designationOtherIndex + 1;
+      setDesignationActive((current) => (current + step + count) % count);
+      return;
+    }
+
+    if ((event.key === "Enter" || event.key === " ") && designationOpen) {
+      event.preventDefault();
+      chooseDesignation(designationActive);
+    }
+  };
+
   const resetForm = () => {
+    setDesignationOpen(false);
+    setCustomDesignation(false);
     setFormData(emptyForm(today()));
     setFormErrors({});
   };
@@ -515,6 +589,7 @@ export default function EmployeeDirectoryPage() {
 
   const openEditModal = (employee: Employee) => {
     setEditingEmployee(employee);
+    setCustomDesignation(false);
     setFormData({
       emp_code: employee.emp_code,
       name: employee.name,
@@ -1362,25 +1437,120 @@ export default function EmployeeDirectoryPage() {
                   <label className="block text-xs font-bold text-[#475569] mb-1.5 uppercase tracking-wider">
                     Designation *
                   </label>
-                  <select
-                    value={formData.designation}
-                    onChange={(event) =>
-                      setFormData({
-                        ...formData,
-                        designation: event.target.value,
-                      })
-                    }
-                    className={inputClass("designation")}
-                  >
-                    {formData.designation && !DESIGNATIONS.includes(formData.designation) && (
-                      <option value={formData.designation}>{formData.designation}</option>
-                    )}
-                    {DESIGNATIONS.map((designation) => (
-                      <option key={designation} value={designation}>
-                        {designation}
-                      </option>
-                    ))}
-                  </select>
+                  {customDesignation ? (
+                    <>
+                      <input
+                        type="text"
+                        autoFocus
+                        value={formData.designation}
+                        onChange={(event) =>
+                          setFormData({
+                            ...formData,
+                            designation: event.target.value,
+                          })
+                        }
+                        placeholder="Type the designation"
+                        maxLength={60}
+                        className={inputClass("designation")}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomDesignation(false);
+                          setFormData({ ...formData, designation: DESIGNATIONS[0] });
+                        }}
+                        className="mt-1.5 text-xs font-bold text-[#1b64da] hover:underline"
+                      >
+                        Choose from the list instead
+                      </button>
+                    </>
+                  ) : (
+                    <div
+                      ref={designationRef}
+                      className="relative"
+                      onKeyDown={handleDesignationKeyDown}
+                    >
+                      <button
+                        type="button"
+                        role="combobox"
+                        aria-label="Designation"
+                        aria-haspopup="listbox"
+                        aria-expanded={designationOpen}
+                        aria-controls="designation-listbox"
+                        aria-activedescendant={
+                          designationOpen ? `designation-option-${designationActive}` : undefined
+                        }
+                        onClick={() =>
+                          designationOpen ? setDesignationOpen(false) : openDesignationList()
+                        }
+                        className={`flex w-full items-center justify-between gap-2 rounded-xl border bg-[#f8fafc] px-4 py-2.5 text-left text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 ${
+                          getFieldError("designation")
+                            ? "border-rose-400 focus:ring-rose-200"
+                            : designationOpen
+                              ? "border-[#7BBDE8] bg-white ring-2 ring-[#7BBDE8]"
+                              : "border-[#d5dbe1] focus:ring-[#7BBDE8]"
+                        } ${formData.designation ? "text-slate-800" : "text-slate-400"}`}
+                      >
+                        <span className="truncate">
+                          {formData.designation || "Select designation"}
+                        </span>
+                        <ChevronDown
+                          className={`h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200 ${
+                            designationOpen ? "rotate-180 text-[#1b64da]" : ""
+                          }`}
+                          aria-hidden="true"
+                        />
+                      </button>
+
+                      {designationOpen && (
+                        <div
+                          id="designation-listbox"
+                          role="listbox"
+                          aria-label="Designation"
+                          className="account-menu-enter absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-[#dcebf7] bg-white shadow-xl"
+                        >
+                          <div className="max-h-72 overflow-y-auto p-1.5">
+                            {designationItems.map((item, index) => {
+                              const selected = item === formData.designation;
+
+                              return (
+                                <div
+                                  key={item}
+                                  id={`designation-option-${index}`}
+                                  role="option"
+                                  aria-selected={selected}
+                                  onMouseEnter={() => setDesignationActive(index)}
+                                  onClick={() => chooseDesignation(index)}
+                                  className={`flex cursor-pointer items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-sm transition-colors ${
+                                    selected ? "font-bold text-[#1b64da]" : "font-medium text-slate-700"
+                                  } ${designationActive === index ? "bg-[#eaf4fc]" : ""}`}
+                                >
+                                  <span className="truncate">{item}</span>
+                                  {selected && (
+                                    <Check className="h-4 w-4 shrink-0 text-[#1b64da]" aria-hidden="true" />
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          <div
+                            id={`designation-option-${designationOtherIndex}`}
+                            role="option"
+                            aria-selected={false}
+                            onMouseEnter={() => setDesignationActive(designationOtherIndex)}
+                            onClick={() => chooseDesignation(designationOtherIndex)}
+                            className={`flex cursor-pointer items-center gap-2 border-t border-[#e7f0f7] px-4 py-3 text-sm font-bold text-[#1b64da] transition-colors ${
+                              designationActive === designationOtherIndex ? "bg-[#eaf4fc]" : "bg-[#f7fbff]"
+                            }`}
+                          >
+                            <PencilLine className="h-4 w-4" aria-hidden="true" />
+                            Other (type your own)…
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {getFieldError("designation") && (
                     <p className="text-xs text-rose-600 mt-1 font-semibold">
                       {getFieldError("designation")}
