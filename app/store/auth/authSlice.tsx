@@ -512,7 +512,7 @@ export default authSlice.reducer;
 
 // --------------------------------------------------
 // LOGIN
-// POST /api/v1/auth/login
+// POST /api/v1/auth/admin/login
 // --------------------------------------------------
 
 export const login =
@@ -522,7 +522,7 @@ export const login =
 
     try {
       const response = await fetch(
-        `${getApiUrl()}/api/v1/auth/login`,
+        `${getApiUrl()}/api/v1/auth/admin/login`,
         {
           method: "POST",
           headers: {
