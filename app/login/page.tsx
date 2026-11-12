@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useDispatch } from "react-redux";
 import { useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 
 import type { AppDispatch } from "../store/store";
 import { login } from "../store/auth/authSlice";
@@ -71,6 +72,30 @@ const UserIcon = ({ className = "" }: { className?: string }) => (
     <path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" />
   </svg>
 );
+
+function PasswordToggle({
+  visible,
+  onToggle,
+  label,
+  disabled,
+}: {
+  visible: boolean;
+  onToggle: () => void;
+  label: string;
+  disabled: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      disabled={disabled}
+      aria-label={`${visible ? "Hide" : "Show"} ${label}`}
+      className="absolute right-4 top-1/2 -translate-y-1/2 rounded-lg p-2 text-[#8a96a3] hover:text-[#1a6ea8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1a6ea8] disabled:opacity-50"
+    >
+      {visible ? <EyeOff className="h-5 w-5" aria-hidden="true" /> : <Eye className="h-5 w-5" aria-hidden="true" />}
+    </button>
+  );
+}
 
 const ClockIcon = ({ className = "" }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none"
@@ -314,6 +339,8 @@ function ForgotPasswordModal({
   const [resetToken, setResetToken] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -617,41 +644,49 @@ function ForgotPasswordModal({
         {step === "password" && (
           <form onSubmit={handleResetPassword} className="space-y-5">
             <div>
-              <label className="mb-2 block text-sm font-bold text-[#0f2a40]">
+              <label htmlFor="new-password" className="mb-2 block text-sm font-bold text-[#0f2a40]">
                 New Password
               </label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => {
-                  setNewPassword(e.target.value);
-                  setError("");
-                }}
-                placeholder="Enter new password"
-                autoComplete="new-password"
-                required
-                disabled={loading}
-                className="h-14 w-full rounded-xl border border-[#cdd5de] px-4 text-sm text-[#0f2a40] outline-none transition focus:border-[#5aaee3] focus:ring-4 focus:ring-[#5aaee3]/15 disabled:bg-slate-50"
-              />
+              <div className="relative">
+                <input
+                  id="new-password"
+                  type={showNewPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => {
+                    setNewPassword(e.target.value);
+                    setError("");
+                  }}
+                  placeholder="Enter new password"
+                  autoComplete="new-password"
+                  required
+                  disabled={loading}
+                  className="h-14 w-full rounded-xl border border-[#cdd5de] pl-4 pr-14 text-sm text-[#0f2a40] outline-none transition focus:border-[#5aaee3] focus:ring-4 focus:ring-[#5aaee3]/15 disabled:bg-slate-50"
+                />
+                <PasswordToggle visible={showNewPassword} onToggle={() => setShowNewPassword((value) => !value)} label="new password" disabled={loading} />
+              </div>
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-bold text-[#0f2a40]">
+              <label htmlFor="confirm-new-password" className="mb-2 block text-sm font-bold text-[#0f2a40]">
                 Confirm New Password
               </label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => {
-                  setConfirmPassword(e.target.value);
-                  setError("");
-                }}
-                placeholder="Confirm new password"
-                autoComplete="new-password"
-                required
-                disabled={loading}
-                className="h-14 w-full rounded-xl border border-[#cdd5de] px-4 text-sm text-[#0f2a40] outline-none transition focus:border-[#5aaee3] focus:ring-4 focus:ring-[#5aaee3]/15 disabled:bg-slate-50"
-              />
+              <div className="relative">
+                <input
+                  id="confirm-new-password"
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    setError("");
+                  }}
+                  placeholder="Confirm new password"
+                  autoComplete="new-password"
+                  required
+                  disabled={loading}
+                  className="h-14 w-full rounded-xl border border-[#cdd5de] pl-4 pr-14 text-sm text-[#0f2a40] outline-none transition focus:border-[#5aaee3] focus:ring-4 focus:ring-[#5aaee3]/15 disabled:bg-slate-50"
+                />
+                <PasswordToggle visible={showConfirmPassword} onToggle={() => setShowConfirmPassword((value) => !value)} label="confirm new password" disabled={loading} />
+              </div>
             </div>
 
             <p className="text-xs text-slate-400">
@@ -726,6 +761,7 @@ export default function LoginPage() {
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
@@ -902,20 +938,23 @@ export default function LoginPage() {
                 </button>
               </div>
 
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  setLoginError("");
-                }}
-                placeholder="Enter your password"
-                autoComplete="current-password"
-                required
-                disabled={submitting}
-                className="mt-3 h-[66px] w-full rounded-full border border-[#cdd5de] bg-white px-6 text-[17px] text-[#0f2a40] placeholder:text-[#9aa5b1] focus:border-[#5aaee3] focus:outline-none focus:ring-4 focus:ring-[#5aaee3]/20 disabled:bg-slate-50"
-              />
+              <div className="relative mt-3">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setLoginError("");
+                  }}
+                  placeholder="Enter your password"
+                  autoComplete="current-password"
+                  required
+                  disabled={submitting}
+                  className="h-[66px] w-full rounded-full border border-[#cdd5de] bg-white pl-6 pr-14 text-[17px] text-[#0f2a40] placeholder:text-[#9aa5b1] focus:border-[#5aaee3] focus:outline-none focus:ring-4 focus:ring-[#5aaee3]/20 disabled:bg-slate-50"
+                />
+                <PasswordToggle visible={showPassword} onToggle={() => setShowPassword((value) => !value)} label="password" disabled={submitting} />
+              </div>
 
               {/* REMEMBER + AUTO CLOCK-IN */}
 
