@@ -111,7 +111,8 @@ const getToken = (state: RootState): string => {
 const request = async <T,>(
   path: string,
   token: string,
-  method: "GET" | "PATCH" = "GET"
+  method: "GET" | "PATCH" | "POST" = "GET",
+  body?: unknown
 ): Promise<ApiEnvelope<T>> => {
   const response = await fetch(`${NOTIFICATIONS_API}${path}`, {
     method,
@@ -119,6 +120,7 @@ const request = async <T,>(
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     cache: "no-store",
   });
   const result: unknown = await response.json().catch(() => null);
@@ -137,6 +139,28 @@ const request = async <T,>(
     data: result.data as T | undefined,
   };
 };
+
+export const sendAdminAnnouncement = createAsyncThunk<
+  number,
+  { title: string; message: string },
+  { state: RootState }
+>("notifications/sendAnnouncement", async (announcement, { getState }) => {
+  const result = await request<{ recipient_count: number }>(
+    "/announcements",
+    getToken(getState()),
+    "POST",
+    announcement
+  );
+  const count = result.data?.recipient_count;
+
+  if (typeof count !== "number" || !Number.isInteger(count) || count < 0) {
+    throw new Error(
+      "The server returned an invalid recipient count. The announcement may have been sent; check before retrying."
+    );
+  }
+
+  return count;
+});
 
 export const fetchAdminNotifications = createAsyncThunk<
   NotificationListData,

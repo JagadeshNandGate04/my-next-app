@@ -29,6 +29,21 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+@keyframes announcement-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(27, 100, 218, 0.4), 0 8px 18px rgba(27, 100, 218, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(27, 100, 218, 0), 0 8px 18px rgba(27, 100, 218, 0.25);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .announcement-float {
+    animation: announcement-glow 2.2s ease-in-out infinite;
+  }
+}
+
 @keyframes requests-calendar-reveal {
   from {
     opacity: 0;

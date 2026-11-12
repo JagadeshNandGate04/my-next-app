@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { AnnouncementIcon } from "../components/FloatingAnnouncement";
 import {
   Clock,
   Calendar,
@@ -523,7 +524,7 @@ export default function SystemSettingsHub() {
 
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <span className="w-2.5 h-2.5 rounded-full bg-[#7BBDE8] animate-pulse" />
 
                 <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#0f172a] tracking-tight">
@@ -559,6 +560,7 @@ export default function SystemSettingsHub() {
                   {settingsUpdating ? "Saving..." : "Save All Settings"}
                 </span>
               </button>
+              <AnnouncementIcon showLabel />
             </div>
           </div>
 

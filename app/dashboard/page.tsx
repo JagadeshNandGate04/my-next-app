@@ -13,6 +13,7 @@ import {
   RefreshCw,
   X,
   ArrowUpRight,
+  Megaphone,
 } from "lucide-react";
 import { performLogout } from "../store/auth/authSlice";
 import type { AppDispatch, RootState } from "../store/store";
@@ -22,6 +23,7 @@ import {
   type DashboardPeriod,
 } from "../store/dashboard/dashboardSlice";
 import TeamAbsenceCalendar from "../components/TeamAbsenceCalendar";
+import AnnouncementModal from "./AnnouncementModal";
 
 // 14 DIFFERENT AVATAR COLORS
 const AVATAR_COLORS = [
@@ -173,6 +175,7 @@ export default function NandgateDashboard() {
     error,
   } = useSelector((state: RootState) => state.dashboard);
   const [timeFilter, setTimeFilter] = useState<DashboardPeriod>("week");
+  const [announcementOpen, setAnnouncementOpen] = useState(false);
 
   // SEARCH STATE
   const [searchQuery, setSearchQuery] = useState("");
@@ -462,7 +465,15 @@ export default function NandgateDashboard() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setAnnouncementOpen(true)}
+                className="announcement-float flex items-center gap-3 rounded-full border-2 border-white bg-[#1b64da] px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-blue-500/30 transition-colors hover:bg-blue-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+              >
+                <Megaphone className="h-5 w-5" aria-hidden="true" />
+                Send announcement
+              </button>
               <select
                 value={timeFilter}
                 onChange={(e) =>
@@ -1022,6 +1033,7 @@ export default function NandgateDashboard() {
           </div>
         </div>
       </main>
+      {announcementOpen && <AnnouncementModal onClose={() => setAnnouncementOpen(false)} />}
     </div>
   );
 }
