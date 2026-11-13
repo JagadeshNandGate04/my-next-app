@@ -199,10 +199,7 @@ export default function PayrollProcessingHub() {
     (state: RootState) => state.employees
   );
 
-  const runs: PayrollRun[] = payrollState.runs ?? [];
-  const items: PayrollItem[] = payrollState.items ?? [];
-
-  const loading = Boolean(payrollState.loading);
+  const loading = payrollState.runsLoading || payrollState.detailsLoading;
   const actionLoading = Boolean(payrollState.actionLoading);
 
   const error = payrollState.error;
@@ -219,6 +216,18 @@ export default function PayrollProcessingHub() {
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
 
   const [currentYear, setCurrentYear] = useState<number | null>(null);
+
+  const runs: PayrollRun[] = useMemo(() => payrollState.runsYear === selectedYear
+    ? payrollState.runs.filter((run) => run.year === selectedYear)
+    : [], [payrollState.runs, payrollState.runsYear, selectedYear]);
+  const detailsMatch = selectedYear !== null &&
+    payrollState.activeRun?.year === selectedYear &&
+    Number(payrollState.activeRun?.id) === activeRunId &&
+    runs.some((run) => Number(run.id) === activeRunId);
+  const items: PayrollItem[] = useMemo(
+    () => detailsMatch ? payrollState.items : [],
+    [detailsMatch, payrollState.items]
+  );
 
   const [newRunMonth, setNewRunMonth] = useState<number>(1);
 
@@ -331,7 +340,9 @@ export default function PayrollProcessingHub() {
       return;
     }
 
-    dispatch(fetchPayrollRuns(selectedYear) as any);
+    void dispatch(fetchPayrollRuns(selectedYear)).catch(() => {
+      // The slice exposes the error to the page.
+    });
   }, [dispatch, selectedYear]);
 
   // ==========================================================
@@ -359,11 +370,13 @@ export default function PayrollProcessingHub() {
   // ==========================================================
 
   useEffect(() => {
-    if (activeRunId !== null) {
-      dispatch(fetchPayrollRunDetails(activeRunId) as any);
+    if (activeRunId !== null && runs.some((run) => Number(run.id) === activeRunId)) {
+      void dispatch(fetchPayrollRunDetails(activeRunId)).catch(() => {
+        // The slice exposes the error to the page.
+      });
       setEditingItem(null);
     }
-  }, [dispatch, activeRunId]);
+  }, [dispatch, activeRunId, selectedYear, runs]);
 
   // ==========================================================
   // KPI CALCULATIONS
@@ -697,6 +710,7 @@ export default function PayrollProcessingHub() {
       );
 
       if (createdRun?.id) {
+        setActiveRunId(Number(createdRun.id));
         await dispatch(
           fetchPayrollRunDetails(Number(createdRun.id)) as any
         );
@@ -713,7 +727,7 @@ export default function PayrollProcessingHub() {
   return (
     <div className="min-h-screen bg-[#f0f6fa] text-[#0f172a] font-sans antialiased selection:bg-[#7BBDE8]/30">
       <main className="flex-1 min-w-0 py-4 sm:py-6 lg:py-8">
-        <div className="mx-auto w-full max-w-[2400px] space-y-6 px-3 sm:px-5 lg:px-6">
+        <div className="mx-auto w-full max-w-[1700px] space-y-6 px-3 sm:px-5 lg:px-6">
 
           {/* PAGE HEADER */}
 
@@ -781,7 +795,7 @@ export default function PayrollProcessingHub() {
 
           {/* KPI METRICS (filled like the dashboard) */}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {detailsMatch && <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
 
             <CountCard
               label="Total Net Disbursement"
@@ -822,7 +836,7 @@ export default function PayrollProcessingHub() {
               muted="text-black/50"
               Icon={SlidersHorizontal}
             />
-          </div>
+          </div>}
 
           {/* YEAR AND RUN SELECTOR */}
 
@@ -837,6 +851,8 @@ export default function PayrollProcessingHub() {
                   onChange={(e) => {
                     closeSalary();
                     setHistorySelection(null);
+                    setEditingItem(null);
+                    setActiveRunId(null);
                     setSelectedYear(Number(e.target.value));
                   }}
                   className="bg-transparent font-black focus:outline-none"
@@ -874,7 +890,7 @@ export default function PayrollProcessingHub() {
                 </button>
               ))}
 
-              {runs.length === 0 && (
+              {runs.length === 0 && !loading && !error && payrollState.runsYear === selectedYear && (
                 <span className="text-xs text-slate-400">
                   No payroll runs for {selectedYear ?? "this year"}
                 </span>
@@ -916,7 +932,7 @@ export default function PayrollProcessingHub() {
             </div>
           )}
 
-          {!activeRun && !loading && (
+          {!activeRun && !loading && !error && selectedYear !== null && payrollState.runsYear === selectedYear && (
             <div className="rounded-[32px] border border-dashed border-[#7BBDE8] bg-white p-10 text-center text-sm text-slate-500">
               No payroll run found for {selectedYear ?? "this year"}. Create a new payroll run to get started.
             </div>
@@ -924,7 +940,7 @@ export default function PayrollProcessingHub() {
 
           {/* PAYROLL TABLE */}
 
-          <div className="flex min-w-0 flex-col items-start gap-4 xl:flex-row">
+          {detailsMatch && <div className="flex min-w-0 flex-col items-start gap-4 xl:flex-row">
           <div className="min-w-0 w-full flex-1 bg-white border border-[#e6edf4] rounded-[32px] shadow-sm overflow-hidden">
             <div className="p-5 lg:p-6 border-b border-[#e6edf4] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -1295,11 +1311,11 @@ export default function PayrollProcessingHub() {
                 )}
               </div>
             </section>
-          </div>
+          </div>}
 
           {/* LINE ITEM EDITOR / BREAKDOWN */}
 
-          {editingItem && (
+          {detailsMatch && editingItem && (
             <div 
               ref={breakdownRef} 
               className="bg-white border border-[#e6edf4] rounded-[32px] p-6 shadow-sm space-y-6 scroll-mt-6"
@@ -1686,9 +1702,9 @@ export default function PayrollProcessingHub() {
 
           {isCreateModalOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-              <div className="bg-white border border-[#e6edf4] rounded-[32px] max-w-md w-full p-6 shadow-2xl">
+              <div className="bg-white border border-[#bfe0f5] rounded-[32px] max-w-md w-full p-6 shadow-2xl">
 
-                <div className="flex items-center justify-between pb-4 border-b border-[#e6edf4]">
+                <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#d6e8f7] bg-[#eaf4fc] p-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-[#bfe0f5] flex items-center justify-center text-[#1b64da]">
                       <Calendar className="w-5 h-5" />

@@ -879,7 +879,7 @@ export default function AdminAttendanceOperationsPage() {
           {activeTab === "DAILY" && (
             <>
               {/* DAILY KPI CARDS */}
-              <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
                 {[
                   { title: "Total Employees", value: totalEmployees, bg: SKY_LIGHT, text: INK, muted: "text-black/40", Icon: UserCheck },
                   { title: "Present / Live", value: stats.liveIn, bg: SKY, text: INK, muted: "text-black/40", Icon: Users },
@@ -890,18 +890,18 @@ export default function AdminAttendanceOperationsPage() {
                 ].map((item) => (
                   <div
                     key={item.title}
-                    className="rounded-xl p-3 shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md"
+                    className="min-h-[120px] rounded-2xl p-4 shadow-sm transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-md sm:p-5"
                     style={{ backgroundColor: item.bg, color: item.text }}
                   >
-                    <div className="flex items-center justify-between gap-1 mb-1">
+                    <div className="mb-3 flex items-start justify-between gap-2">
                       <span className="text-xs font-bold uppercase tracking-wide opacity-70 leading-tight">
                         {item.title}
                       </span>
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/70 text-slate-600">
-                        <item.Icon className="w-3.5 h-3.5" />
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/70 text-slate-600">
+                        <item.Icon className="h-4 w-4" />
                       </span>
                     </div>
-                    <div className="text-lg md:text-xl font-black leading-tight">
+                    <div className="text-xl font-black leading-tight md:text-2xl">
                       {dailyLoading ? "—" : item.value}
                     </div>
                   </div>
@@ -1568,8 +1568,8 @@ export default function AdminAttendanceOperationsPage() {
       {/* CORRECTION MODAL */}
       {isAddCorrectionOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-          <div className="bg-white border border-[#d5dbe1] rounded-3xl max-w-lg w-full p-6 shadow-2xl">
-            <div className="flex items-center justify-between pb-4 border-b border-[#e2e8f0]">
+          <div className="bg-white border border-[#bfe0f5] rounded-3xl max-w-lg w-full p-6 shadow-2xl">
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#d6e8f7] bg-[#eaf4fc] p-4">
               <div className="flex items-center gap-2">
                 <Plus className="w-5 h-5 text-[#1b64da]" />
                 <h3 className="font-black text-lg text-[#0f172a]">Add Manual Attendance Correction</h3>
@@ -1606,7 +1606,7 @@ export default function AdminAttendanceOperationsPage() {
                   required
                   value={newCorrection.user_id}
                   onChange={(event) => setNewCorrection({ ...newCorrection, user_id: event.target.value })}
-                  className="w-full px-3.5 py-3 rounded-xl bg-[#f8fafc] border border-[#d5dbe1] text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[#7BBDE8] focus:outline-none"
+                  className="w-full px-3.5 py-3 rounded-xl bg-[#f3f9fe] border border-[#bfe0f5] text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[#7BBDE8] focus:outline-none"
                 >
                   <option value="">Choose employee...</option>
                   {employees.map((employee) => (
@@ -1624,7 +1624,7 @@ export default function AdminAttendanceOperationsPage() {
                   required
                   value={newCorrection.punched_at}
                   onChange={(event) => setNewCorrection({ ...newCorrection, punched_at: event.target.value })}
-                  className="w-full px-3.5 py-3 rounded-xl bg-[#f8fafc] border border-[#d5dbe1] text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[#7BBDE8] focus:outline-none"
+                  className="w-full px-3.5 py-3 rounded-xl bg-[#f3f9fe] border border-[#bfe0f5] text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[#7BBDE8] focus:outline-none"
                 />
               </div>
 
@@ -1641,7 +1641,7 @@ export default function AdminAttendanceOperationsPage() {
                           ? direction === "IN"
                             ? "bg-[#e1f1fb] border-[#7BBDE8] text-[#0a47b3]"
                             : "bg-[#1b64da] border-[#1b64da] text-white"
-                          : "bg-[#f8fafc] border-[#d5dbe1] text-[#64748b]"
+                          : "bg-[#f3f9fe] border-[#bfe0f5] text-[#64748b]"
                       }`}
                     >
                       {direction} (Punch {direction === "IN" ? "In" : "Out"})
@@ -1658,7 +1658,7 @@ export default function AdminAttendanceOperationsPage() {
                   placeholder="Device offline, missed manual punch..."
                   value={newCorrection.reason}
                   onChange={(event) => setNewCorrection({ ...newCorrection, reason: event.target.value })}
-                  className="w-full px-3.5 py-3 rounded-xl bg-[#f8fafc] border border-[#d5dbe1] text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[#7BBDE8] focus:outline-none"
+                  className="w-full px-3.5 py-3 rounded-xl bg-[#f3f9fe] border border-[#bfe0f5] text-sm font-medium focus:bg-white focus:ring-2 focus:ring-[#7BBDE8] focus:outline-none"
                 />
               </div>
 

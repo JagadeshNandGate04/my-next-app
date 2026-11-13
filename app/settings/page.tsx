@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AnnouncementIcon } from "../components/FloatingAnnouncement";
+import ResetDefaultsModal from "./ResetDefaultsModal";
 import {
   Clock,
   Calendar,
@@ -19,6 +20,8 @@ import {
   X,
   Hourglass,
   Loader2,
+  BriefcaseBusiness,
+  RefreshCw,
 } from "lucide-react";
 
 import { useDispatch, useSelector } from "react-redux";
@@ -33,6 +36,9 @@ import {
   clearSettingsError,
   clearSettingsMessage,
   setSelectedYear,
+  fetchDesignations,
+  createDesignation,
+  clearDesignationCreateError,
 } from "@/app/store/settings/settingsSlice";
 
 // ============================================================
@@ -220,6 +226,86 @@ function NumberField({
 // MAIN SETTINGS PAGE
 // ============================================================
 
+function DesignationSettings() {
+  const dispatch = useDispatch<AppDispatch>();
+  const { designations, designationsLoading, designationCreating, designationLoadError, designationCreateError } =
+    useSelector((state: RootState) => state.settings);
+  const [name, setName] = useState("");
+  const [success, setSuccess] = useState("");
+  const submitting = useRef(false);
+
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (submitting.current) return;
+    submitting.current = true;
+    setSuccess("");
+    try {
+      await dispatch(createDesignation(name));
+      setName("");
+      setSuccess("Designation added successfully.");
+    } catch {
+      // The slice exposes the error next to the form.
+    } finally {
+      submitting.current = false;
+    }
+  };
+
+  return (
+    <section className="space-y-4" aria-labelledby="designation-heading">
+      <div className="flex items-center gap-2 px-2">
+        <BriefcaseBusiness className="h-4 w-4 text-[#1b64da]" aria-hidden="true" />
+        <h2 id="designation-heading" className="text-lg font-black tracking-tight text-[#0f172a]">Designations</h2>
+      </div>
+      <div className="space-y-4 rounded-[32px] border border-[#e6edf4] bg-white p-6 shadow-sm">
+        <p className="text-sm text-slate-600">Add and view employee designations.</p>
+        <form onSubmit={submit} className="space-y-3">
+          <label htmlFor="designation-name" className="block text-sm font-bold text-slate-800">Designation name</label>
+          <div className="flex flex-wrap gap-2">
+            <input id="designation-name" type="text" value={name} required disabled={designationCreating}
+              onChange={(event) => {
+                setName(event.target.value);
+                setSuccess("");
+                if (designationCreateError) dispatch(clearDesignationCreateError());
+              }}
+              placeholder="e.g. Software Developer"
+              className="min-w-[180px] flex-1 rounded-xl border border-slate-300 px-3 py-2.5 text-sm text-slate-900 focus:outline-2 focus:outline-blue-500" />
+            <button type="submit" disabled={designationCreating || !name.trim()}
+              className="inline-flex items-center gap-2 rounded-xl bg-[#1b64da] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#1552b5] disabled:opacity-50">
+              {designationCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              {designationCreating ? "Adding..." : "Add"}
+            </button>
+          </div>
+        </form>
+        {designationCreateError && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{designationCreateError}</p>}
+        {success && <p role="status" className="rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">{success}</p>}
+        <div className="border-t border-[#e6edf4] pt-4">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-sm font-bold text-slate-800">Existing designations</h3>
+            <button type="button" onClick={() => void dispatch(fetchDesignations())} disabled={designationsLoading}
+              className="inline-flex items-center gap-1 text-xs font-bold text-blue-700 hover:underline disabled:opacity-50">
+              <RefreshCw className={`h-4 w-4 ${designationsLoading ? "animate-spin" : ""}`} /> Refresh
+            </button>
+          </div>
+          {designationLoadError && <p role="alert" className="mt-3 text-sm text-red-700">{designationLoadError}</p>}
+          {designationsLoading && <p role="status" className="mt-3 text-sm text-slate-600">Loading designations...</p>}
+          {!designationsLoading && !designationLoadError && designations.length === 0 && (
+            <p className="mt-3 text-sm text-slate-500">No designations found.</p>
+          )}
+          {designations.length > 0 && (
+            <ul className="mt-3 max-h-72 space-y-2 overflow-y-auto">
+              {designations.map((designation) => (
+                <li key={designation.id} className="break-words rounded-xl border border-[#e6edf4] bg-[#f0f6fa] px-3 py-2 text-sm font-semibold text-slate-800">
+                  {designation.name}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function SystemSettingsHub() {
   const dispatch = useDispatch<AppDispatch>();
 
@@ -251,6 +337,7 @@ export default function SystemSettingsHub() {
   const [settings, setSettings] = useState<SystemSettings>(INITIAL_SETTINGS);
 
   const [isHolidayModalOpen, setIsHolidayModalOpen] = useState(false);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
 
   const [newHolidayDate, setNewHolidayDate] = useState("");
 
@@ -269,6 +356,7 @@ export default function SystemSettingsHub() {
     setNewHolidayDate(`${currentYear}-01-01`);
     dispatch(fetchSettings());
     dispatch(fetchHolidays(currentYear));
+    dispatch(fetchDesignations());
   }, [dispatch]);
 
   // ----------------------------------------------------------
@@ -388,14 +476,9 @@ export default function SystemSettingsHub() {
   // ----------------------------------------------------------
 
   const handleResetDefaults = () => {
-    const confirmed = window.confirm(
-      "Reset all operational policy thresholds to default values? Remember to save your changes afterward.",
-    );
-
-    if (!confirmed) return;
-
     setSettings(INITIAL_SETTINGS);
     setLocalError(null);
+    setIsResetModalOpen(false);
   };
 
   // ----------------------------------------------------------
@@ -518,7 +601,7 @@ export default function SystemSettingsHub() {
   return (
     <div className="min-h-screen bg-[#f0f6fa] text-[#0f172a] font-sans antialiased selection:bg-[#7BBDE8]/30">
       <main className="flex-1 min-w-0 py-4 sm:py-6 lg:py-8">
-        <div className="mx-auto w-full max-w-[2400px] space-y-6 px-3 sm:px-5 lg:px-6">
+        <div className="mx-auto w-full max-w-[1700px] space-y-6 px-3 sm:px-5 lg:px-6">
           {/* ==================================================
               TOP BAR
           ================================================== */}
@@ -537,7 +620,7 @@ export default function SystemSettingsHub() {
             <div className="flex items-center gap-3 flex-wrap">
               <button
                 type="button"
-                onClick={handleResetDefaults}
+                onClick={() => setIsResetModalOpen(true)}
                 disabled={settingsUpdating}
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white border border-[#bfe0f5] text-xs font-bold text-[#0f172a] hover:bg-[#bfe0f5]/40 shadow-sm transition-all disabled:opacity-50"
               >
@@ -973,6 +1056,7 @@ export default function SystemSettingsHub() {
             ================================================= */}
 
             <div className="lg:col-span-5 space-y-6">
+              <DesignationSettings />
               <div className="flex items-center justify-between px-2 gap-3">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-[#1b64da]" />
@@ -1156,6 +1240,10 @@ export default function SystemSettingsHub() {
           </div>
         </div>
       </main>
+
+      {isResetModalOpen && (
+        <ResetDefaultsModal onCancel={() => setIsResetModalOpen(false)} onConfirm={handleResetDefaults} />
+      )}
 
       {/* ======================================================
           ADD HOLIDAY MODAL

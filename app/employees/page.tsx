@@ -34,6 +34,11 @@ import {
   clearEmployeeSalary,
   type Employee,
 } from "@/app/store/employee/employeeSlice";
+import {
+  fetchDesignations,
+  createDesignation,
+  clearDesignationCreateError,
+} from "@/app/store/settings/settingsSlice";
 
 type PayrollFilter = "ALL" | "WITH_STRUCTURE" | "PENDING";
 
@@ -67,15 +72,6 @@ const SKY_LIGHT = "#bfe0f5";
 const BLUE = "#1b64da";
 const INK = "#0f172a";
 
-const DESIGNATIONS = [
-  "Senior Frontend Dev",
-  "Backend Engineer",
-  "UI UX Designer",
-  "QA Specialist",
-  "HR Executive",
-  "Operations Lead",
-];
-
 const today = () => {
   const date = new Date();
   const localDate = new Date(
@@ -90,7 +86,7 @@ const emptyForm = (dateOfJoining = ""): EmployeeFormData => ({
   email: "",
   phone: "",
   date_of_joining: dateOfJoining,
-  designation: "Senior Frontend Dev",
+  designation: "",
   status: "ACTIVE",
   basic: "",
   hra: "0",
@@ -190,6 +186,8 @@ export default function EmployeeDirectoryPage() {
     knownDesignations,
     maxEmpNumber,
   } = useSelector((state: RootState) => state.employees);
+  const { designations, designationsLoading, designationLoadError, designationCreating, designationCreateError } =
+    useSelector((state: RootState) => state.settings);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDesignation, setSelectedDesignation] = useState("All");
@@ -197,6 +195,7 @@ export default function EmployeeDirectoryPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(1);
   const [customDesignation, setCustomDesignation] = useState(false);
+  const [newDesignation, setNewDesignation] = useState("");
   const [designationOpen, setDesignationOpen] = useState(false);
   const [designationActive, setDesignationActive] = useState(0);
   const designationRef = useRef<HTMLDivElement>(null);
@@ -212,7 +211,7 @@ export default function EmployeeDirectoryPage() {
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState<EmployeeFormData>(emptyForm());
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
-  const isSaving = createLoading || updateLoading;
+  const isSaving = createLoading || updateLoading || designationCreating;
   const hasEmployeeChanges = editingEmployee !== null && (
     formData.emp_code.trim() !== editingEmployee.emp_code.trim() ||
     formData.name.trim() !== editingEmployee.name.trim() ||
@@ -382,7 +381,6 @@ export default function EmployeeDirectoryPage() {
     const nameRegex = /^[A-Za-z ]+$/;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const phoneRegex = /^[0-9]{10}$/;
-    const designationRegex = /^[A-Za-z ]+$/;
 
     if (!formData.name.trim()) {
       errors.name = "Name is required";
@@ -412,11 +410,8 @@ export default function EmployeeDirectoryPage() {
 
     if (!formData.designation.trim()) {
       errors.designation = "Designation is required";
-    } else if (
-      formData.designation.trim() !== editingEmployee?.designation &&
-      !designationRegex.test(formData.designation.trim())
-    ) {
-      errors.designation = "Designation can contain only letters and spaces";
+    } else if (customDesignation) {
+      errors.designation = "Add the new designation or choose one from the list.";
     }
 
     if (!editingEmployee) {
@@ -459,11 +454,11 @@ export default function EmployeeDirectoryPage() {
   }, [designationOpen]);
 
   // An existing designation that is not in the list is shown first.
+  const designationNames = designations.map((item) => item.name);
   const designationItems =
-    formData.designation && !DESIGNATIONS.includes(formData.designation)
-      ? [formData.designation, ...DESIGNATIONS]
-      : DESIGNATIONS;
-  // The last row is "Other (type your own)".
+    formData.designation && !designationNames.includes(formData.designation)
+      ? [formData.designation, ...designationNames]
+      : designationNames;
   const designationOtherIndex = designationItems.length;
 
   const openDesignationList = () => {
@@ -476,10 +471,28 @@ export default function EmployeeDirectoryPage() {
     setDesignationOpen(false);
     if (index === designationOtherIndex) {
       setCustomDesignation(true);
-      setFormData({ ...formData, designation: "" });
+      setNewDesignation("");
+      dispatch(clearDesignationCreateError());
       return;
     }
-    setFormData({ ...formData, designation: designationItems[index] });
+    setFormData((current) => ({ ...current, designation: designationItems[index] }));
+    setFormErrors((current) => ({ ...current, designation: "" }));
+  };
+
+  const handleAddDesignation = async () => {
+    if (designationCreating || !newDesignation.trim()) return;
+    try {
+      const designation = await dispatch(createDesignation(newDesignation));
+      setFormData((current) => ({ ...current, designation: designation.name }));
+      setCustomDesignation(false);
+      setNewDesignation("");
+      setFormErrors((current) => ({ ...current, designation: "" }));
+    } catch (error) {
+      setFormErrors((current) => ({
+        ...current,
+        designation: error instanceof Error ? error.message : "Failed to create designation.",
+      }));
+    }
   };
 
   const handleDesignationKeyDown = (event: React.KeyboardEvent) => {
@@ -511,6 +524,8 @@ export default function EmployeeDirectoryPage() {
   const resetForm = () => {
     setDesignationOpen(false);
     setCustomDesignation(false);
+    setNewDesignation("");
+    dispatch(clearDesignationCreateError());
     setFormData(emptyForm(today()));
     setFormErrors({});
   };
@@ -584,6 +599,7 @@ export default function EmployeeDirectoryPage() {
     setEditingEmployee(null);
     dispatch(clearEmployeeMessages());
     resetForm();
+    void dispatch(fetchDesignations());
     setIsModalOpen(true);
   };
 
@@ -604,6 +620,9 @@ export default function EmployeeDirectoryPage() {
     });
     setFormErrors({});
     dispatch(clearEmployeeMessages());
+    dispatch(clearDesignationCreateError());
+    setNewDesignation("");
+    void dispatch(fetchDesignations());
     setIsModalOpen(true);
   };
 
@@ -698,10 +717,10 @@ export default function EmployeeDirectoryPage() {
   };
 
   const inputClass = (field: string) =>
-    `w-full px-4 py-2.5 rounded-xl bg-[#f8fafc] border text-sm font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 ${
+    `w-full px-4 py-2.5 rounded-xl bg-[#f3f9fe] border text-sm font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 ${
       formErrors[field] || validationErrors[field]
         ? "border-rose-400 focus:ring-rose-200"
-        : "border-[#d5dbe1] focus:ring-[#7BBDE8]"
+        : "border-[#bfe0f5] focus:ring-[#7BBDE8]"
     }`;
 
   const getFieldError = (field: string) =>
@@ -1301,8 +1320,8 @@ export default function EmployeeDirectoryPage() {
       {/* Create or edit employee modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm overflow-y-auto">
-          <div role="dialog" aria-modal="true" aria-labelledby="employee-form-title" className="bg-white border border-[#d5dbe1] rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl relative my-8">
-            <div className="flex items-center justify-between pb-4 border-b border-[#e2e8f0]">
+          <div role="dialog" aria-modal="true" aria-labelledby="employee-form-title" className="bg-white border border-[#bfe0f5] rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl relative my-8">
+            <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#d6e8f7] bg-[#eaf4fc] p-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-[#eaf4fc] border border-[#d6e8f7] flex items-center justify-center text-[#1b64da]">
                   <UserPlus className="w-5 h-5" />
@@ -1442,24 +1461,34 @@ export default function EmployeeDirectoryPage() {
                       <input
                         type="text"
                         autoFocus
-                        value={formData.designation}
-                        onChange={(event) =>
-                          setFormData({
-                            ...formData,
-                            designation: event.target.value,
-                          })
-                        }
-                        placeholder="Type the designation"
+                        aria-label="New designation name"
+                        value={newDesignation}
+                        disabled={designationCreating}
+                        onChange={(event) => {
+                          setNewDesignation(event.target.value);
+                          if (designationCreateError) dispatch(clearDesignationCreateError());
+                          setFormErrors((current) => ({ ...current, designation: "" }));
+                        }}
+                        placeholder="New designation name"
                         maxLength={60}
                         className={inputClass("designation")}
                       />
+                      <button type="button" onClick={() => void handleAddDesignation()}
+                        disabled={designationCreating || !newDesignation.trim()}
+                        className="mt-2 inline-flex items-center gap-2 rounded-xl bg-[#1b64da] px-3 py-2 text-xs font-bold text-white hover:bg-[#1552b5] disabled:opacity-50">
+                        {designationCreating && <RefreshCw className="h-4 w-4 animate-spin" />}
+                        {designationCreating ? "Adding..." : "Add designation"}
+                      </button>
                       <button
                         type="button"
+                        disabled={designationCreating}
                         onClick={() => {
                           setCustomDesignation(false);
-                          setFormData({ ...formData, designation: DESIGNATIONS[0] });
+                          setNewDesignation("");
+                          dispatch(clearDesignationCreateError());
+                          setFormErrors((current) => ({ ...current, designation: "" }));
                         }}
-                        className="mt-1.5 text-xs font-bold text-[#1b64da] hover:underline"
+                        className="mt-2 block text-xs font-bold text-[#1b64da] hover:underline disabled:opacity-50"
                       >
                         Choose from the list instead
                       </button>
@@ -1483,12 +1512,12 @@ export default function EmployeeDirectoryPage() {
                         onClick={() =>
                           designationOpen ? setDesignationOpen(false) : openDesignationList()
                         }
-                        className={`flex w-full items-center justify-between gap-2 rounded-xl border bg-[#f8fafc] px-4 py-2.5 text-left text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 ${
+                        className={`flex w-full items-center justify-between gap-2 rounded-xl border bg-[#f3f9fe] px-4 py-2.5 text-left text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 ${
                           getFieldError("designation")
                             ? "border-rose-400 focus:ring-rose-200"
                             : designationOpen
                               ? "border-[#7BBDE8] bg-white ring-2 ring-[#7BBDE8]"
-                              : "border-[#d5dbe1] focus:ring-[#7BBDE8]"
+                              : "border-[#bfe0f5] focus:ring-[#7BBDE8]"
                         } ${formData.designation ? "text-slate-800" : "text-slate-400"}`}
                       >
                         <span className="truncate">
@@ -1545,14 +1574,24 @@ export default function EmployeeDirectoryPage() {
                             }`}
                           >
                             <PencilLine className="h-4 w-4" aria-hidden="true" />
-                            Other (type your own)…
+                            Add new designation…
                           </div>
+                        </div>
+                      )}
+                      {designationsLoading && (
+                        <p role="status" className="mt-1 text-xs text-slate-600">Loading designations...</p>
+                      )}
+                      {designationLoadError && (
+                        <div role="alert" className="mt-1 text-xs text-rose-600">
+                          <p>{designationLoadError}</p>
+                          <button type="button" onClick={() => void dispatch(fetchDesignations())}
+                            disabled={designationsLoading} className="font-bold underline disabled:opacity-50">Retry</button>
                         </div>
                       )}
                     </div>
                   )}
                   {getFieldError("designation") && (
-                    <p className="text-xs text-rose-600 mt-1 font-semibold">
+                    <p role="alert" className="text-xs text-rose-600 mt-1 font-semibold">
                       {getFieldError("designation")}
                     </p>
                   )}
@@ -1603,7 +1642,7 @@ export default function EmployeeDirectoryPage() {
               )}
 
               {!editingEmployee && (
-              <div>
+              <div className="rounded-2xl border border-[#d6e8f7] bg-[#f3f9fe] p-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-[#475569] mb-3">
                   Salary Structure (INR)
                 </h3>

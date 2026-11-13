@@ -79,7 +79,7 @@ export default function CompensatoryDaysPage() {
 
   return (
     <main className="min-h-screen bg-[#f0f6fa] py-8 text-slate-800">
-      <div className="mx-auto w-full max-w-[2400px] space-y-6 px-3 sm:px-5 lg:px-6">
+      <div className="mx-auto w-full max-w-[1700px] space-y-6 px-3 sm:px-5 lg:px-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#1b64da]">

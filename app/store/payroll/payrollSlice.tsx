@@ -49,9 +49,13 @@ export interface PayrollRun {
 
 interface PayrollState {
   runs: PayrollRun[];
+  runsYear: number | null;
+  runsRequestId: number;
+  detailsRequestId: number;
   activeRun: PayrollRun | null;
   items: PayrollItem[];
-  loading: boolean;
+  runsLoading: boolean;
+  detailsLoading: boolean;
   actionLoading: boolean;
   error: string | null;
   message: string | null;
@@ -108,9 +112,13 @@ const API_BASE_URL =
 
 const initialState: PayrollState = {
   runs: [],
+  runsYear: null,
+  runsRequestId: 0,
+  detailsRequestId: 0,
   activeRun: null,
   items: [],
-  loading: false,
+  runsLoading: false,
+  detailsLoading: false,
   actionLoading: false,
   error: null,
   message: null,
@@ -208,14 +216,35 @@ const payrollSlice = createSlice({
   name: "payroll",
   initialState,
   reducers: {
-    fetchStart(state) {
-      state.loading = true;
+    startRunsRequest(state, action: PayloadAction<{ year: number; requestId: number }>) {
+      if (state.runsYear !== action.payload.year) {
+        state.runs = [];
+        state.activeRun = null;
+        state.items = [];
+        state.detailsRequestId = 0;
+        state.detailsLoading = false;
+      }
+      state.runsYear = action.payload.year;
+      state.runsRequestId = action.payload.requestId;
+      state.runsLoading = true;
       state.error = null;
     },
-
-    fetchSuccess(state) {
-      state.loading = false;
+    startDetailsRequest(state, action: PayloadAction<{ runId: number; requestId: number }>) {
+      state.detailsRequestId = action.payload.requestId;
+      if (state.activeRun?.id !== action.payload.runId) {
+        state.activeRun = null;
+        state.items = [];
+      }
+      state.detailsLoading = true;
       state.error = null;
+    },
+    finishFetch(state, action: PayloadAction<{ kind: "runs" | "details"; error?: string }>) {
+      if (action.payload.kind === "runs") {
+        state.runsLoading = false;
+      } else {
+        state.detailsLoading = false;
+      }
+      if (action.payload.error) state.error = action.payload.error;
     },
 
     actionStart(state) {
@@ -231,7 +260,6 @@ const payrollSlice = createSlice({
     },
 
     payrollFailure(state, action: PayloadAction<string>) {
-      state.loading = false;
       state.actionLoading = false;
       state.error = action.payload;
     },
@@ -252,6 +280,12 @@ const payrollSlice = createSlice({
     setCreatedRun(state, action: PayloadAction<CreateRunResponse>) {
       const run = normalizeRun(action.payload.payroll_run);
 
+      if (state.runsYear !== run.year) state.runs = [];
+      state.runsYear = run.year;
+      state.runsRequestId = 0;
+      state.detailsRequestId = 0;
+      state.runsLoading = false;
+      state.detailsLoading = false;
       state.runs = [
         run,
         ...state.runs.filter((existing) => existing.id !== run.id),
@@ -304,9 +338,13 @@ const payrollSlice = createSlice({
 
     clearPayrollData(state) {
       state.runs = [];
+      state.runsYear = null;
+      state.runsRequestId = 0;
+      state.detailsRequestId = 0;
       state.activeRun = null;
       state.items = [];
-      state.loading = false;
+      state.runsLoading = false;
+      state.detailsLoading = false;
       state.actionLoading = false;
       state.error = null;
       state.message = null;
@@ -315,8 +353,7 @@ const payrollSlice = createSlice({
 });
 
 export const {
-  fetchStart,
-  fetchSuccess,
+  finishFetch,
   actionStart,
   actionSuccess,
   payrollFailure,
@@ -329,9 +366,12 @@ export const {
   clearPayrollError,
   clearPayrollMessage,
   clearPayrollData,
+  startRunsRequest,
+  startDetailsRequest,
 } = payrollSlice.actions;
 
 export default payrollSlice.reducer;
+let nextPayrollRequestId = 0;
 
 // --------------------------------------------------
 // 1. GET /payroll/status/runs?year=2026
@@ -340,7 +380,8 @@ export default payrollSlice.reducer;
 export const fetchPayrollRuns =
   (year: number) =>
   async (dispatch: AppDispatch, getState: () => RootState) => {
-    dispatch(fetchStart());
+    const requestId = ++nextPayrollRequestId;
+    dispatch(startRunsRequest({ year, requestId }));
 
     try {
       const token = getToken(getState);
@@ -350,14 +391,24 @@ export const fetchPayrollRuns =
         token
       );
 
-      const runs = (response.data.payroll_runs ?? []).map(normalizeRun);
+      if (!Array.isArray(response.data?.payroll_runs)) {
+        throw new Error("The server returned an invalid payroll run list for the selected year.");
+      }
+      const runs = response.data.payroll_runs.map(normalizeRun);
+      if (runs.some((run) => run.year !== year)) {
+        throw new Error("The server returned payroll runs for a different year.");
+      }
 
-      dispatch(setRuns(runs));
-      dispatch(fetchSuccess());
+      if (getState().payroll.runsRequestId === requestId) {
+        dispatch(setRuns(runs));
+        dispatch(finishFetch({ kind: "runs" }));
+      }
 
       return runs;
     } catch (error) {
-      dispatch(payrollFailure(getErrorMessage(error)));
+      if (getState().payroll.runsRequestId === requestId) {
+        dispatch(finishFetch({ kind: "runs", error: getErrorMessage(error) }));
+      }
       throw error;
     }
   };
@@ -369,7 +420,8 @@ export const fetchPayrollRuns =
 export const fetchPayrollRunDetails =
   (runId: number) =>
   async (dispatch: AppDispatch, getState: () => RootState) => {
-    dispatch(fetchStart());
+    const requestId = ++nextPayrollRequestId;
+    dispatch(startDetailsRequest({ runId, requestId }));
 
     try {
       const token = getToken(getState);
@@ -379,12 +431,19 @@ export const fetchPayrollRunDetails =
         token
       );
 
-      dispatch(setRunDetails(response.data));
-      dispatch(fetchSuccess());
+      if (getState().payroll.detailsRequestId === requestId) {
+        if (Number(response.data.payroll_run.id) !== runId) {
+          throw new Error("The server returned details for a different payroll run.");
+        }
+        dispatch(setRunDetails(response.data));
+        dispatch(finishFetch({ kind: "details" }));
+      }
 
       return response.data;
     } catch (error) {
-      dispatch(payrollFailure(getErrorMessage(error)));
+      if (getState().payroll.detailsRequestId === requestId) {
+        dispatch(finishFetch({ kind: "details", error: getErrorMessage(error) }));
+      }
       throw error;
     }
   };

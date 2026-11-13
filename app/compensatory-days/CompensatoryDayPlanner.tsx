@@ -78,8 +78,10 @@ export default function CompensatoryDayPlanner({
   const [notice, setNotice] = useState("");
   const [deleteError, setDeleteError] = useState("");
   const [selectedSwap, setSelectedSwap] = useState<WorkdaySwap | null>(null);
-  const [formVisible, setFormVisible] = useState(false);
+  const [formClosed, setFormClosed] = useState(false);
+  const formVisible = Boolean(workDate && compOffDate && !formClosed);
   const deleteInFlight = useRef(false);
+  const calendarHeadingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     void dispatch(fetchWorkdaySwaps(year));
@@ -187,7 +189,7 @@ export default function CompensatoryDayPlanner({
       setCompOffDate("");
       setWorkDate("");
       setReason("");
-      setFormVisible(false);
+      setFormClosed(false);
       setNotice("Workday swap created successfully.");
       void dispatch(fetchWorkdaySwaps(year));
     } catch (error) {
@@ -257,7 +259,7 @@ export default function CompensatoryDayPlanner({
         <div className="min-w-0 overflow-hidden rounded-[28px] border border-[#e6edf4] bg-white shadow-sm">
           <div className="flex flex-col justify-between gap-4 border-b border-[#e8eef5] px-5 py-5 md:px-8 lg:flex-row lg:items-center">
             <div>
-              <h3 className="text-xl font-extrabold text-slate-900 md:text-2xl">
+              <h3 ref={calendarHeadingRef} tabIndex={-1} className="text-xl font-extrabold text-slate-900 md:text-2xl">
                 1. Choose the dates
               </h3>
               <p className="mt-1 text-sm text-slate-500">
@@ -303,7 +305,7 @@ export default function CompensatoryDayPlanner({
                   </p>
                 </div>
                 {value && (
-                  <button type="button" onClick={() => { clear(); setFormError(""); }}
+                  <button type="button" onClick={() => { clear(); setFormClosed(false); setFormError(""); }}
                     aria-label={`Remove ${label.toLowerCase()}`}
                     className="shrink-0 rounded-lg px-2 py-1 text-xs font-bold text-blue-700 hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-blue-600">
                     Remove
@@ -319,8 +321,16 @@ export default function CompensatoryDayPlanner({
                 ? "Now select a holiday or weekly off to work."
                 : !compOffDate
                   ? "Now select a working day to take off."
-                  : "Dates selected. Continue with the swap details."}
+                  : formClosed
+                    ? "Dates selected. Open the swap details when you are ready."
+                    : "Dates selected. Continue with the swap details."}
           </p>
+          {workDate && compOffDate && formClosed && (
+            <button type="button" onClick={() => setFormClosed(false)}
+              className="mx-4 mt-3 rounded-xl bg-[#1b64da] px-4 py-2 text-sm font-bold text-white hover:bg-[#1552b5] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 sm:mx-5">
+              Open swap details
+            </button>
+          )}
 
           <div className="overflow-x-auto px-3 pb-5 pt-4 sm:px-5 md:px-6">
           <div className="min-w-[700px]">
@@ -371,11 +381,10 @@ export default function CompensatoryDayPlanner({
                   onClick={() => {
                     if (isOffDay) {
                       setWorkDate(isSelectedWorkDate ? "" : date);
-                      if (!isSelectedWorkDate && compOffDate) setFormVisible(true);
                     } else {
                       setCompOffDate(isSelectedCompOff ? "" : date);
-                      if (!isSelectedCompOff && workDate) setFormVisible(true);
                     }
+                    setFormClosed(false);
                     setFormError("");
                   }}
                   title={`${dayType}: ${isSelectedWorkDate || isSelectedCompOff ? "remove selection" : `select as ${isOffDay ? "date worked" : "compensatory day off"}`}`}
@@ -458,9 +467,19 @@ export default function CompensatoryDayPlanner({
 
         {formVisible && (
         <div className="grid min-w-0 content-start gap-5 rounded-2xl border border-blue-200 bg-[#f1f8fe] p-5 sm:p-6">
-          <div>
-            <h3 className="text-xl font-black text-blue-900">2. Add swap details</h3>
-            <p className="mt-1 text-sm text-slate-600">Choose employees and add a reason. You can still change either date.</p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h3 className="text-xl font-black text-blue-900">2. Add swap details</h3>
+              <p className="mt-1 text-sm text-slate-600">Choose employees and add a reason. You can still change either date.</p>
+            </div>
+            <button type="button" disabled={creating} aria-label="Close swap details"
+              onClick={() => {
+                calendarHeadingRef.current?.focus({ preventScroll: true });
+                setFormClosed(true);
+              }}
+              className="shrink-0 rounded-xl p-2 text-slate-600 hover:bg-white focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-50">
+              <X className="h-5 w-5" aria-hidden="true" />
+            </button>
           </div>
           <div className="grid items-start gap-5 md:grid-cols-2 xl:grid-cols-1">
           <div>

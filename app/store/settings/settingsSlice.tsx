@@ -78,6 +78,21 @@ export interface HolidayResponse {
   };
 }
 
+export interface Designation {
+  id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+const isDesignation = (value: unknown): value is Designation => {
+  if (typeof value !== "object" || value === null) return false;
+  const item = value as Record<string, unknown>;
+  return typeof item.id === "string" && item.id.length > 0 &&
+    typeof item.name === "string" && item.name.trim().length > 0 &&
+    typeof item.created_at === "string" && typeof item.updated_at === "string";
+};
+
 // ============================================================
 // API CONFIGURATION
 // ============================================================
@@ -126,6 +141,11 @@ async function apiRequest<T>(
 interface SettingsState {
   settings: Settings;
   holidays: Holiday[];
+  designations: Designation[];
+  designationsLoading: boolean;
+  designationCreating: boolean;
+  designationLoadError: string | null;
+  designationCreateError: string | null;
   selectedYear: number;
   settingsLoading: boolean;
   settingsUpdating: boolean;
@@ -143,6 +163,11 @@ interface SettingsState {
 const initialState: SettingsState = {
   settings: {},
   holidays: [],
+  designations: [],
+  designationsLoading: false,
+  designationCreating: false,
+  designationLoadError: null,
+  designationCreateError: null,
   selectedYear: new Date().getFullYear(),
   settingsLoading: false,
   settingsUpdating: false,
@@ -161,6 +186,34 @@ const settingsSlice = createSlice({
   name: "settings",
   initialState,
   reducers: {
+    fetchDesignationsStart: (state) => {
+      state.designationsLoading = true;
+      state.designationLoadError = null;
+    },
+    fetchDesignationsSuccess: (state, action: PayloadAction<Designation[]>) => {
+      state.designationsLoading = false;
+      state.designations = action.payload;
+    },
+    fetchDesignationsFailure: (state, action: PayloadAction<string>) => {
+      state.designationsLoading = false;
+      state.designationLoadError = action.payload;
+    },
+    createDesignationStart: (state) => {
+      state.designationCreating = true;
+      state.designationCreateError = null;
+    },
+    createDesignationSuccess: (state, action: PayloadAction<Designation>) => {
+      state.designationCreating = false;
+      state.designations = [...state.designations.filter((item) => item.id !== action.payload.id), action.payload]
+        .sort((a, b) => a.name.localeCompare(b.name));
+    },
+    createDesignationFailure: (state, action: PayloadAction<string>) => {
+      state.designationCreating = false;
+      state.designationCreateError = action.payload;
+    },
+    clearDesignationCreateError: (state) => {
+      state.designationCreateError = null;
+    },
     fetchSettingsStart: (state) => {
       state.settingsLoading = true;
       state.error = null;
@@ -254,6 +307,9 @@ const settingsSlice = createSlice({
     clearSettings: (state) => {
       state.settings = {};
       state.holidays = [];
+      state.designations = [];
+      state.designationLoadError = null;
+      state.designationCreateError = null;
       state.error = null;
       state.updateError = null;
       state.holidayError = null;
@@ -282,9 +338,98 @@ export const {
   deleteHolidayStart,
   deleteHolidaySuccess,
   deleteHolidayFailure,
+  fetchDesignationsStart,
+  fetchDesignationsSuccess,
+  fetchDesignationsFailure,
+  createDesignationStart,
+  createDesignationSuccess,
+  createDesignationFailure,
+  clearDesignationCreateError,
 } = settingsSlice.actions;
 
 export default settingsSlice.reducer;
+
+let latestDesignationRequest = 0;
+
+async function designationRequest(endpoint: string, token: string | null, options: RequestInit): Promise<unknown> {
+  if (!token) throw new Error("Authentication token not found. Please log in again.");
+  if (!API_URL) throw new Error("API URL is not configured.");
+  const creating = options.method === "POST";
+  let response: Response;
+  try {
+    response = await fetch(`${SETTINGS_URL}${endpoint}`, {
+      ...options,
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    throw new Error(creating
+      ? "The request could not be confirmed. Refresh the list before trying again."
+      : "Could not connect to the designation server.");
+  }
+  let result: unknown;
+  try {
+    result = await response.json();
+  } catch {
+    throw new Error(creating
+      ? "The designation may have been created. Refresh the list before trying again."
+      : "The server returned an invalid designation response.");
+  }
+  if (response.ok && (typeof result !== "object" || result === null || !("success" in result))) {
+    throw new Error(creating
+      ? "The designation may have been created. Refresh the list before trying again."
+      : "The server returned an invalid designation response.");
+  }
+  if (!response.ok || typeof result !== "object" || result === null ||
+      !("success" in result) || result.success !== true) {
+    const message = typeof result === "object" && result !== null && "message" in result && typeof result.message === "string"
+      ? result.message : `Designation request failed (${response.status}).`;
+    throw new Error(message);
+  }
+  return result;
+}
+
+export const fetchDesignations = () => async (dispatch: AppDispatch, getState: () => RootState): Promise<void> => {
+  const requestId = ++latestDesignationRequest;
+  dispatch(fetchDesignationsStart());
+  try {
+    const result = await designationRequest("/getDesignations", getState().auth.token, { method: "GET" });
+    if (typeof result !== "object" || result === null || !("data" in result) ||
+        typeof result.data !== "object" || result.data === null || !("designations" in result.data) ||
+        !Array.isArray(result.data.designations) || !result.data.designations.every(isDesignation)) {
+      throw new Error("The server returned an invalid designation list.");
+    }
+    if (requestId === latestDesignationRequest) dispatch(fetchDesignationsSuccess(result.data.designations));
+  } catch (error) {
+    if (requestId === latestDesignationRequest) {
+      dispatch(fetchDesignationsFailure(error instanceof Error ? error.message : "Failed to fetch designations."));
+    }
+  }
+};
+
+export const createDesignation = (name: string) => async (dispatch: AppDispatch, getState: () => RootState): Promise<Designation> => {
+  if (getState().settings.designationCreating) throw new Error("A designation is already being created.");
+  dispatch(createDesignationStart());
+  try {
+    const trimmed = name.trim();
+    if (!trimmed) throw new Error("Enter a designation name.");
+    const result = await designationRequest("/createDesignation", getState().auth.token, {
+      method: "POST",
+      body: JSON.stringify({ name: trimmed }),
+    });
+    if (typeof result !== "object" || result === null || !("data" in result) ||
+        typeof result.data !== "object" || result.data === null || !("designation" in result.data) ||
+        !isDesignation(result.data.designation)) {
+      throw new Error("The designation may have been created. Refresh the list before trying again.");
+    }
+    dispatch(createDesignationSuccess(result.data.designation));
+    void dispatch(fetchDesignations());
+    return result.data.designation;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to create designation.";
+    dispatch(createDesignationFailure(message));
+    throw new Error(message);
+  }
+};
 
 // ============================================================
 // FETCH SETTINGS
