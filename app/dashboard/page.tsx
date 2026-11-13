@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -422,7 +423,7 @@ export default function NandgateDashboard() {
       `}</style>
 
       <main className="flex-1 rounded-t-[40px] bg-[#f0f6fa]">
-        <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
+        <div className="mx-auto flex w-full max-w-[2400px] flex-col gap-8 px-3 py-8 sm:px-5 lg:px-6 lg:py-10">
                 
           {/* ================= GREETING + FILTERS ================= */}
           <div
@@ -466,6 +467,13 @@ export default function NandgateDashboard() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
+              <Link
+                href="/compensatory-days"
+                className="inline-flex items-center gap-2 rounded-full border border-[#bfe0f5] bg-white px-5 py-3.5 text-sm font-bold text-[#1b64da] shadow-sm transition-colors hover:bg-blue-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+              >
+                <Calendar className="h-5 w-5" aria-hidden="true" />
+                Plan compensatory days
+              </Link>
               <button
                 type="button"
                 onClick={() => setAnnouncementOpen(true)}

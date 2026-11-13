@@ -214,7 +214,7 @@ function ActiveShiftCard() {
         <div className="flex items-end justify-between">
           <p className="text-[31px] font-extrabold leading-none tracking-tight text-[#0d3d66]">
             {time}
-            <span className="ml-1 text-[14px] font-bold text-[#1a74b8]">
+            <span className="ml-1 text-xs font-bold text-[#1a74b8]">
               {meridiem}
             </span>
           </p>
@@ -932,7 +932,7 @@ export default function LoginPage() {
                     setShowForgotPassword(true);
                     setLoginError("");
                   }}
-                  className="text-[14px] font-bold text-[#1a6ea8] hover:underline"
+                  className="text-xs font-bold text-[#1a6ea8] hover:underline"
                 >
                   Forgot password?
                 </button>

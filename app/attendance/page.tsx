@@ -117,7 +117,7 @@ function LopDetails({
   const { lop_value, calculated_lop_value, adjusted_lop_value } = values;
   const numericLop = positiveLop(lop_value);
   return (
-    <div className="min-w-[6rem] text-xs">
+    <div className="min-w-[6rem] text-base">
       <div className="flex items-center gap-1.5">
         <span className="font-bold tabular-nums text-slate-800">{formatLop(lop_value)}</span>
         {numericLop !== null && (
@@ -132,16 +132,16 @@ function LopDetails({
           </button>
         )}
       </div>
-      {calculated_lop_value != null && (
-        <span className="mt-0.5 block text-[10px] text-slate-500">
+      {/* {calculated_lop_value != null && (
+        <span className="mt-0.5 block text-sm text-slate-600">
           Calc: {formatLop(calculated_lop_value)}
         </span>
       )}
       {adjusted_lop_value != null && (
-        <span className="mt-0.5 block text-[10px] font-semibold text-blue-700">
+        <span className="mt-0.5 block text-sm font-semibold text-blue-700">
           Adj: {formatLop(adjusted_lop_value)}
         </span>
-      )}
+      )} */}
     </div>
   );
 }
@@ -266,7 +266,7 @@ const getAvatarGradient = (userId: number | string) => {
 function TimePill({ value, tone }: { value: string | null; tone: "late" | "live" | "plain" }) {
   if (!value) {
     return (
-      <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-1 font-mono text-[10px] font-bold text-slate-400 whitespace-nowrap">
+      <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-1 font-mono text-sm font-bold text-slate-600 whitespace-nowrap">
         --:--:--
       </span>
     );
@@ -281,7 +281,7 @@ function TimePill({ value, tone }: { value: string | null; tone: "late" | "live"
 
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 font-mono text-[10px] font-bold whitespace-nowrap ${wrapper}`}
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 font-mono text-sm font-bold whitespace-nowrap ${wrapper}`}
     >
       <Clock className={`w-3 h-3 shrink-0 ${icon}`} />
       {formatClock12(value) ?? formatPunchTime(value)}
@@ -328,7 +328,7 @@ function CorrectionButton({
       type="button"
       onClick={onClick}
       aria-label={date ? `${config.label} for ${formatDate(date)}` : undefined}
-      className={`inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${config.color}`}
+      className={`inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-full px-3 py-1.5 text-sm font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 ${config.color}`}
     >
       <Icon className="h-3 w-3" />
       {config.label}
@@ -745,12 +745,12 @@ export default function AdminAttendanceOperationsPage() {
 
   return (
     <div className="min-h-screen bg-[#f0f6fa] text-[#1e293b] font-sans antialiased">
-      <main className="flex-1 min-w-0 p-4 md:p-6 lg:p-8">
-        <div className="max-w-[1440px] mx-auto space-y-6">
+      <main className="flex-1 min-w-0 py-4 md:py-6 lg:py-8">
+        <div className="mx-auto w-full max-w-[1700px] space-y-6 px-3 sm:px-5 lg:px-6">
           {/* HEADER */}
           <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#eef4fa] border border-[#d5dbe1] text-[10px] font-bold tracking-wide text-[#64748b] uppercase mb-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#eef4fa] border border-[#d5dbe1] text-xs font-bold tracking-wide text-[#64748b] uppercase mb-2">
                 <Lock className="w-3.5 h-3.5 text-[#1b64da]" />
                 Attendance Operations
               </div>
@@ -894,7 +894,7 @@ export default function AdminAttendanceOperationsPage() {
                     style={{ backgroundColor: item.bg, color: item.text }}
                   >
                     <div className="flex items-center justify-between gap-1 mb-1">
-                      <span className="text-[10px] md:text-xs font-bold uppercase tracking-wide opacity-70 leading-tight">
+                      <span className="text-xs font-bold uppercase tracking-wide opacity-70 leading-tight">
                         {item.title}
                       </span>
                       <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/70 text-slate-600">
@@ -991,7 +991,7 @@ export default function AdminAttendanceOperationsPage() {
 
                 {!dailyLoading && !dailyError && (
                   <div className="w-full overflow-x-auto">
-                    <table className="w-full min-w-[1100px] border-collapse text-left">
+                    <table className="w-full min-w-[1400px] border-collapse text-left">
                       <caption className="sr-only">Daily attendance roster for {formattedSelectedDate}</caption>
                       <colgroup>
                         <col className="w-[22%]" />
@@ -1003,7 +1003,7 @@ export default function AdminAttendanceOperationsPage() {
                         <col className="w-[13%]" />
                       </colgroup>
                       <thead>
-                        <tr className="border-b border-[#d6e8f7] bg-[#eaf4fc] text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                        <tr className="border-b border-[#d6e8f7] bg-[#eaf4fc] text-sm font-bold uppercase tracking-wide text-slate-700">
                           <th scope="col" className="px-3 py-2.5">Employee</th>
                           <th scope="col" className="px-3 py-2.5">Status &amp; Live Feed</th>
                           <th scope="col" className="px-3 py-2.5">First In</th>
@@ -1014,7 +1014,7 @@ export default function AdminAttendanceOperationsPage() {
                         </tr>
                       </thead>
 
-                      <tbody className="divide-y divide-[#eef1f6] text-xs">
+                      <tbody className="divide-y divide-[#eef1f6] text-base">
                         {filteredEmployees.length > 0 ? (
                           filteredEmployees.map((employee) => {
                             const isLive = employee.live_status === "IN";
@@ -1027,7 +1027,7 @@ export default function AdminAttendanceOperationsPage() {
                             const percent = Math.min(100, Math.round((employee.work_min / 480) * 100));
 
                             const durationText = !hasWork
-                              ? "text-slate-400"
+                              ? "text-slate-600"
                               : isHalfDay
                                 ? "text-[#0a47b3]"
                                 : isLate
@@ -1048,21 +1048,21 @@ export default function AdminAttendanceOperationsPage() {
                                 className="group bg-white transition-colors hover:bg-[#f5faff]"
                               >
                                 {/* EMPLOYEE */}
-                                <td className="px-3 py-2">
+                                <td className="px-3 py-3">
                                   <div className="flex min-w-0 items-center gap-2">
                                     <div
                                       className={`w-8 h-8 shrink-0 rounded-lg bg-gradient-to-br ${getAvatarGradient(
                                         employee.user_id
-                                      )} text-white font-black flex items-center justify-center text-[10px] shadow-sm`}
+                                      )} text-white font-black flex items-center justify-center text-xs shadow-sm`}
                                     >
                                       {employee.name.slice(0, 2).toUpperCase()}
                                     </div>
 
                                     <div className="min-w-0">
-                                      <div className="truncate text-xs font-bold text-slate-900" title={employee.name}>
+                                      <div className="truncate text-base font-bold text-slate-900" title={employee.name}>
                                         {employee.name}
                                       </div>
-                                      <div className="mt-0.5 flex min-w-0 items-center gap-1 text-[10px] font-medium text-slate-500">
+                                      <div className="mt-0.5 flex min-w-0 items-center gap-1 text-sm font-medium text-slate-600">
                                         <span className="shrink-0 rounded bg-[#eaf4fc] px-1 py-0.5 font-bold text-blue-700">
                                           {employee.emp_code}
                                         </span>
@@ -1077,7 +1077,7 @@ export default function AdminAttendanceOperationsPage() {
                                   {isLive ? (
                                     <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[#e1f1fb] text-[#0a47b3] border border-[#7BBDE8]">
                                       <span className="w-1.5 h-1.5 rounded-full bg-[#1b64da] animate-pulse" />
-                                      <span className="text-[10px] leading-tight">
+                                      <span className="text-sm leading-tight">
                                         <span className="block font-bold">IN OFFICE</span>
                                         {formatShort12(employee.first_in) && (
                                           <span className="block font-semibold">({formatShort12(employee.first_in)})</span>
@@ -1087,12 +1087,12 @@ export default function AdminAttendanceOperationsPage() {
                                   ) : noPunch ? (
                                     <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[#1b64da] text-white border border-[#1b64da]">
                                       <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                                      <span className="text-[10px] leading-tight font-bold">NO PUNCH</span>
+                                      <span className="text-sm leading-tight font-bold">NO PUNCH</span>
                                     </span>
                                   ) : (
                                     <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[#eaf4fc] text-slate-600 border border-[#d6e8f7]">
                                       <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
-                                      <span className="text-[10px] leading-tight">
+                                      <span className="text-sm leading-tight">
                                         {employee.last_out ? (
                                           <>
                                             <span className="block font-semibold">LOGGED OUT</span>
@@ -1114,7 +1114,7 @@ export default function AdminAttendanceOperationsPage() {
                                 {/* LAST OUT */}
                                 <td className="px-3 py-2">
                                   {isLive ? (
-                                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-[#bfe0f5] text-[#0a47b3] text-[10px] font-semibold">
+                                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-[#bfe0f5] text-[#0a47b3] text-sm font-semibold">
                                       <span className="w-1.5 h-1.5 rounded-full bg-[#1b64da]" />
                                       Active
                                     </span>
@@ -1127,17 +1127,17 @@ export default function AdminAttendanceOperationsPage() {
                                 <td className="px-3 py-2">
                                   <div className="min-w-0">
                                     <div className="flex items-center justify-between gap-1 flex-wrap">
-                                      <span className={`font-bold text-xs whitespace-nowrap ${durationText}`}>
+                                      <span className={`font-bold text-base whitespace-nowrap ${durationText}`}>
                                         {formatDuration(employee.work_min)}
                                       </span>
 
                                       {isHalfDay ? (
-                                        <span className="px-1.5 py-0.5 rounded-full bg-[#bfe0f5] text-[#0a47b3] text-[9px] font-bold whitespace-nowrap">
+                                        <span className="px-1.5 py-0.5 rounded-full bg-[#bfe0f5] text-[#0a47b3] text-sm font-bold whitespace-nowrap">
                                           Half
                                         </span>
                                       ) : (
                                         hasWork && (
-                                          <span className={`text-[10px] font-bold ${percentText}`}>
+                                          <span className={`text-sm font-bold ${percentText}`}>
                                             {percent}%
                                           </span>
                                         )
@@ -1192,7 +1192,7 @@ export default function AdminAttendanceOperationsPage() {
                 )}
 
                 {!dailyLoading && !dailyError && (
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#e8eef5] bg-[#f7f9fd] px-4 py-2.5 text-[11px] font-medium text-slate-600">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#e8eef5] bg-[#f7f9fd] px-4 py-2.5 text-sm font-medium text-slate-600">
                     <span>Showing {filteredEmployees.length} of {totalEmployees} employee records</span>
                     <span className="font-bold text-slate-800">{formattedSelectedDate}</span>
                   </div>
@@ -1229,7 +1229,7 @@ export default function AdminAttendanceOperationsPage() {
                     <p className="text-xs text-slate-500 mt-0.5">Review an employee&apos;s attendance summary and daily records.</p>
                   </div>
                   <div className="w-full md:w-72">
-                    <label className="block text-[11px] font-bold text-slate-600 mb-1.5">Select Employee</label>
+                    <label className="block text-xs font-bold text-slate-600 mb-1.5">Select Employee</label>
                     <select
                       value={monthlyEmployeeId}
                       onChange={(event) => {
@@ -1271,7 +1271,7 @@ export default function AdminAttendanceOperationsPage() {
                         { label: "Total Hours", value: `${monthlyTotals?.work_hours ?? 0} hrs`, color: "border-[#0a47b3] bg-[#0a47b3] text-white" },
                       ].map((item) => (
                         <div key={item.label} className={`rounded-lg border px-2.5 py-1.5 ${item.color}`}>
-                          <dt className="text-[10px] font-semibold">{item.label}</dt>
+                          <dt className="text-xs font-semibold">{item.label}</dt>
                           <dd className="mt-0.5 text-base font-bold tabular-nums">{item.value}</dd>
                         </div>
                       ))}
@@ -1326,11 +1326,11 @@ export default function AdminAttendanceOperationsPage() {
                         <div>
                           <h3 className="text-base font-bold text-slate-900">Attendance Calendar</h3>
                           <p className="text-xs text-slate-500 mt-0.5">{formatMonth(selectedMonth, selectedYear)}</p>
-                          <p className="mt-1 text-[10px] text-slate-500 sm:hidden">Swipe to see the full week</p>
+                          <p className="mt-1 text-xs text-slate-500 sm:hidden">Swipe to see the full week</p>
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap gap-x-3 gap-y-1.5 text-[10px] font-medium text-slate-600">
+                      <div className="flex flex-wrap gap-x-3 gap-y-1.5 text-xs font-medium text-slate-600">
                         {[
                           ["PRESENT", "Present"],
                           ["HALF_DAY", "Half Day"],
@@ -1350,10 +1350,10 @@ export default function AdminAttendanceOperationsPage() {
                     </div>
 
                     <div className="overflow-x-auto px-4 pb-3 lg:px-5">
-                      <div className="min-w-[700px]">
+                      <div className="min-w-[840px]">
                         <div className="grid grid-cols-7 gap-1.5 pb-1.5 pt-3">
                           {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
-                            <div key={day} className="rounded-full bg-[#eef4fa] py-1.5 text-center text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                            <div key={day} className="rounded-full bg-[#eef4fa] py-1.5 text-center text-xs font-bold uppercase tracking-wider text-slate-500">
                               {day}
                             </div>
                           ))}
@@ -1380,13 +1380,13 @@ export default function AdminAttendanceOperationsPage() {
                                   <span className={`flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-xs font-black ${isToday ? "bg-[#1b64da] text-white" : "text-slate-800"}`}>
                                     {String(dayNumber).padStart(2, "0")}
                                   </span>
-                                  {isToday && <span className="text-[10px] font-bold uppercase text-blue-700">Today</span>}
+                                  {isToday && <span className="text-xs font-bold uppercase text-blue-700">Today</span>}
                                 </div>
-                                <p className={`mt-1.5 rounded border px-1.5 py-0.5 text-[10px] font-semibold leading-tight ${statusStyles[status]}`}>
+                                <p className={`mt-1.5 rounded border px-1.5 py-0.5 text-xs font-semibold leading-tight ${statusStyles[status]}`}>
                                   {status.replace("_", " ")}
                                 </p>
                                 {dayData?.summary && (
-                                  <p className="mt-1 px-1.5 text-[10px] font-medium text-slate-500">
+                                  <p className="mt-1 px-1.5 text-xs font-medium text-slate-500">
                                     {Number(dayData.summary.work_min ?? dayData.summary.work_minutes ?? 0) > 0
                                       ? formatDuration(Number(dayData.summary.work_min ?? dayData.summary.work_minutes ?? 0))
                                       : ""}
@@ -1409,10 +1409,10 @@ export default function AdminAttendanceOperationsPage() {
                         </div>
                         <div>
                           <h3 className="text-sm font-bold text-slate-900">Daily Attendance Details</h3>
-                          <p className="text-[11px] text-slate-500">Daily records for {formatMonth(selectedMonth, selectedYear)}</p>
+                          <p className="text-xs text-slate-500">Daily records for {formatMonth(selectedMonth, selectedYear)}</p>
                         </div>
                       </div>
-                      <span className="rounded-full bg-[#eef4fa] px-2.5 py-1 text-[10px] font-bold text-slate-600">
+                      <span className="rounded-full bg-[#eef4fa] px-2.5 py-1 text-xs font-bold text-slate-600">
                         {monthlyTableDays.length} {monthlyTableDays.length === 1 ? "day" : "days"}
                       </span>
                     </div>
@@ -1428,7 +1428,7 @@ export default function AdminAttendanceOperationsPage() {
                       <table className="w-full min-w-[1000px] text-left text-xs">
                         <caption className="sr-only">Daily attendance records for {formatMonth(selectedMonth, selectedYear)}</caption>
                         <thead>
-                          <tr className="border-b border-[#d6e8f7] bg-[#eaf4fc] text-[10px] uppercase tracking-wider text-slate-600">
+                          <tr className="border-b border-[#d6e8f7] bg-[#eaf4fc] text-xs uppercase tracking-wider text-slate-600">
                             <th scope="col" className="px-4 py-2 font-bold">Date</th>
                             <th scope="col" className="px-4 py-2 font-bold">Status</th>
                             <th scope="col" className="px-4 py-2 font-bold">First In</th>
@@ -1477,14 +1477,14 @@ export default function AdminAttendanceOperationsPage() {
 
                                 <td className="px-4 py-2">
                                   <div className="flex flex-wrap items-center gap-1.5">
-                                    <span className={`inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-bold ${statusStyles[status]}`}>
+                                    <span className={`inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-bold ${statusStyles[status]}`}>
                                       {status.replace("_", " ")}
                                     </span>
                                     {pendingCount > 0 && (
                                       <button
                                         type="button"
                                         onClick={() => { setRequestNotice(null); setRequestDate(date); }}
-                                        className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800 hover:bg-amber-100"
+                                        className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-800 hover:bg-amber-100"
                                       >
                                         Pending ({pendingCount})
                                       </button>
@@ -1494,7 +1494,7 @@ export default function AdminAttendanceOperationsPage() {
                                         key={`${item.type}-${item.request.id}`}
                                         type="button"
                                         onClick={() => { setRequestNotice(null); setRequestDate(date); }}
-                                        className={`inline-flex items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-bold ${
+                                        className={`inline-flex items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-bold ${
                                           item.request.status === "APPROVED"
                                             ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
                                             : "border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100"

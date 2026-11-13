@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   CalendarCheck,
+  CalendarDays,
   Clock,
   Users,
   Wallet,
@@ -19,6 +20,7 @@ const NAV_ITEMS = [
   { name: 'Overview', href: '/dashboard', icon: LayoutDashboard, badge: null },
   { name: 'Requests', href: '/requests', icon: CalendarCheck, badge: null },
   { name: 'Attendance', href: '/attendance', icon: Clock, badge: null },
+  { name: 'Compensatory Days', href: '/compensatory-days', icon: CalendarDays, badge: null },
   { name: 'Employees', href: '/employees', icon: Users, badge: null },
   { name: 'Payroll', href: '/payroll', icon: Wallet, badge: null },
   { name: 'Audit Log', href: '/audit', icon: FileText, badge: null },

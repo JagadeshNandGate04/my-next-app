@@ -7,6 +7,7 @@ import employeeReducer from "../store/employee/employeeSlice";
 import payrollReducer from "../store/payroll/payrollSlice";
 import auditReducer from "../store/audit/auditSlice";
 import settingsReducer from "../store/settings/settingsSlice";
+import workdaySwapReducer from "./settings/workdaySwapSlice";
 import dashboardReducer from "../store/dashboard/dashboardSlice";
 import notificationReducer from "./notifications/notification";
 
@@ -19,6 +20,7 @@ const rootReducer = combineReducers({
   payroll: payrollReducer,
   audit: auditReducer,
   settings: settingsReducer,
+  workdaySwaps: workdaySwapReducer,
   dashboard: dashboardReducer,
   notifications: notificationReducer,
 });

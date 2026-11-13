@@ -20,7 +20,11 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 ## Admin announcements
 
-Admins can send an announcement to active employees using the dashboard button, the Settings page icon, or the floating announcement button on other admin pages. The form sends the title and message with the signed-in admin's token to `POST /api/v1/notifications/admin/announcements`. It uses the same `NEXT_PUBLIC_API_URL` API origin as admin notifications, defaulting to `http://192.168.1.88:5001`; the API must be reachable from the browser and allow the app's origin.
+Admins can send an announcement to active employees using the dashboard button or the Settings page icon. The form sends the title and message with the signed-in admin's token to `POST /api/v1/notifications/admin/announcements`. It uses the same `NEXT_PUBLIC_API_URL` API origin as admin notifications, defaulting to `http://192.168.1.88:5001`; the API must be reachable from the browser and allow the app's origin.
+
+## Compensatory days
+
+The Compensatory Days page is available from the navigation, dashboard and Settings. It uses the configured weekly offs, holidays and employee list to create, list and delete workday swaps through the settings API using the admin token. The working day taken off is sent as `holiday_date`; the replacement day worked is sent as `replacement_date`. Saved swaps are listed by year. The backend determines their effect on attendance and payroll.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 

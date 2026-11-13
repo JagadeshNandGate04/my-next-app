@@ -13,7 +13,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   if (isLoginPage) return <div className="flex-1 min-w-0">{children}</div>;
 
   return (
-    <AnnouncementProvider showFloating={pathname !== "/" && pathname !== "/dashboard"}>
+    <AnnouncementProvider>
       <TopNavBar />
       <div className="flex-1 min-w-0">{children}</div>
       <Footer />

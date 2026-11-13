@@ -38,6 +38,7 @@ const NAV_ITEMS = [
   { name: 'Overview', href: '/dashboard', icon: 'home' },
   { name: 'Requests', href: '/requests', icon: 'message' },
   { name: 'Attendance', href: '/attendance', icon: 'attendance' },
+  { name: 'Compensatory Days', href: '/compensatory-days', icon: 'calendar' },
   { name: 'Employees', href: '/employees', icon: 'profile' },
   { name: 'Payroll', href: '/payroll', icon: 'payroll' },
   { name: 'Audit Log', href: '/audit', icon: 'audit' },
@@ -78,6 +79,13 @@ function NavIcon({ type, className = 'h-5 w-5' }: { type: string; className?: st
           <circle cx="10.5" cy="10.5" r="7.5" />
           <path d="m16 16 5 5" />
           <path d="M10.5 7v4l2.5 1.5" />
+        </svg>
+      );
+    case 'calendar':
+      return (
+        <svg viewBox="0 0 24 24" className={className} {...common}>
+          <rect x="3" y="5" width="18" height="16" rx="2" />
+          <path d="M7 3v4m10-4v4M3 10h18m-13 4h3m-3 3h7" />
         </svg>
       );
     case 'profile':
@@ -389,7 +397,7 @@ export default function TopNavBar({
       </div>
 
       {/* Navbar content */}
-      <div className="relative z-10 mx-auto flex min-h-[76px] w-full max-w-[1440px] items-center justify-between gap-2 px-3 py-3 sm:min-h-[104px] sm:gap-5 sm:px-5 sm:py-5 lg:px-10">
+      <div className="relative z-10 mx-auto flex min-h-[76px] w-full max-w-[2400px] items-center justify-between gap-2 px-3 py-3 sm:min-h-[104px] sm:gap-5 sm:px-5 sm:py-5 lg:gap-3 lg:px-6">
         {/* Logo */}
         <Link
           href="/dashboard"
@@ -406,10 +414,9 @@ export default function TopNavBar({
           />
         </Link>
 
-        {/* Desktop navigation — FIXED: items never shrink out of the pill.
-            Inactive items show icon only until 2xl; active item always shows its label. */}
+        {/* Desktop navigation */}
         <nav
-          className="hidden min-w-0 flex-1 items-center justify-between gap-1 rounded-full border border-[#dcebf7] bg-white/95 px-2 py-2 shadow-sm xl:mx-4 xl:flex"
+          className="hidden min-w-0 flex-1 items-center justify-between gap-0.5 overflow-x-auto rounded-full border border-[#dcebf7] bg-white/95 px-2 py-2 shadow-sm lg:flex"
           aria-label="Main navigation"
         >
           {NAV_ITEMS.map((item) => {
@@ -422,7 +429,7 @@ export default function TopNavBar({
                 title={item.name}
                 aria-label={item.name}
                 aria-current={active ? 'page' : undefined}
-                className={`group flex shrink-0 items-center gap-2 rounded-full py-2 text-xs font-semibold transition-all duration-300 2xl:px-2 ${
+                className={`group flex shrink-0 items-center gap-1.5 rounded-full py-2 text-[1rem] font-semibold transition-colors duration-300 ${
                   active
                     ? 'pl-2 pr-4 text-white shadow-md'
                     : 'px-2 text-slate-500 hover:bg-[#f0f6fa] hover:text-slate-900'
@@ -439,7 +446,7 @@ export default function TopNavBar({
                   <NavIcon type={item.icon} />
                 </span>
 
-                <span className={`whitespace-nowrap ${active ? '' : 'hidden 2xl:inline'}`}>
+                <span className={`whitespace-nowrap ${active ? '' : 'hidden xl:inline'}`}>
                   {item.name}
                 </span>
               </Link>
@@ -574,7 +581,7 @@ export default function TopNavBar({
                               <span className="mt-1 block text-xs leading-5 text-slate-600">
                                 {notification.message}
                               </span>
-                              <span className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-400">
+                              <span className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-500">
                                 <span className="font-semibold uppercase tracking-wide text-[#3974a8]">
                                   {notification.type.replace(/_/g, ' ')}
                                 </span>
@@ -658,7 +665,7 @@ export default function TopNavBar({
             aria-label="Toggle menu"
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((open) => !open)}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-[#dcebf7] bg-white text-[#1b64da] shadow-sm transition-colors hover:bg-[#bfe0f5] sm:h-11 sm:w-11 xl:hidden"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-[#dcebf7] bg-white text-[#1b64da] shadow-sm transition-colors hover:bg-[#bfe0f5] sm:h-11 sm:w-11 lg:hidden"
           >
             <MenuIcon open={menuOpen} />
           </button>
@@ -668,7 +675,7 @@ export default function TopNavBar({
       {/* Mobile navigation */}
       {menuOpen && (
         <nav
-          className="relative z-20 mx-3 mb-3 grid grid-cols-2 gap-2 rounded-3xl border border-[#dcebf7] bg-white p-3 shadow-lg sm:mx-5 sm:mb-5 xl:hidden"
+          className="relative z-20 mx-3 mb-3 grid grid-cols-2 gap-2 rounded-3xl border border-[#dcebf7] bg-white p-3 shadow-lg sm:mx-5 sm:mb-5 lg:hidden"
           aria-label="Mobile navigation"
         >
           {NAV_ITEMS.map((item) => {

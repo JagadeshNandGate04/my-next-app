@@ -720,8 +720,8 @@ export default function AuditLogsPage() {
   return (
     <div className="min-h-screen bg-[#f0f6fa] text-[#0f172a] font-sans antialiased selection:bg-[#7BBDE8]/30">
       {/* MAIN CONTENT */}
-      <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">
-        <div className="max-w-[1600px] mx-auto space-y-6">
+      <main className="flex-1 min-w-0 py-4 sm:py-6 lg:py-8">
+        <div className="mx-auto w-full max-w-[2400px] space-y-6 px-3 sm:px-5 lg:px-6">
 
           {/* PAGE HEADER */}
           <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">

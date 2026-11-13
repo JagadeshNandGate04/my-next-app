@@ -691,7 +691,7 @@ function AdminRequestsApprovals() {
 
       <main className="flex-1 rounded-t-[40px] bg-[#f0f6fa]">
 
-        <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-5 py-8 lg:px-10 lg:py-10">
+        <div className="mx-auto flex w-full max-w-[2400px] flex-col gap-6 px-3 py-8 sm:px-5 lg:px-6 lg:py-10">
 
           {/* =========================================
               PAGE TITLE

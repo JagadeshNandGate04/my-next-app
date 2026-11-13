@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import { AnnouncementIcon } from "../components/FloatingAnnouncement";
 import {
   Clock,
@@ -516,8 +517,8 @@ export default function SystemSettingsHub() {
 
   return (
     <div className="min-h-screen bg-[#f0f6fa] text-[#0f172a] font-sans antialiased selection:bg-[#7BBDE8]/30">
-      <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">
-        <div className="max-w-[1440px] mx-auto space-y-6">
+      <main className="flex-1 min-w-0 py-4 sm:py-6 lg:py-8">
+        <div className="mx-auto w-full max-w-[2400px] space-y-6 px-3 sm:px-5 lg:px-6">
           {/* ==================================================
               TOP BAR
           ================================================== */}
@@ -1138,6 +1139,19 @@ export default function SystemSettingsHub() {
                   </div>
                 </div>
               </div>
+
+              <Link
+                href="/compensatory-days"
+                className="flex items-center justify-between gap-3 rounded-3xl border border-[#bfe0f5] bg-white p-5 text-sm font-bold text-[#1b64da] shadow-sm transition-colors hover:bg-[#f0f8ff]"
+              >
+                <span>
+                  Plan compensatory days
+                  <span className="mt-1 block text-xs font-normal text-slate-500">
+                    Link holiday or weekly-off work to a working day off.
+                  </span>
+                </span>
+                <CalendarDays className="h-5 w-5 shrink-0" aria-hidden="true" />
+              </Link>
             </div>
           </div>
         </div>
