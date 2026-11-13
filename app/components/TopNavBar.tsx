@@ -397,7 +397,7 @@ export default function TopNavBar({
       </div>
 
       {/* Navbar content */}
-      <div className="relative z-10 mx-auto flex min-h-[76px] w-full max-w-[2400px] items-center justify-between gap-2 px-3 py-3 sm:min-h-[104px] sm:gap-5 sm:px-5 sm:py-5 lg:gap-3 lg:px-6">
+      <div className="relative z-10 mx-auto flex min-h-[76px] w-full max-w-[1700px] items-center justify-between gap-2 px-3 py-3 sm:min-h-[104px] sm:gap-5 sm:px-5 sm:py-5 lg:gap-3 lg:px-6">
         {/* Logo */}
         <Link
           href="/dashboard"
