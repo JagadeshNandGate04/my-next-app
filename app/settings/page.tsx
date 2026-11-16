@@ -1049,6 +1049,8 @@ export default function SystemSettingsHub() {
                   />
                 </div>
               </div>
+
+              <DesignationSettings />
             </div>
 
             {/* =================================================
@@ -1056,7 +1058,6 @@ export default function SystemSettingsHub() {
             ================================================= */}
 
             <div className="lg:col-span-5 space-y-6">
-              <DesignationSettings />
               <div className="flex items-center justify-between px-2 gap-3">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-[#1b64da]" />
@@ -1382,9 +1383,7 @@ export default function SystemSettingsHub() {
           <div className="text-xs">
             <p className="font-bold">{successMessage}</p>
 
-            <p className="text-slate-400 text-xs">
-              Backend operation completed successfully.
-            </p>
+           
           </div>
         </div>
       )}
