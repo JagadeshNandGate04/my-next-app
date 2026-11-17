@@ -721,7 +721,7 @@ export default function AuditLogsPage() {
     <div className="min-h-screen bg-[#f0f6fa] text-[#0f172a] font-sans antialiased selection:bg-[#7BBDE8]/30">
       {/* MAIN CONTENT */}
       <main className="flex-1 min-w-0 py-4 sm:py-6 lg:py-8">
-        <div className="mx-auto w-full max-w-[1700px] space-y-6 px-3 sm:px-5 lg:px-6">
+        <div className="mx-auto w-full max-w-[1880px] space-y-6 px-3 sm:px-5 lg:px-6">
 
           {/* PAGE HEADER */}
           <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
@@ -1031,8 +1031,15 @@ export default function AuditLogsPage() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[850px]">
-
+              <table className="app-data-table min-w-[850px] text-left">
+                <colgroup>
+                  <col className="w-[22%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[18%]" />
+                  <col className="w-[18%]" />
+                  <col className="w-[18%]" />
+                  <col className="w-[10%]" />
+                </colgroup>
                 <thead>
                   <tr className="bg-[#f0f6fa] border-b border-[#bfe0f5] text-xs font-bold text-[#0f172a] uppercase tracking-wider">
                     <th className="py-4 px-5">Event / Action</th>
@@ -1040,7 +1047,9 @@ export default function AuditLogsPage() {
                     <th className="py-4 px-4">Actor</th>
                     <th className="py-4 px-4">Reason</th>
                     <th className="py-4 px-5">Timestamp</th>
-                    <th className="py-4 px-4 text-center">View</th>
+                    <th className="py-4 px-4">
+                      <div className="flex w-full justify-center">View</div>
+                    </th>
                   </tr>
                 </thead>
 
@@ -1151,18 +1160,20 @@ export default function AuditLogsPage() {
                           </td>
 
                           {/* VIEW */}
-                          <td className="py-4 px-4 text-center">
-                            <button
-                              type="button"
-                              title="View audit details"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                handleSelectLog(log);
-                              }}
-                              className="w-9 h-9 inline-flex items-center justify-center rounded-full bg-[#bfe0f5] border border-[#7BBDE8] text-[#1b64da] hover:bg-[#1b64da] hover:text-white hover:border-[#1b64da] transition-all duration-150"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </button>
+                          <td className="py-4 px-4">
+                            <div className="flex w-full justify-center">
+                              <button
+                                type="button"
+                                title="View audit details"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  handleSelectLog(log);
+                                }}
+                                className="w-9 h-9 inline-flex items-center justify-center rounded-full bg-[#bfe0f5] border border-[#7BBDE8] text-[#1b64da] hover:bg-[#1b64da] hover:text-white hover:border-[#1b64da] transition-all duration-150"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );

@@ -29,10 +29,12 @@ export interface Settings {
 }
 
 export interface Holiday {
-  id: number;
+  id: number | string;
   holiday_date: string;
   name: string;
   year: number;
+  is_all_employees?: boolean;
+  user_ids?: Array<number | string>;
   created_at?: string;
   updated_at?: string;
 }
@@ -531,6 +533,8 @@ export const fetchHolidays =
 export interface CreateHolidayPayload {
   holiday_date: string;
   name: string;
+  is_all_employees: boolean;
+  user_ids: number[];
 }
 
 export const createHoliday =
@@ -567,7 +571,7 @@ export const createHoliday =
 // ============================================================
 
 export const deleteHoliday =
-  (holidayId: number) =>
+  (holidayId: number | string) =>
   async (dispatch: AppDispatch, getState: () => RootState): Promise<HolidayResponse> => {
     dispatch(deleteHolidayStart());
 

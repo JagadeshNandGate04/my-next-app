@@ -746,7 +746,7 @@ export default function AdminAttendanceOperationsPage() {
   return (
     <div className="min-h-screen bg-[#f0f6fa] text-[#1e293b] font-sans antialiased">
       <main className="flex-1 min-w-0 py-4 md:py-6 lg:py-8">
-        <div className="mx-auto w-full max-w-[1700px] space-y-6 px-3 sm:px-5 lg:px-6">
+        <div className="mx-auto w-full max-w-[1880px] space-y-6 px-3 sm:px-5 lg:px-6">
           {/* HEADER */}
           <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5">
             <div>
@@ -991,7 +991,7 @@ export default function AdminAttendanceOperationsPage() {
 
                 {!dailyLoading && !dailyError && (
                   <div className="w-full overflow-x-auto">
-                    <table className="w-full min-w-[1400px] border-collapse text-left">
+                    <table className="app-data-table min-w-[1400px] text-left">
                       <caption className="sr-only">Daily attendance roster for {formattedSelectedDate}</caption>
                       <colgroup>
                         <col className="w-[22%]" />
@@ -1425,8 +1425,19 @@ export default function AdminAttendanceOperationsPage() {
                       </div>
                     )}
                     <div className="overflow-x-auto">
-                      <table className="w-full min-w-[1000px] text-left text-xs">
+                      <table className="app-data-table min-w-[1000px] text-left">
                         <caption className="sr-only">Daily attendance records for {formatMonth(selectedMonth, selectedYear)}</caption>
+                        <colgroup>
+                          <col className="w-[13%]" />
+                          <col className="w-[11%]" />
+                          <col className="w-[11%]" />
+                          <col className="w-[11%]" />
+                          <col className="w-[14%]" />
+                          <col className="w-[10%]" />
+                          <col className="w-[11%]" />
+                          <col className="w-[11%]" />
+                          <col className="w-[8%]" />
+                        </colgroup>
                         <thead>
                           <tr className="border-b border-[#d6e8f7] bg-[#eaf4fc] text-xs uppercase tracking-wider text-slate-600">
                             <th scope="col" className="px-4 py-2 font-bold">Date</th>

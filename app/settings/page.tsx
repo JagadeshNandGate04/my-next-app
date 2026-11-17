@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { AnnouncementIcon } from "../components/FloatingAnnouncement";
 import ResetDefaultsModal from "./ResetDefaultsModal";
@@ -22,6 +22,8 @@ import {
   Loader2,
   BriefcaseBusiness,
   RefreshCw,
+  Search,
+  Users,
 } from "lucide-react";
 
 import { useDispatch, useSelector } from "react-redux";
@@ -40,6 +42,10 @@ import {
   createDesignation,
   clearDesignationCreateError,
 } from "@/app/store/settings/settingsSlice";
+import {
+  fetchEmployees,
+  type Employee,
+} from "@/app/store/employee/employeeSlice";
 
 // ============================================================
 // THEME (same colours as the dashboard)
@@ -79,13 +85,17 @@ interface SystemSettings {
 }
 
 interface HolidayItem {
-  id: number;
+  id: number | string;
   holiday_date: string;
   name: string;
   year: number;
+  is_all_employees?: boolean;
+  user_ids?: Array<number | string>;
   created_at?: string;
   updated_at?: string;
 }
+
+type HolidayAssignmentFilter = "all" | "all_employees" | "selected_employees";
 
 // ============================================================
 // DEFAULT SETTINGS
@@ -259,7 +269,7 @@ function DesignationSettings() {
       <div className="space-y-4 rounded-[32px] border border-[#e6edf4] bg-white p-6 shadow-sm">
         <p className="text-sm text-slate-600">Add and view employee designations.</p>
         <form onSubmit={submit} className="space-y-3">
-          <label htmlFor="designation-name" className="block text-sm font-bold text-slate-800">Designation name</label>
+          <label htmlFor="designation-name" className="inline-block rounded-lg bg-[#eaf5fd] px-3 py-1.5 text-sm font-black text-[#1552b5] ring-1 ring-inset ring-[#bfe0f5]">Designation name</label>
           <div className="flex flex-wrap gap-2">
             <input id="designation-name" type="text" value={name} required disabled={designationCreating}
               onChange={(event) => {
@@ -329,6 +339,12 @@ export default function SystemSettingsHub() {
     updatedCount,
     affectedUsers,
   } = useSelector((state: RootState) => state.settings);
+  const {
+    employees,
+    loading: employeesLoading,
+    error: employeesError,
+    pagination: employeePagination,
+  } = useSelector((state: RootState) => state.employees);
 
   // ----------------------------------------------------------
   // LOCAL FORM STATE
@@ -342,10 +358,37 @@ export default function SystemSettingsHub() {
   const [newHolidayDate, setNewHolidayDate] = useState("");
 
   const [newHolidayName, setNewHolidayName] = useState("");
+  const [holidayScope, setHolidayScope] = useState<"all" | "selected">("all");
+  const [holidayAssignmentFilter, setHolidayAssignmentFilter] =
+    useState<HolidayAssignmentFilter>("all");
+  const [selectedEmployees, setSelectedEmployees] = useState<Employee[]>([]);
+  const [employeeSearch, setEmployeeSearch] = useState("");
+  const [employeePage, setEmployeePage] = useState(1);
 
   const [localError, setLocalError] = useState<string | null>(null);
 
   const [isSavedToast, setIsSavedToast] = useState(false);
+
+  const filteredEmployees = useMemo(
+    () =>
+      employees
+        .filter((employee) => employee.status === "ACTIVE")
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [employees],
+  );
+  const filteredHolidays = useMemo(
+    () =>
+      holidays.filter((holiday) => {
+        const selectedOnly =
+          holiday.is_all_employees === false ||
+          (holiday.user_ids?.length ?? 0) > 0;
+
+        if (holidayAssignmentFilter === "selected_employees") return selectedOnly;
+        if (holidayAssignmentFilter === "all_employees") return !selectedOnly;
+        return true;
+      }),
+    [holidayAssignmentFilter, holidays],
+  );
 
   // ----------------------------------------------------------
   // INITIAL API CALLS
@@ -358,6 +401,20 @@ export default function SystemSettingsHub() {
     dispatch(fetchHolidays(currentYear));
     dispatch(fetchDesignations());
   }, [dispatch]);
+
+  useEffect(() => {
+    if (!isHolidayModalOpen || holidayScope !== "selected") return;
+    const timerId = window.setTimeout(() => {
+      void dispatch(
+        fetchEmployees({
+          page: employeePage,
+          limit: 20,
+          search: employeeSearch,
+        }),
+      );
+    }, 300);
+    return () => window.clearTimeout(timerId);
+  }, [dispatch, employeePage, employeeSearch, holidayScope, isHolidayModalOpen]);
 
   // ----------------------------------------------------------
   // SYNC REDUX SETTINGS WITH LOCAL FORM
@@ -490,6 +547,26 @@ export default function SystemSettingsHub() {
     dispatch(fetchHolidays(year));
   };
 
+  const openHolidayModal = () => {
+    setLocalError(null);
+    setNewHolidayName("");
+    setNewHolidayDate(`${selectedYear}-01-01`);
+    setHolidayScope("all");
+    setSelectedEmployees([]);
+    setEmployeeSearch("");
+    setEmployeePage(1);
+    setIsHolidayModalOpen(true);
+  };
+
+  const toggleHolidayEmployee = (employee: Employee) => {
+    setSelectedEmployees((current) =>
+      current.some((item) => item.id === employee.id)
+        ? current.filter((item) => item.id !== employee.id)
+        : [...current, employee],
+    );
+    setLocalError(null);
+  };
+
   // ----------------------------------------------------------
   // CREATE HOLIDAY
   // ----------------------------------------------------------
@@ -507,6 +584,11 @@ export default function SystemSettingsHub() {
       return;
     }
 
+    if (holidayScope === "selected" && selectedEmployees.length === 0) {
+      setLocalError("Select at least one employee for this holiday.");
+      return;
+    }
+
     setLocalError(null);
     dispatch(clearSettingsError());
 
@@ -515,6 +597,11 @@ export default function SystemSettingsHub() {
         createHoliday({
           holiday_date: newHolidayDate,
           name: newHolidayName.trim(),
+          is_all_employees: holidayScope === "all",
+          user_ids:
+            holidayScope === "all"
+              ? []
+              : selectedEmployees.map((employee) => employee.id),
         }),
       );
 
@@ -522,6 +609,10 @@ export default function SystemSettingsHub() {
 
       setNewHolidayName("");
       setNewHolidayDate(`${selectedYear}-01-01`);
+      setHolidayScope("all");
+      setSelectedEmployees([]);
+      setEmployeeSearch("");
+      setEmployeePage(1);
       setIsHolidayModalOpen(false);
     } catch (err) {
       setLocalError(typeof err === "string" ? err : "Failed to create holiday");
@@ -532,7 +623,7 @@ export default function SystemSettingsHub() {
   // DELETE HOLIDAY
   // ----------------------------------------------------------
 
-  const handleDeleteHoliday = async (id: number, name: string) => {
+  const handleDeleteHoliday = async (id: number | string, name: string) => {
     const confirmed = window.confirm(
       `Delete holiday "${name}"? Day summaries for active employees on this date will automatically be recomputed.`,
     );
@@ -601,7 +692,7 @@ export default function SystemSettingsHub() {
   return (
     <div className="min-h-screen bg-[#f0f6fa] text-[#0f172a] font-sans antialiased selection:bg-[#7BBDE8]/30">
       <main className="flex-1 min-w-0 py-4 sm:py-6 lg:py-8">
-        <div className="mx-auto w-full max-w-[1700px] space-y-6 px-3 sm:px-5 lg:px-6">
+        <div className="mx-auto w-full max-w-[1880px] space-y-6 px-3 sm:px-5 lg:px-6">
           {/* ==================================================
               TOP BAR
           ================================================== */}
@@ -771,7 +862,7 @@ export default function SystemSettingsHub() {
                   </div>
 
                   <div>
-                    <h3 className="font-bold text-sm text-[#0f172a]">
+                    <h3 className="inline-block max-w-full rounded-lg bg-[#eaf5fd] px-3 py-1.5 text-base font-black leading-snug text-[#1552b5] ring-1 ring-inset ring-[#bfe0f5]">
                       Shift Timings
                     </h3>
                   </div>
@@ -895,11 +986,11 @@ export default function SystemSettingsHub() {
                   </div>
 
                   <div>
-                    <h3 className="font-bold text-sm text-[#0f172a]">
+                    <h3 className="inline-block max-w-full rounded-lg bg-[#eaf5fd] px-3 py-1.5 text-base font-black leading-snug text-[#1552b5] ring-1 ring-inset ring-[#bfe0f5]">
                       Attendance Tolerance & Punch Integrity
                     </h3>
 
-                    <p className="text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-slate-500">
                       Lateness, break allowance, and duplicate punch rules
                     </p>
                   </div>
@@ -976,11 +1067,11 @@ export default function SystemSettingsHub() {
                   </div>
 
                   <div>
-                    <h3 className="font-bold text-sm text-[#0f172a]">
+                    <h3 className="inline-block max-w-full rounded-lg bg-[#eaf5fd] px-3 py-1.5 text-base font-black leading-snug text-[#1552b5] ring-1 ring-inset ring-[#bfe0f5]">
                       Leave & Permission Allocations
                     </h3>
 
-                    <p className="text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-slate-500">
                       Monthly leave credits, balance caps, and permission limits
                     </p>
                   </div>
@@ -1062,18 +1153,14 @@ export default function SystemSettingsHub() {
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4 text-[#1b64da]" />
 
-                  <h2 className="text-lg font-black text-[#0f172a] tracking-tight">
+                  <h2 className="rounded-lg bg-[#eaf5fd] px-3 py-1.5 text-lg font-black tracking-tight text-[#082f63] ring-1 ring-inset ring-[#bfe0f5]">
                     Annual Holidays
                   </h2>
                 </div>
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setLocalError(null);
-                    setNewHolidayDate(`${selectedYear}-01-01`);
-                    setIsHolidayModalOpen(true);
-                  }}
+                  onClick={openHolidayModal}
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#1b64da] hover:bg-[#1552b5] text-white text-xs font-bold shadow-sm transition-all"
                 >
                   <Plus className="w-3.5 h-3.5" />
@@ -1083,11 +1170,11 @@ export default function SystemSettingsHub() {
 
               {/* HOLIDAY CARD */}
 
-              <div className="bg-white border border-[#e6edf4] rounded-[32px] p-6 shadow-sm space-y-4">
+              <div className="bg-white border border-[#e6edf4] rounded-[32px] p-5 sm:p-6 shadow-sm space-y-6">
                 <div className="flex items-center justify-between border-b border-[#e6edf4] pb-3 gap-2">
-                  <span className="font-bold text-xs uppercase tracking-wider text-slate-500">
+                  <span className="font-black text-xs uppercase tracking-wider text-slate-800">
                     Declared Schedule{" "}
-                    <strong className="text-[#1b64da]">
+                    <strong className="text-[#0b3b76]">
                       CY {selectedYear}
                     </strong>
                   </span>
@@ -1095,21 +1182,69 @@ export default function SystemSettingsHub() {
 
                 {/* YEAR SELECTOR */}
 
-                <div className="flex items-center gap-2">
-                  {[2025, 2026, 2027].map((year) => (
-                    <button
-                      key={year}
-                      type="button"
-                      onClick={() => handleYearChange(year)}
-                      className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
-                        selectedYear === year
-                          ? "bg-[#1b64da] text-white"
-                          : "bg-[#f0f6fa] text-[#0f172a] hover:bg-[#bfe0f5]"
-                      }`}
-                    >
-                      {year}
-                    </button>
-                  ))}
+                <div className="space-y-3 rounded-2xl bg-[#f7fafc] p-4">
+                  <p className="text-xs font-bold text-slate-600">Calendar year</p>
+                  <div className="flex flex-wrap gap-2">
+                    {[2025, 2026, 2027].map((year) => (
+                      <button
+                        key={year}
+                        type="button"
+                        onClick={() => handleYearChange(year)}
+                        className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+                          selectedYear === year
+                            ? "bg-[#1b64da] text-white"
+                            : "bg-white text-[#0f172a] ring-1 ring-inset ring-[#dbe5ed] hover:bg-[#eaf5fd]"
+                        }`}
+                      >
+                        {year}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div
+                  className="space-y-3 rounded-2xl bg-[#f7fafc] p-4"
+                  role="group"
+                  aria-label="Filter holidays by employee assignment"
+                >
+                  <p className="text-xs font-bold text-slate-600">Employee assignment</p>
+                  <div className="flex flex-wrap gap-2">
+                    {([
+                      { value: "all", label: "All holidays", count: holidays.length },
+                      {
+                        value: "all_employees",
+                        label: "All employees",
+                        count: holidays.filter(
+                          (holiday) =>
+                            holiday.is_all_employees !== false &&
+                            (holiday.user_ids?.length ?? 0) === 0,
+                        ).length,
+                      },
+                      {
+                        value: "selected_employees",
+                        label: "Selected employees",
+                        count: holidays.filter(
+                          (holiday) =>
+                            holiday.is_all_employees === false ||
+                            (holiday.user_ids?.length ?? 0) > 0,
+                        ).length,
+                      },
+                    ] as const).map((filter) => (
+                      <button
+                        key={filter.value}
+                        type="button"
+                        aria-pressed={holidayAssignmentFilter === filter.value}
+                        onClick={() => setHolidayAssignmentFilter(filter.value)}
+                        className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
+                          holidayAssignmentFilter === filter.value
+                            ? "bg-[#1b64da] text-white"
+                            : "bg-white text-[#0f172a] ring-1 ring-inset ring-[#dbe5ed] hover:bg-[#eaf5fd]"
+                        }`}
+                      >
+                        {filter.label} ({filter.count})
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* HOLIDAY LOADING */}
@@ -1123,9 +1258,9 @@ export default function SystemSettingsHub() {
 
                 {/* HOLIDAY LIST */}
 
-                {!holidaysLoading && holidays.length > 0 && (
-                  <div className="space-y-3">
-                    {holidays.map((h: HolidayItem) => {
+                {!holidaysLoading && filteredHolidays.length > 0 && (
+                  <div className="space-y-4">
+                    {filteredHolidays.map((h: HolidayItem) => {
                       const { day, month, weekday } = formatHolidayDate(
                         h.holiday_date,
                       );
@@ -1133,12 +1268,12 @@ export default function SystemSettingsHub() {
                       return (
                         <div
                           key={h.id}
-                          className="group flex items-center justify-between gap-3 p-3.5 rounded-3xl bg-[#f0f6fa] border border-[#e6edf4] hover:border-[#7BBDE8] hover:bg-white transition-all shadow-sm"
+                          className="group flex items-start justify-between gap-3 rounded-2xl border border-[#e6edf4] bg-[#f8fafc] p-4 transition-all hover:border-[#7BBDE8] hover:bg-white hover:shadow-sm"
                         >
-                          <div className="flex items-center gap-3.5 min-w-0">
+                          <div className="flex min-w-0 items-start gap-4">
                             {/* DATE BADGE (filled) */}
 
-                            <div className="w-12 h-12 rounded-2xl bg-[#7BBDE8] flex flex-col items-center justify-center text-[#0f172a] shrink-0">
+                            <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-[#d9effc] text-[#0b3b76]">
                               <span className="text-xs font-bold uppercase tracking-wider leading-none">
                                 {month}
                               </span>
@@ -1151,15 +1286,20 @@ export default function SystemSettingsHub() {
                             {/* HOLIDAY DETAILS */}
 
                             <div className="min-w-0">
-                              <div className="font-bold text-sm text-[#0f172a] group-hover:text-[#1b64da] transition-colors break-words">
+                              <div className="break-words text-sm font-bold leading-snug text-[#0f172a] transition-colors group-hover:text-[#1b64da]">
                                 {h.name}
                               </div>
 
-                              <div className="text-xs text-slate-500 flex flex-wrap items-center gap-2 mt-0.5">
+                              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-medium text-slate-700">
                                 <span>{weekday}</span>
                                 <span>•</span>
-                                <span>{h.holiday_date}</span>
+                                <span className="font-bold text-slate-900">{h.holiday_date}</span>
                               </div>
+                              <span className="mt-2 inline-block rounded-full bg-blue-100 px-2.5 py-1 text-[10px] font-bold text-blue-800">
+                                {h.is_all_employees === false
+                                  ? `${h.user_ids?.length ?? 0} selected employee${h.user_ids?.length === 1 ? "" : "s"}`
+                                  : "All employees"}
+                              </span>
                             </div>
                           </div>
 
@@ -1186,21 +1326,23 @@ export default function SystemSettingsHub() {
 
                 {/* EMPTY STATE */}
 
-                {!holidaysLoading && holidays.length === 0 && (
+                {!holidaysLoading && filteredHolidays.length === 0 && (
                   <div className="text-center py-10">
                     <CalendarDays className="w-10 h-10 text-[#7BBDE8] mx-auto mb-3" />
 
                     <p className="font-bold text-sm text-slate-600">
-                      No holidays found
+                      {holidays.length === 0 ? "No holidays found" : "No matching holidays"}
                     </p>
 
                     <p className="text-xs text-slate-400 mt-1">
-                      No holidays have been declared for {selectedYear}.
+                      {holidays.length === 0
+                        ? `No holidays have been declared for ${selectedYear}.`
+                        : "There are no holidays for this employee assignment filter."}
                     </p>
 
                     <button
                       type="button"
-                      onClick={() => setIsHolidayModalOpen(true)}
+                      onClick={openHolidayModal}
                       className="mt-4 text-xs font-bold text-[#1b64da] hover:underline"
                     >
                       + Add your first holiday
@@ -1252,7 +1394,7 @@ export default function SystemSettingsHub() {
 
       {isHolidayModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white border border-[#e6edf4] rounded-[32px] max-w-md w-full p-6 shadow-2xl">
+          <div className="bg-white border border-[#e6edf4] rounded-[32px] max-w-lg w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl">
             {/* MODAL HEADER */}
 
             <div className="flex items-center justify-between pb-4 border-b border-[#e6edf4]">
@@ -1323,12 +1465,154 @@ export default function SystemSettingsHub() {
                 </p>
               </div>
 
+              <fieldset>
+                <legend className="mb-2 block text-xs font-bold uppercase tracking-wider text-slate-600">
+                  Assign employees
+                </legend>
+                <div className="grid gap-2 sm:grid-cols-2" role="radiogroup" aria-label="Holiday assignment">
+                  <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 text-sm transition-colors ${holidayScope === "all" ? "border-[#1b64da] bg-blue-50" : "border-slate-200 hover:bg-slate-50"}`}>
+                    <input
+                      type="radio"
+                      name="holiday-scope"
+                      value="all"
+                      checked={holidayScope === "all"}
+                      onChange={() => {
+                        setHolidayScope("all");
+                        setLocalError(null);
+                      }}
+                      className="mt-0.5 accent-[#1b64da]"
+                    />
+                    <span>
+                      <span className="block font-bold text-slate-800">All employees</span>
+                      <span className="mt-0.5 block text-xs text-slate-500">Apply this holiday to everyone.</span>
+                    </span>
+                  </label>
+                  <label className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 text-sm transition-colors ${holidayScope === "selected" ? "border-[#1b64da] bg-blue-50" : "border-slate-200 hover:bg-slate-50"}`}>
+                    <input
+                      type="radio"
+                      name="holiday-scope"
+                      value="selected"
+                      checked={holidayScope === "selected"}
+                      onChange={() => {
+                        setHolidayScope("selected");
+                        setLocalError(null);
+                      }}
+                      className="mt-0.5 accent-[#1b64da]"
+                    />
+                    <span>
+                      <span className="block font-bold text-slate-800">Selected employees</span>
+                      <span className="mt-0.5 block text-xs text-slate-500">Choose who receives this holiday.</span>
+                    </span>
+                  </label>
+                </div>
+
+                {holidayScope === "selected" && (
+                  <div className="mt-3">
+                    <label className="relative block">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+                      <input
+                        type="search"
+                        aria-label="Search employees"
+                        value={employeeSearch}
+                        onChange={(event) => {
+                          setEmployeeSearch(event.target.value);
+                          setEmployeePage(1);
+                        }}
+                        placeholder="Search name or employee ID"
+                        disabled={holidayCreating}
+                        className="w-full rounded-xl border border-slate-300 bg-white py-3 pl-9 pr-3 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-200 disabled:bg-slate-100"
+                      />
+                    </label>
+                    <div className="mt-2 max-h-48 space-y-1 overflow-y-auto rounded-xl border border-slate-300 bg-white p-2">
+                      {employeesLoading && filteredEmployees.length === 0 ? (
+                        <p role="status" className="px-2 py-4 text-center text-xs text-slate-500">
+                          Loading employees...
+                        </p>
+                      ) : filteredEmployees.length > 0 ? (
+                        filteredEmployees.map((employee) => {
+                          const checked = selectedEmployees.some((item) => item.id === employee.id);
+                          return (
+                            <label
+                              key={employee.id}
+                              className={`flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${checked ? "bg-blue-100 ring-1 ring-blue-300" : "hover:bg-slate-50"}`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                disabled={holidayCreating}
+                                onChange={() => toggleHolidayEmployee(employee)}
+                                className="h-4 w-4 accent-[#1b64da]"
+                              />
+                              <span className="min-w-0 flex-1">
+                                <span className="block truncate font-bold text-slate-800">{employee.name}</span>
+                                <span className="block text-xs text-slate-600">
+                                  {employee.emp_code} · {employee.designation || "Employee"}
+                                </span>
+                              </span>
+                            </label>
+                          );
+                        })
+                      ) : (
+                        <p className="px-2 py-4 text-center text-xs text-slate-500">
+                          {employeeSearch ? "No matching active employees." : "No active employees found."}
+                        </p>
+                      )}
+                    </div>
+                    {employeePagination && employeePagination.total_pages > 1 && (
+                      <div className="mt-2 flex items-center justify-between text-xs text-slate-600">
+                        <button
+                          type="button"
+                          disabled={employeesLoading || employeePage <= 1 || holidayCreating}
+                          onClick={() => setEmployeePage((page) => page - 1)}
+                          className="font-bold text-blue-700 disabled:opacity-40"
+                        >
+                          Previous
+                        </button>
+                        <span>Page {employeePage} of {employeePagination.total_pages}</span>
+                        <button
+                          type="button"
+                          disabled={employeesLoading || employeePage >= employeePagination.total_pages || holidayCreating}
+                          onClick={() => setEmployeePage((page) => page + 1)}
+                          className="font-bold text-blue-700 disabled:opacity-40"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    )}
+                    {employeesError && (
+                      <p role="alert" className="mt-2 text-xs text-red-600">
+                        Could not load employees: {employeesError}
+                      </p>
+                    )}
+                    <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-3 py-1 text-xs font-bold text-blue-800">
+                      <Users className="h-4 w-4" aria-hidden="true" />
+                      {selectedEmployees.length} selected
+                    </p>
+                    {selectedEmployees.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-2" aria-label="Selected employees">
+                        {selectedEmployees.map((employee) => (
+                          <button
+                            key={employee.id}
+                            type="button"
+                            onClick={() => toggleHolidayEmployee(employee)}
+                            disabled={holidayCreating}
+                            aria-label={`Remove ${employee.name} (${employee.emp_code})`}
+                            className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-800 hover:bg-blue-50 disabled:opacity-50"
+                          >
+                            {employee.name} ({employee.emp_code}) <X className="h-3.5 w-3.5" aria-hidden="true" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </fieldset>
+
               {/* AUTOMATIC BROADCAST INFO */}
 
               <div className="p-3 bg-[#bfe0f5]/50 rounded-2xl border border-[#7BBDE8] text-xs text-slate-700 leading-relaxed">
                 <strong>Automatic Attendance Update:</strong> The backend will
-                mark the selected date as HOLIDAY for all active employees and
-                create an audit log entry.
+                mark the selected date as HOLIDAY for {holidayScope === "all" ? "all active employees" : `${selectedEmployees.length} selected employee${selectedEmployees.length === 1 ? "" : "s"}`} and create an audit log entry.
               </div>
 
               {/* MODAL ERROR */}

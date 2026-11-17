@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import Link from "next/link";
 import {
   Users,
   UserPlus,
@@ -20,6 +21,7 @@ import {
   ChevronRight,
   AlertCircle,
   CheckCircle2,
+  Eye,
 } from "lucide-react";
 
 import type { AppDispatch, RootState } from "@/app/store/store";
@@ -206,6 +208,11 @@ export default function EmployeeDirectoryPage() {
   const [historyEmployeeId, setHistoryEmployeeId] = useState<number | null>(null);
   const salaryPanelRef = useRef<HTMLElement>(null);
   const detailRequestRef = useRef(0);
+  const profileActionRequestRef = useRef("");
+  const profileActionHandlersRef = useRef<{
+    edit: (id: number) => Promise<void>;
+    salary: (employee: Employee) => void;
+  } | null>(null);
   const [detailLoadingId, setDetailLoadingId] = useState<number | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -662,6 +669,42 @@ export default function EmployeeDirectoryPage() {
     dispatch(fetchEmployeeSalary(employee.id));
   };
 
+  profileActionHandlersRef.current = {
+    edit: handleEditEmployee,
+    salary: openSalaryPanel,
+  };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const employeeId = Number(params.get("employeeId"));
+    const action = params.get("action");
+    if (!Number.isInteger(employeeId) || employeeId <= 0 || !action) return;
+
+    const requestKey = `${employeeId}:${action}`;
+    if (profileActionRequestRef.current === requestKey) return;
+    profileActionRequestRef.current = requestKey;
+
+    if (action === "edit") {
+      void profileActionHandlersRef.current?.edit(employeeId);
+      return;
+    }
+
+    if (action === "salary") {
+      void dispatch(fetchEmployeeById({ id: employeeId }))
+        .then((employee) => {
+          if (employee.id !== employeeId) {
+            throw new Error("Employee lookup returned details for a different employee.");
+          }
+          profileActionHandlersRef.current?.salary(employee);
+        })
+        .catch((error: unknown) => {
+          setDetailError(
+            error instanceof Error ? error.message : "Unable to load employee salary details."
+          );
+        });
+    }
+  }, [dispatch]);
+
   const closeSalaryPanel = () => {
     const employeeId = salaryEmployee?.id;
     setSalaryEmployee(null);
@@ -729,7 +772,7 @@ export default function EmployeeDirectoryPage() {
   return (
     <div className="min-h-screen bg-[#f0f6fa] text-[#1e293b] font-sans antialiased">
       <main className="flex-1 min-w-0 py-4 sm:py-6 lg:py-8">
-        <div className="mx-auto w-full max-w-[1700px] space-y-6 px-3 sm:px-5 lg:px-6">
+        <div className="mx-auto w-full max-w-[1880px] space-y-6 px-3 sm:px-5 lg:px-6">
           {/* Page heading */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
@@ -952,15 +995,15 @@ export default function EmployeeDirectoryPage() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1255px] table-fixed border-collapse text-left">
+              <table className="app-data-table min-w-[1255px] table-fixed text-left">
                 <colgroup>
-                  <col className="w-[235px]" />
-                  <col className="w-[115px]" />
-                  <col className="w-[185px]" />
-                  <col className="w-[235px]" />
-                  <col className="w-[130px]" />
-                  <col className="w-[110px]" />
-                  <col className="w-[245px]" />
+                  <col className="w-[21%]" />
+                  <col className="w-[10%]" />
+                  <col className="w-[16%]" />
+                  <col className="w-[19%]" />
+                  <col className="w-[13%]" />
+                  <col className="w-[9%]" />
+                  <col className="w-[12%]" />
                 </colgroup>
                 <thead>
                   <tr className="bg-[#eaf4fc] border-b border-[#d6e8f7] text-xs font-bold text-slate-600 uppercase tracking-wider">
@@ -970,7 +1013,7 @@ export default function EmployeeDirectoryPage() {
                     <th scope="col" className="whitespace-nowrap px-4 py-4">Contact</th>
                     <th scope="col" className="whitespace-nowrap px-4 py-4">Joining Date</th>
                     <th scope="col" className="whitespace-nowrap px-4 py-4">Status</th>
-                    <th scope="col" className="whitespace-nowrap px-4 py-4 text-center">
+                    <th scope="col" className="whitespace-nowrap px-4 py-4 text-left">
                       Actions
                     </th>
                   </tr>
@@ -1070,7 +1113,15 @@ export default function EmployeeDirectoryPage() {
                         </td>
 
                         <td className="whitespace-nowrap px-4 py-4 align-middle">
-                          <div className="flex items-center justify-center gap-1.5">
+                          <div className="flex items-center justify-start gap-1.5">
+                            <Link
+                              href={`/profile/${employee.id}`}
+                              title={`View profile for ${employee.name}`}
+                              aria-label={`View profile for ${employee.name}`}
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#c7e1f4] bg-[#eef7fd] text-[#1b64da] transition-colors hover:bg-[#dceffc] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1b64da]"
+                            >
+                              <Eye className="w-4 h-4" aria-hidden="true" />
+                            </Link>
                             <button
                               id={`employee-salary-button-${employee.id}`}
                               type="button"

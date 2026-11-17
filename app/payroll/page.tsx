@@ -727,7 +727,7 @@ export default function PayrollProcessingHub() {
   return (
     <div className="min-h-screen bg-[#f0f6fa] text-[#0f172a] font-sans antialiased selection:bg-[#7BBDE8]/30">
       <main className="flex-1 min-w-0 py-4 sm:py-6 lg:py-8">
-        <div className="mx-auto w-full max-w-[1700px] space-y-6 px-3 sm:px-5 lg:px-6">
+        <div className="mx-auto w-full max-w-[1880px] space-y-6 px-3 sm:px-5 lg:px-6">
 
           {/* PAGE HEADER */}
 
@@ -964,7 +964,17 @@ export default function PayrollProcessingHub() {
             </div>
 
             <div className="overflow-x-auto" role="region" aria-label="Payroll breakdown table" tabIndex={0}>
-              <table className="w-full border-separate border-spacing-0 text-left">
+              <table className="app-data-table text-left">
+                <colgroup>
+                  <col className="w-[19%]" />
+                  <col className="w-[11%]" />
+                  <col className="w-[13%]" />
+                  <col className="w-[9%]" />
+                  <col className="w-[13%]" />
+                  <col className="w-[16%]" />
+                  <col className="w-[11%]" />
+                  <col className="w-[8%]" />
+                </colgroup>
                 <thead>
                   <tr className="bg-[#f0f6fa] border-b border-[#bfe0f5] text-xs font-bold text-[#0f172a] uppercase tracking-wider">
                     <th className="py-4 px-3">Employee</th>

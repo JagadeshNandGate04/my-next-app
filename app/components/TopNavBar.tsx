@@ -397,7 +397,7 @@ export default function TopNavBar({
       </div>
 
       {/* Navbar content */}
-      <div className="relative z-10 mx-auto flex min-h-[76px] w-full max-w-[1700px] items-center justify-between gap-2 px-3 py-3 sm:min-h-[104px] sm:gap-5 sm:px-5 sm:py-5 lg:gap-3 lg:px-6">
+      <div className="relative z-10 mx-auto flex min-h-[76px] w-full max-w-[1880px] items-center justify-between gap-2 px-3 py-3 sm:min-h-[104px] sm:gap-5 sm:px-5 sm:py-5 lg:gap-3 lg:px-6">
         {/* Logo */}
         <Link
           href="/dashboard"
@@ -637,6 +637,15 @@ export default function TopNavBar({
                   <p className="text-sm font-bold text-slate-800">{userName}</p>
                   <p className="mt-0.5 text-xs text-slate-500">Account settings</p>
                 </div>
+                <Link
+                  href="/profile"
+                  role="menuitem"
+                  onClick={() => setProfileOpen(false)}
+                  className="mt-2 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-slate-700 transition-colors hover:bg-[#f0f6fa] hover:text-[#1b64da]"
+                >
+                  <NavIcon type="profile" className="h-4 w-4 text-[#1b64da]" />
+                  Profile
+                </Link>
                 <button
                   type="button"
                   role="menuitem"

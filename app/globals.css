@@ -41,6 +41,31 @@ main th {
   font-weight: 700;
 }
 
+.app-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  color: #0f172a;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.app-data-table td {
+  border-bottom: 1px solid #e6edf4;
+  padding: 0.875rem 1rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  vertical-align: middle;
+}
+
+.app-data-table tbody tr:nth-child(even) {
+  background-color: #f8fcff;
+}
+
+.app-data-table tbody tr:hover {
+  background-color: #f0f8fe;
+}
+
 @keyframes announcement-glow {
   0%, 100% {
     box-shadow: 0 0 0 0 rgba(27, 100, 218, 0.4), 0 8px 18px rgba(27, 100, 218, 0.25);
