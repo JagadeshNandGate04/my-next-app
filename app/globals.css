@@ -58,6 +58,22 @@ main th {
   vertical-align: middle;
 }
 
+.attendance-roster-table tbody td {
+  padding: 0.75rem;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+
+.attendance-roster-table .text-sm {
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.attendance-roster-table .text-base {
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+
 .app-data-table tbody tr:nth-child(even) {
   background-color: #f8fcff;
 }

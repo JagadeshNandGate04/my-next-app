@@ -48,7 +48,7 @@ import {
 } from "lucide-react";
 
 // --------------------------------------------------
-// THEME COLOURS
+// THEME COLOURS (UNCHANGED)
 // --------------------------------------------------
 
 const SKY = "#7BBDE8";
@@ -57,6 +57,20 @@ const BLUE = "#1b64da";
 const INK = "#0f172a";
 
 type CorrectionDirection = "IN" | "OUT";
+
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+
+const getPageItems = (
+  current: number,
+  total: number
+): (number | "ellipsis-start" | "ellipsis-end")[] => {
+  if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
+  if (current <= 4) return [1, 2, 3, 4, 5, "ellipsis-end", total];
+  if (current >= total - 3) {
+    return [1, "ellipsis-start", total - 4, total - 3, total - 2, total - 1, total];
+  }
+  return [1, "ellipsis-start", current - 1, current, current + 1, "ellipsis-end", total];
+};
 
 const getLocalDate = () => {
   const today = new Date();
@@ -114,10 +128,10 @@ function LopDetails({
   onAdjust: (currentLop: number) => void;
 }) {
   if (!values) return <span className="text-slate-400">—</span>;
-  const { lop_value, calculated_lop_value, adjusted_lop_value } = values;
+  const { lop_value } = values;
   const numericLop = positiveLop(lop_value);
   return (
-    <div className="min-w-[6rem] text-base">
+    <div className="min-w-[6rem]">
       <div className="flex items-center gap-1.5">
         <span className="font-bold tabular-nums text-slate-800">{formatLop(lop_value)}</span>
         {numericLop !== null && (
@@ -132,16 +146,6 @@ function LopDetails({
           </button>
         )}
       </div>
-      {/* {calculated_lop_value != null && (
-        <span className="mt-0.5 block text-sm text-slate-600">
-          Calc: {formatLop(calculated_lop_value)}
-        </span>
-      )}
-      {adjusted_lop_value != null && (
-        <span className="mt-0.5 block text-sm font-semibold text-blue-700">
-          Adj: {formatLop(adjusted_lop_value)}
-        </span>
-      )} */}
     </div>
   );
 }
@@ -198,7 +202,7 @@ const getDayStatus = (day: any, dateString: string, today: string) => {
   return "NO_RECORD";
 };
 
-// calendar / status colours
+// calendar / status colours (UNCHANGED)
 const statusStyles: Record<string, string> = {
   PRESENT: "bg-[#7BBDE8] text-[#0f172a] border-[#7BBDE8]",
   HALF_DAY: "bg-[#bfe0f5] text-[#0f172a] border-[#a5d3ef]",
@@ -336,6 +340,18 @@ function CorrectionButton({
   );
 }
 
+// --------------------------------------------------
+// TABLE STYLE TOKENS (shared by both tables)
+// --------------------------------------------------
+
+const TH =
+  "border-b border-[#bfe0f5] bg-[#eaf4fc] px-4 py-3.5 text-xs font-bold uppercase tracking-wider text-[#0f172a] whitespace-nowrap";
+const TD =
+  "border-b border-[#eef3f8] px-4 py-3.5 align-middle transition-colors group-hover:bg-[#f3f9fe]";
+const TD_STICKY =
+  "sticky left-0 z-10 border-b border-[#eef3f8] bg-white px-4 py-3.5 align-middle shadow-[1px_0_0_#e6edf4] transition-colors group-hover:bg-[#f3f9fe]";
+const TH_STICKY = `${TH} sticky left-0 z-20 shadow-[1px_0_0_#bfe0f5]`;
+
 export default function AdminAttendanceOperationsPage() {
   const dispatch = useDispatch<AppDispatch>();
 
@@ -359,6 +375,10 @@ export default function AdminAttendanceOperationsPage() {
 
   const [filterRoster, setFilterRoster] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // pagination for the daily roster table (UI only)
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_OPTIONS[0]);
+  const [pageState, setPageState] = useState({ key: "", page: 1 });
 
   const [monthlyEmployeeId, setMonthlyEmployeeId] = useState("");
   const [selectedMonth, setSelectedMonth] = useState(1);
@@ -496,6 +516,16 @@ export default function AdminAttendanceOperationsPage() {
       return true;
     });
   }, [employees, filterRoster, searchQuery]);
+
+  // pagination values (page returns to 1 whenever the date / filter / search changes)
+  const pageResetKey = `${selectedDate}|${filterRoster}|${searchQuery}`;
+  const totalRecords = filteredEmployees.length;
+  const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
+  const currentPage = Math.min(pageState.key === pageResetKey ? pageState.page : 1, totalPages);
+  const pageStartIndex = (currentPage - 1) * pageSize;
+  const pageEndIndex = Math.min(pageStartIndex + pageSize, totalRecords);
+  const setPage = (page: number) => setPageState({ key: pageResetKey, page });
+  const pagedEmployees = filteredEmployees.slice(pageStartIndex, pageEndIndex);
 
   const changeDate = (days: number) => {
     if (!selectedDate) return;
@@ -747,7 +777,7 @@ export default function AdminAttendanceOperationsPage() {
     <div className="min-h-screen bg-[#f0f6fa] text-[#1e293b] font-sans antialiased">
       <main className="flex-1 min-w-0 py-4 md:py-6 lg:py-8">
         <div className="mx-auto w-full max-w-[1880px] space-y-6 px-3 sm:px-5 lg:px-6">
-          {/* HEADER */}
+          {/* HEADER (unchanged) */}
           <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5">
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#eef4fa] border border-[#d5dbe1] text-xs font-bold tracking-wide text-[#64748b] uppercase mb-2">
@@ -826,7 +856,6 @@ export default function AdminAttendanceOperationsPage() {
                 </div>
               )}
 
-              {/* TAB TOGGLE + MANUAL BUTTON ON SAME LINE */}
               <div className="flex items-center gap-2">
                 <div className="flex items-center bg-white border border-[#d5dbe1] rounded-2xl p-1 shadow-sm">
                   <button
@@ -878,7 +907,7 @@ export default function AdminAttendanceOperationsPage() {
 
           {activeTab === "DAILY" && (
             <>
-              {/* DAILY KPI CARDS */}
+              {/* DAILY KPI CARDS (unchanged colors) */}
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
                 {[
                   { title: "Total Employees", value: totalEmployees, bg: SKY_LIGHT, text: INK, muted: "text-black/40", Icon: UserCheck },
@@ -908,9 +937,14 @@ export default function AdminAttendanceOperationsPage() {
                 ))}
               </div>
 
-              {/* DAILY ROSTER (COMPACT) */}
-              <div className="bg-white border border-[#e6edf4] rounded-2xl shadow-sm overflow-hidden">
-                <div className="p-4 bg-[#f7f9fd] border-b border-[#e8eef5] flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+              {/* ============================================================
+                  DAILY ROSTER — REAL DATA TABLE
+                  sticky employee column, status pills, work progress,
+                  pagination. Same data, handlers and API calls as before.
+              ============================================================ */}
+              <div className="overflow-hidden rounded-[28px] border border-[#e6edf4] bg-white shadow-sm">
+                {/* Toolbar */}
+                <div className="flex flex-col justify-between gap-3 border-b border-[#d6e8f7] bg-[#f7fbff] p-4 xl:flex-row xl:items-center">
                   <div className="flex flex-wrap items-center gap-2">
                     {[
                       { key: "ALL", label: `All Roster (${totalEmployees})` },
@@ -923,7 +957,7 @@ export default function AdminAttendanceOperationsPage() {
                         key={tab.key}
                         type="button"
                         onClick={() => setFilterRoster(tab.key)}
-                        className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                        className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition-all ${
                           filterRoster === tab.key
                             ? "bg-[#1b64da] text-white shadow-sm"
                             : "bg-[#eaf4fc] text-slate-600 hover:bg-[#dcecf9]"
@@ -935,14 +969,14 @@ export default function AdminAttendanceOperationsPage() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <div className="relative flex-1 sm:w-64">
-                      <ListFilter className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <div className="relative flex-1 sm:w-72">
+                      <ListFilter className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
                       <input
                         type="text"
                         placeholder="Search name, ID, role..."
                         value={searchQuery}
                         onChange={(event) => setSearchQuery(event.target.value)}
-                        className="w-full pl-9 pr-3 py-1.5 rounded-full bg-white border border-[#e2e8f0] text-xs font-medium text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-[#7BBDE8] focus:ring-1 focus:ring-[#7BBDE8]"
+                        className="w-full rounded-full border border-[#e2e8f0] bg-white py-2 pl-9 pr-3 text-xs font-medium text-slate-700 placeholder:text-slate-400 focus:border-[#7BBDE8] focus:outline-none focus:ring-2 focus:ring-[#7BBDE8]/30"
                       />
                     </div>
 
@@ -951,9 +985,9 @@ export default function AdminAttendanceOperationsPage() {
                       onClick={handleExport}
                       disabled={!employees.length}
                       aria-label="Export attendance"
-                      className="h-8 w-8 shrink-0 flex items-center justify-center rounded-full bg-[#eaf4fc] hover:bg-[#dcecf9] text-[#1b64da] shadow-sm disabled:opacity-40"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#eaf4fc] text-[#1b64da] shadow-sm hover:bg-[#dcecf9] disabled:opacity-40"
                     >
-                      <Download className="w-4 h-4" />
+                      <Download className="h-4 w-4" />
                     </button>
 
                     <button
@@ -961,16 +995,16 @@ export default function AdminAttendanceOperationsPage() {
                       onClick={() => dispatch(fetchDailyAttendance(selectedDate))}
                       disabled={dailyLoading}
                       aria-label="Refresh attendance"
-                      className="h-8 w-8 shrink-0 flex items-center justify-center rounded-full bg-[#eaf4fc] hover:bg-[#dcecf9] text-[#1b64da] shadow-sm disabled:opacity-40"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#eaf4fc] text-[#1b64da] shadow-sm hover:bg-[#dcecf9] disabled:opacity-40"
                     >
-                      <RefreshCw className={`w-4 h-4 ${dailyLoading ? "animate-spin" : ""}`} />
+                      <RefreshCw className={`h-4 w-4 ${dailyLoading ? "animate-spin" : ""}`} />
                     </button>
                   </div>
                 </div>
 
                 {dailyLoading && (
-                  <div className="p-8 text-center">
-                    <RefreshCw className="w-6 h-6 animate-spin text-[#1b64da] mx-auto mb-2" />
+                  <div className="p-10 text-center">
+                    <RefreshCw className="mx-auto mb-2 h-6 w-6 animate-spin text-[#1b64da]" />
                     <p className="text-sm font-semibold text-[#64748b]">Fetching attendance records...</p>
                   </div>
                 )}
@@ -978,11 +1012,11 @@ export default function AdminAttendanceOperationsPage() {
                 {!dailyLoading && dailyError && (
                   <div className="m-4 rounded-xl border border-rose-200 bg-rose-50 p-4">
                     <p className="text-sm font-bold text-rose-700">Unable to load attendance</p>
-                    <p className="text-xs text-rose-600 mt-1">{dailyError}</p>
+                    <p className="mt-1 text-xs text-rose-600">{dailyError}</p>
                     <button
                       type="button"
                       onClick={() => dispatch(fetchDailyAttendance(selectedDate))}
-                      className="mt-2 px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-bold"
+                      className="mt-2 rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-bold text-white"
                     >
                       Try again
                     </button>
@@ -990,216 +1024,292 @@ export default function AdminAttendanceOperationsPage() {
                 )}
 
                 {!dailyLoading && !dailyError && (
-                  <div className="w-full overflow-x-auto">
-                    <table className="app-data-table min-w-[1400px] text-left">
-                      <caption className="sr-only">Daily attendance roster for {formattedSelectedDate}</caption>
-                      <colgroup>
-                        <col className="w-[22%]" />
-                        <col className="w-[16%]" />
-                        <col className="w-[11%]" />
-                        <col className="w-[12%]" />
-                        <col className="w-[14%]" />
-                        <col className="w-[12%]" />
-                        <col className="w-[13%]" />
-                      </colgroup>
-                      <thead>
-                        <tr className="border-b border-[#d6e8f7] bg-[#eaf4fc] text-sm font-bold uppercase tracking-wide text-slate-700">
-                          <th scope="col" className="px-3 py-2.5">Employee</th>
-                          <th scope="col" className="px-3 py-2.5">Status &amp; Live Feed</th>
-                          <th scope="col" className="px-3 py-2.5">First In</th>
-                          <th scope="col" className="px-3 py-2.5">Last Out</th>
-                          <th scope="col" className="px-3 py-2.5">Work Duration</th>
-                          <th scope="col" className="px-3 py-2.5">LOP</th>
-                          <th scope="col" className="sticky right-0 z-10 bg-[#eaf4fc] px-3 py-2.5 text-right">Operations</th>
-                        </tr>
-                      </thead>
+                  <>
+                    <p className="border-b border-[#eef3f8] bg-[#f7fbff] px-4 py-2 text-xs font-medium text-slate-500 lg:hidden">
+                      Swipe sideways to see all columns
+                    </p>
 
-                      <tbody className="divide-y divide-[#eef1f6] text-base">
-                        {filteredEmployees.length > 0 ? (
-                          filteredEmployees.map((employee) => {
-                            const isLive = employee.live_status === "IN";
-                            const isLate = Boolean(employee.flags.is_late);
-                            const isHalfDay = employee.status === "HALF_DAY";
-                            const hasWork = employee.work_min > 0;
-                            const hasFirstIn = Boolean(employee.first_in);
-                            const noPunch = !hasFirstIn && employee.status === "ABSENT";
+                    <div className="overflow-x-auto" role="region" aria-label="Daily attendance table" tabIndex={0}>
+                      <table className="w-full min-w-[1040px] border-separate border-spacing-0 text-left">
+                        <thead>
+                          <tr>
+                            <th scope="col" className={TH_STICKY}>Employee</th>
+                            <th scope="col" className={TH}>Status</th>
+                            <th scope="col" className={TH}>First In</th>
+                            <th scope="col" className={TH}>Last Out</th>
+                            <th scope="col" className={TH}>Work Duration</th>
+                            <th scope="col" className={TH}>LOP</th>
+                            <th scope="col" className={`${TH} text-right`}>Operations</th>
+                          </tr>
+                        </thead>
 
-                            const percent = Math.min(100, Math.round((employee.work_min / 480) * 100));
+                        <tbody className="text-sm">
+                          {pagedEmployees.length > 0 ? (
+                            pagedEmployees.map((employee) => {
+                              const isLive = employee.live_status === "IN";
+                              const isLate = Boolean(employee.flags.is_late);
+                              const isHalfDay = employee.status === "HALF_DAY";
+                              const hasWork = employee.work_min > 0;
+                              const hasFirstIn = Boolean(employee.first_in);
+                              const noPunch = !hasFirstIn && employee.status === "ABSENT";
+                              const percent = Math.min(100, Math.round((employee.work_min / 480) * 100));
 
-                            const durationText = !hasWork
-                              ? "text-slate-600"
-                              : isHalfDay
-                                ? "text-[#0a47b3]"
-                                : isLate
-                                  ? "text-slate-800"
-                                  : "text-[#1b64da]";
-
-                            const barFill = isHalfDay
-                              ? "from-[#7BBDE8] to-[#bfe0f5]"
-                              : isLate
-                                ? "from-[#0a47b3] to-[#1b64da]"
-                                : "from-[#1b64da] to-[#7BBDE8]";
-
-                            const percentText = isLate ? "text-[#0a47b3]" : "text-[#1b64da]";
-
-                            return (
-                              <tr
-                                key={employee.user_id}
-                                className="group bg-white transition-colors hover:bg-[#f5faff]"
-                              >
-                                {/* EMPLOYEE */}
-                                <td className="px-3 py-3">
-                                  <div className="flex min-w-0 items-center gap-2">
-                                    <div
-                                      className={`w-8 h-8 shrink-0 rounded-lg bg-gradient-to-br ${getAvatarGradient(
-                                        employee.user_id
-                                      )} text-white font-black flex items-center justify-center text-xs shadow-sm`}
-                                    >
-                                      {employee.name.slice(0, 2).toUpperCase()}
-                                    </div>
-
-                                    <div className="min-w-0">
-                                      <div className="truncate text-base font-bold text-slate-900" title={employee.name}>
-                                        {employee.name}
+                              return (
+                                <tr key={employee.user_id} className="group">
+                                  {/* EMPLOYEE */}
+                                  <td className={TD_STICKY}>
+                                    <div className="flex min-w-[220px] items-center gap-3">
+                                      <div
+                                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br ${getAvatarGradient(
+                                          employee.user_id
+                                        )} text-xs font-black text-white shadow-sm`}
+                                      >
+                                        {employee.name.slice(0, 2).toUpperCase()}
                                       </div>
-                                      <div className="mt-0.5 flex min-w-0 items-center gap-1 text-sm font-medium text-slate-600">
-                                        <span className="shrink-0 rounded bg-[#eaf4fc] px-1 py-0.5 font-bold text-blue-700">
-                                          {employee.emp_code}
-                                        </span>
-                                        <span className="truncate" title={employee.designation}>{employee.designation}</span>
+                                      <div className="min-w-0">
+                                        <div className="truncate text-sm font-bold text-slate-900" title={employee.name}>
+                                          {employee.name}
+                                        </div>
+                                        <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs font-medium text-slate-500">
+                                          <span className="shrink-0 rounded bg-[#eaf4fc] px-1.5 py-0.5 font-mono font-bold text-[#1b64da]">
+                                            {employee.emp_code}
+                                          </span>
+                                          <span className="truncate">{employee.designation}</span>
+                                        </div>
                                       </div>
                                     </div>
-                                  </div>
-                                </td>
+                                  </td>
 
-                                {/* STATUS & LIVE FEED */}
-                                <td className="px-3 py-2">
-                                  {isLive ? (
-                                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[#e1f1fb] text-[#0a47b3] border border-[#7BBDE8]">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-[#1b64da] animate-pulse" />
-                                      <span className="text-sm leading-tight">
-                                        <span className="block font-bold">IN OFFICE</span>
+                                  {/* STATUS & LIVE FEED */}
+                                  <td className={TD}>
+                                    {isLive ? (
+                                      <span className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-[#7BBDE8] bg-[#e1f1fb] px-3 py-1 text-xs font-bold text-[#0a47b3]">
+                                        <span className="h-2 w-2 animate-pulse rounded-full bg-[#1b64da]" />
+                                        IN OFFICE
                                         {formatShort12(employee.first_in) && (
-                                          <span className="block font-semibold">({formatShort12(employee.first_in)})</span>
+                                          <span className="font-semibold">· {formatShort12(employee.first_in)}</span>
                                         )}
                                       </span>
-                                    </span>
-                                  ) : noPunch ? (
-                                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[#1b64da] text-white border border-[#1b64da]">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-white" />
-                                      <span className="text-sm leading-tight font-bold">NO PUNCH</span>
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[#eaf4fc] text-slate-600 border border-[#d6e8f7]">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
-                                      <span className="text-sm leading-tight">
+                                    ) : noPunch ? (
+                                      <span className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-[#1b64da] bg-[#1b64da] px-3 py-1 text-xs font-bold text-white">
+                                        <span className="h-2 w-2 rounded-full bg-white" />
+                                        NO PUNCH
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-[#d6e8f7] bg-[#eaf4fc] px-3 py-1 text-xs font-bold text-slate-600">
+                                        <span className="h-2 w-2 rounded-full bg-slate-400" />
                                         {employee.last_out ? (
                                           <>
-                                            <span className="block font-semibold">LOGGED OUT</span>
-                                            <span className="block font-medium">({formatShort12(employee.last_out)})</span>
+                                            LOGGED OUT
+                                            <span className="font-semibold">· {formatShort12(employee.last_out)}</span>
                                           </>
                                         ) : (
-                                          <span className="block font-semibold">{employee.status.replace("_", " ")}</span>
+                                          employee.status.replace("_", " ")
                                         )}
                                       </span>
-                                    </span>
-                                  )}
-                                </td>
+                                    )}
 
-                                {/* FIRST IN */}
-                                <td className="px-3 py-2">
-                                  <TimePill value={employee.first_in} tone={isLate ? "late" : isLive ? "live" : "plain"} />
-                                </td>
-
-                                {/* LAST OUT */}
-                                <td className="px-3 py-2">
-                                  {isLive ? (
-                                    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-[#bfe0f5] text-[#0a47b3] text-sm font-semibold">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-[#1b64da]" />
-                                      Active
-                                    </span>
-                                  ) : (
-                                    <TimePill value={employee.last_out} tone="plain" />
-                                  )}
-                                </td>
-
-                                {/* WORK DURATION */}
-                                <td className="px-3 py-2">
-                                  <div className="min-w-0">
-                                    <div className="flex items-center justify-between gap-1 flex-wrap">
-                                      <span className={`font-bold text-base whitespace-nowrap ${durationText}`}>
-                                        {formatDuration(employee.work_min)}
-                                      </span>
-
-                                      {isHalfDay ? (
-                                        <span className="px-1.5 py-0.5 rounded-full bg-[#bfe0f5] text-[#0a47b3] text-sm font-bold whitespace-nowrap">
-                                          Half
-                                        </span>
-                                      ) : (
-                                        hasWork && (
-                                          <span className={`text-sm font-bold ${percentText}`}>
-                                            {percent}%
+                                    {(isLate || employee.flags.excess_break || employee.flags.needs_regularization) && (
+                                      <div className="mt-1.5 flex flex-wrap gap-1">
+                                        {isLate && (
+                                          <span className="rounded-full bg-[#bfe0f5] px-2 py-0.5 text-[10px] font-bold text-[#0a47b3]">
+                                            Late
                                           </span>
-                                        )
-                                      )}
-                                    </div>
+                                        )}
+                                        {employee.flags.excess_break && (
+                                          <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-800 ring-1 ring-amber-200">
+                                            Excess break
+                                          </span>
+                                        )}
+                                        {employee.flags.needs_regularization && (
+                                          <span className="rounded-full bg-[#0a47b3] px-2 py-0.5 text-[10px] font-bold text-white">
+                                            Needs regularization
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </td>
 
-                                    <div className="mt-1 h-1 w-full bg-slate-200 rounded-full overflow-hidden">
-                                      {hasWork && (
+                                  {/* FIRST IN */}
+                                  <td className={TD}>
+                                    <TimePill value={employee.first_in} tone={isLate ? "late" : isLive ? "live" : "plain"} />
+                                  </td>
+
+                                  {/* LAST OUT */}
+                                  <td className={TD}>
+                                    {isLive ? (
+                                      <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[#bfe0f5] px-2.5 py-1 text-xs font-bold text-[#0a47b3]">
+                                        <span className="h-1.5 w-1.5 rounded-full bg-[#1b64da]" />
+                                        Active
+                                      </span>
+                                    ) : (
+                                      <TimePill value={employee.last_out} tone="plain" />
+                                    )}
+                                  </td>
+
+                                  {/* WORK DURATION */}
+                                  <td className={TD}>
+                                    <div className="w-[150px]">
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span
+                                          className={`whitespace-nowrap text-sm font-bold tabular-nums ${
+                                            !hasWork ? "text-slate-500" : isHalfDay ? "text-[#0a47b3]" : "text-[#0f172a]"
+                                          }`}
+                                        >
+                                          {formatDuration(employee.work_min)}
+                                        </span>
+                                        {isHalfDay ? (
+                                          <span className="rounded-full bg-[#bfe0f5] px-1.5 py-0.5 text-[10px] font-bold text-[#0a47b3]">
+                                            Half
+                                          </span>
+                                        ) : (
+                                          hasWork && <span className="text-[11px] font-bold text-[#1b64da]">{percent}%</span>
+                                        )}
+                                      </div>
+                                      <div
+                                        className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#e6edf4]"
+                                        role="progressbar"
+                                        aria-label={`Work duration for ${employee.name}`}
+                                        aria-valuemin={0}
+                                        aria-valuemax={100}
+                                        aria-valuenow={percent}
+                                      >
                                         <div
-                                          className={`h-full rounded-full bg-gradient-to-r ${barFill}`}
-                                          style={{ width: `${percent}%` }}
+                                          className="h-full rounded-full transition-[width] duration-500"
+                                          style={{ width: `${percent}%`, backgroundColor: isHalfDay ? SKY : BLUE }}
                                         />
-                                      )}
+                                      </div>
                                     </div>
-                                  </div>
-                                </td>
+                                  </td>
 
-                                <td className="px-3 py-2">
-                                  <LopDetails values={employee} onAdjust={(currentLop) => {
-                                    setLopNotice(null);
-                                    setLopSelection({ userId: String(employee.user_id), employeeName: employee.name, date: selectedDate, currentLop });
-                                  }} />
-                                </td>
+                                  {/* LOP */}
+                                  <td className={TD}>
+                                    <LopDetails
+                                      values={employee}
+                                      onAdjust={(currentLop) => {
+                                        setLopNotice(null);
+                                        setLopSelection({
+                                          userId: String(employee.user_id),
+                                          employeeName: employee.name,
+                                          date: selectedDate,
+                                          currentLop,
+                                        });
+                                      }}
+                                    />
+                                  </td>
 
-                                {/* OPERATIONS */}
-                                <td className="sticky right-0 bg-white px-3 py-2 group-hover:bg-[#f5faff]">
-                                  <div className="flex items-center justify-end gap-1">
-                                    <CorrectionButton flags={employee.flags} onClick={() => openCorrectionForEmployee(employee)} />
-                                    <button
-                                      type="button"
-                                      aria-label="Audit history"
-                                      title="Audit history (endpoint not connected yet)"
-                                      className="shrink-0 p-1 rounded-full text-slate-500 hover:bg-slate-200 transition-colors"
-                                    >
-                                      <History className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })
-                        ) : (
-                          <tr>
-                            <td colSpan={7} className="py-8 text-center text-sm text-slate-400">
-                              No employees found for this date or filter.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                                  {/* OPERATIONS */}
+                                  <td className={`${TD} text-right`}>
+                                    <div className="flex items-center justify-end gap-1.5">
+                                      <CorrectionButton flags={employee.flags} onClick={() => openCorrectionForEmployee(employee)} />
+                                      <button
+                                        type="button"
+                                        aria-label="Audit history"
+                                        title="Audit history (endpoint not connected yet)"
+                                        className="shrink-0 rounded-full p-2 text-slate-400 transition-colors hover:bg-[#bfe0f5]/60 hover:text-[#1b64da]"
+                                      >
+                                        <History className="h-4 w-4" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          ) : (
+                            <tr>
+                              <td colSpan={7} className="py-12 text-center text-sm text-slate-400">
+                                No employees found for this date or filter.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
 
-                {!dailyLoading && !dailyError && (
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#e8eef5] bg-[#f7f9fd] px-4 py-2.5 text-sm font-medium text-slate-600">
-                    <span>Showing {filteredEmployees.length} of {totalEmployees} employee records</span>
-                    <span className="font-bold text-slate-800">{formattedSelectedDate}</span>
-                  </div>
+                    {/* PAGINATION */}
+                    {totalRecords > 0 && (
+                      <nav
+                        aria-label="Attendance pagination"
+                        className="flex flex-col items-center justify-between gap-3 border-t border-[#e6edf4] bg-white px-4 py-3 text-xs text-[#64748b] sm:flex-row"
+                      >
+                        <label className="flex items-center gap-2 font-semibold">
+                          Rows per page
+                          <select
+                            value={pageSize}
+                            onChange={(event) => {
+                              setPageSize(Number(event.target.value));
+                              setPage(1);
+                            }}
+                            className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs font-bold text-slate-700 outline-none focus:border-[#7BBDE8] focus:ring-2 focus:ring-[#7BBDE8]/30"
+                          >
+                            {PAGE_SIZE_OPTIONS.map((size) => (
+                              <option key={size} value={size}>
+                                {size}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+
+                        <span className="font-semibold">
+                          {pageStartIndex + 1}–{pageEndIndex} of {totalRecords}
+                        </span>
+
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setPage(currentPage - 1)}
+                            disabled={currentPage <= 1}
+                            aria-label="Previous page"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-[#eef7fd] hover:text-[#1b64da] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-slate-600"
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </button>
+
+                          {getPageItems(currentPage, totalPages).map((item) =>
+                            typeof item === "string" ? (
+                              <span key={item} className="px-1 text-slate-400" aria-hidden="true">
+                                …
+                              </span>
+                            ) : (
+                              <button
+                                key={item}
+                                type="button"
+                                onClick={() => setPage(item)}
+                                aria-label={`Page ${item}`}
+                                aria-current={item === currentPage ? "page" : undefined}
+                                className={`inline-flex h-8 min-w-8 items-center justify-center rounded-lg border px-2 text-xs font-bold transition-colors ${
+                                  item === currentPage
+                                    ? "border-[#1b64da] bg-[#1b64da] text-white"
+                                    : "border-slate-200 bg-white text-slate-600 hover:bg-[#eef7fd] hover:text-[#1b64da]"
+                                }`}
+                              >
+                                {item}
+                              </button>
+                            )
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => setPage(currentPage + 1)}
+                            disabled={currentPage >= totalPages}
+                            aria-label="Next page"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-[#eef7fd] hover:text-[#1b64da] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-slate-600"
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </nav>
+                    )}
+
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#e8eef5] bg-[#f7f9fd] px-4 py-2.5 text-sm font-medium text-slate-600">
+                      <span>Showing {pagedEmployees.length} of {totalEmployees} employee records</span>
+                      <span className="font-bold text-slate-800">{formattedSelectedDate}</span>
+                    </div>
+                  </>
                 )}
               </div>
 
-              {/* AUDIT SECTION */}
+              {/* AUDIT SECTION (unchanged) */}
               <div className="bg-white border border-[#d5dbe1] rounded-2xl p-5 lg:p-6 shadow-sm">
                 <div className="flex items-center gap-2 mb-3">
                   <History className="w-4 h-4 text-[#1b64da]" />
@@ -1318,7 +1428,7 @@ export default function AdminAttendanceOperationsPage() {
 
               {monthlyEmployeeId && !monthlyLoading && monthlyAttendance && (
                 <>
-                  {/* CALENDAR */}
+                  {/* CALENDAR (unchanged) */}
                   <div className="bg-white border border-[#d5dbe1] rounded-2xl shadow-sm overflow-hidden">
                     <div className="px-4 py-3 lg:px-5 border-b border-slate-100 flex flex-col xl:flex-row xl:items-center justify-between gap-3">
                       <div className="flex items-center gap-2.5">
@@ -1400,19 +1510,21 @@ export default function AdminAttendanceOperationsPage() {
                     </div>
                   </div>
 
-                  {/* MONTHLY DAY DETAILS */}
-                  <div className="overflow-hidden rounded-xl border border-[#d5dbe1] bg-white shadow-sm">
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 lg:px-5">
-                      <div className="flex items-center gap-2.5">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#eaf4fc] text-[#1b64da]">
-                          <ClipboardCheck className="h-4 w-4" />
+                  {/* ============================================================
+                      MONTHLY DAY DETAILS — REAL DATA TABLE
+                  ============================================================ */}
+                  <div className="overflow-hidden rounded-[28px] border border-[#e6edf4] bg-white shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#d6e8f7] bg-[#eaf4fc] px-4 py-4 lg:px-6">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#bfe0f5] text-[#1b64da]">
+                          <ClipboardCheck className="h-5 w-5" />
                         </div>
                         <div>
-                          <h3 className="text-sm font-bold text-slate-900">Daily Attendance Details</h3>
+                          <h3 className="text-base font-black tracking-tight text-slate-900">Daily Attendance Details</h3>
                           <p className="text-xs text-slate-500">Daily records for {formatMonth(selectedMonth, selectedYear)}</p>
                         </div>
                       </div>
-                      <span className="rounded-full bg-[#eef4fa] px-2.5 py-1 text-xs font-bold text-slate-600">
+                      <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-[#1b64da] shadow-sm">
                         {monthlyTableDays.length} {monthlyTableDays.length === 1 ? "day" : "days"}
                       </span>
                     </div>
@@ -1424,40 +1536,36 @@ export default function AdminAttendanceOperationsPage() {
                         <button type="button" onClick={() => setRequestReload((value) => value + 1)} className="font-bold underline underline-offset-2">Try again</button>
                       </div>
                     )}
-                    <div className="overflow-x-auto">
-                      <table className="app-data-table min-w-[1000px] text-left">
-                        <caption className="sr-only">Daily attendance records for {formatMonth(selectedMonth, selectedYear)}</caption>
-                        <colgroup>
-                          <col className="w-[13%]" />
-                          <col className="w-[11%]" />
-                          <col className="w-[11%]" />
-                          <col className="w-[11%]" />
-                          <col className="w-[14%]" />
-                          <col className="w-[10%]" />
-                          <col className="w-[11%]" />
-                          <col className="w-[11%]" />
-                          <col className="w-[8%]" />
-                        </colgroup>
+
+                    <p className="border-b border-[#eef3f8] bg-[#f7fbff] px-4 py-2 text-xs font-medium text-slate-500 lg:hidden">
+                      Swipe sideways to see all columns
+                    </p>
+
+                    <div className="overflow-x-auto" role="region" aria-label="Monthly attendance details table" tabIndex={0}>
+                      <table className="w-full min-w-[1080px] border-separate border-spacing-0 text-left">
                         <thead>
-                          <tr className="border-b border-[#d6e8f7] bg-[#eaf4fc] text-xs uppercase tracking-wider text-slate-600">
-                            <th scope="col" className="px-4 py-2 font-bold">Date</th>
-                            <th scope="col" className="px-4 py-2 font-bold">Status</th>
-                            <th scope="col" className="px-4 py-2 font-bold">First In</th>
-                            <th scope="col" className="px-4 py-2 font-bold">Last Out</th>
-                            <th scope="col" className="px-4 py-2 font-bold">Work Duration</th>
-                            <th scope="col" className="px-4 py-2 font-bold">LOP (Days)</th>
-                            <th scope="col" className="px-4 py-2 text-center font-bold">Punches</th>
-                            <th scope="col" className="px-4 py-2 text-center font-bold">Sessions</th>
-                            <th scope="col" className="sticky right-0 z-10 bg-[#eaf4fc] px-4 py-2 text-right font-bold">Action</th>
+                          <tr>
+                            <th scope="col" className={TH_STICKY}>Date</th>
+                            <th scope="col" className={TH}>Status</th>
+                            <th scope="col" className={TH}>First In</th>
+                            <th scope="col" className={TH}>Last Out</th>
+                            <th scope="col" className={TH}>Work Duration</th>
+                            <th scope="col" className={TH}>LOP (Days)</th>
+                            <th scope="col" className={`${TH} text-center`}>Punches</th>
+                            <th scope="col" className={`${TH} text-center`}>Sessions</th>
+                            <th scope="col" className={`${TH} text-right`}>Action</th>
                           </tr>
                         </thead>
 
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody className="text-sm">
                           {monthlyTableDays.length === 0 && (
                             <tr>
-                              <td colSpan={9} className="px-4 py-6 text-center text-xs text-slate-500">No daily records available for this month.</td>
+                              <td colSpan={9} className="py-12 text-center text-sm text-slate-400">
+                                No daily records available for this month.
+                              </td>
                             </tr>
                           )}
+
                           {monthlyTableDays.map(({ date, day }) => {
                             const status = getDayStatus(day, date, todayDate);
                             const summary = day?.summary;
@@ -1474,28 +1582,34 @@ export default function AdminAttendanceOperationsPage() {
                             const dayRequests = requestsForDay(attendanceRequests, monthlyEmployeeId, date);
                             const pendingCount = dayRequests.filter((item) => item.request.status === "PENDING").length;
                             const workMinutes = Number(summary?.work_min ?? summary?.work_minutes ?? 0);
+                            const isToday = date.slice(0, 10) === todayDate;
 
                             return (
-                              <tr key={date} className="group bg-white transition-colors hover:bg-[#f5faff]">
-                                <td className="px-4 py-2">
-                                  <div className="flex items-center gap-2 whitespace-nowrap">
-                                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-[#eaf4fc] text-[#1b64da]">
-                                      <CalendarIcon className="h-3 w-3" />
+                              <tr key={date} className="group">
+                                {/* DATE */}
+                                <td className={TD_STICKY}>
+                                  <div className="flex min-w-[170px] items-center gap-2.5 whitespace-nowrap">
+                                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#eaf4fc] text-[#1b64da]">
+                                      <CalendarIcon className="h-3.5 w-3.5" />
                                     </span>
                                     <span className="font-bold text-slate-800">{formatDate(date)}</span>
+                                    {isToday && (
+                                      <span className="rounded-full bg-[#1b64da] px-2 py-0.5 text-[10px] font-bold uppercase text-white">Today</span>
+                                    )}
                                   </div>
                                 </td>
 
-                                <td className="px-4 py-2">
+                                {/* STATUS */}
+                                <td className={TD}>
                                   <div className="flex flex-wrap items-center gap-1.5">
-                                    <span className={`inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-bold ${statusStyles[status]}`}>
+                                    <span className={`inline-flex whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${statusStyles[status]}`}>
                                       {status.replace("_", " ")}
                                     </span>
                                     {pendingCount > 0 && (
                                       <button
                                         type="button"
                                         onClick={() => { setRequestNotice(null); setRequestDate(date); }}
-                                        className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-800 hover:bg-amber-100"
+                                        className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-amber-300 bg-amber-50 px-2.5 py-0.5 text-[11px] font-bold text-amber-800 hover:bg-amber-100"
                                       >
                                         Pending ({pendingCount})
                                       </button>
@@ -1505,7 +1619,7 @@ export default function AdminAttendanceOperationsPage() {
                                         key={`${item.type}-${item.request.id}`}
                                         type="button"
                                         onClick={() => { setRequestNotice(null); setRequestDate(date); }}
-                                        className={`inline-flex items-center whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-bold ${
+                                        className={`inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${
                                           item.request.status === "APPROVED"
                                             ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
                                             : "border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100"
@@ -1517,31 +1631,48 @@ export default function AdminAttendanceOperationsPage() {
                                   </div>
                                 </td>
 
-                                <td className="px-4 py-2"><TimePill value={firstIn} tone="plain" /></td>
-                                <td className="px-4 py-2"><TimePill value={lastOut} tone="plain" /></td>
+                                {/* FIRST IN */}
+                                <td className={TD}><TimePill value={firstIn} tone="plain" /></td>
 
-                                <td className="px-4 py-2">
-                                  <span className="inline-flex items-center gap-1.5 whitespace-nowrap font-semibold tabular-nums text-slate-700">
-                                    <Clock className="h-3 w-3 text-slate-400" />
+                                {/* LAST OUT */}
+                                <td className={TD}><TimePill value={lastOut} tone="plain" /></td>
+
+                                {/* WORK DURATION */}
+                                <td className={TD}>
+                                  <span className="inline-flex items-center gap-1.5 whitespace-nowrap font-bold tabular-nums text-slate-700">
+                                    <Clock className="h-3.5 w-3.5 text-slate-400" />
                                     {summary ? formatDuration(workMinutes) : "—"}
                                   </span>
                                 </td>
 
-                                <td className="px-4 py-2">
-                                  <LopDetails values={lopValues} onAdjust={(currentLop) => {
-                                    setLopNotice(null);
-                                    setLopSelection({ userId: monthlyEmployeeId, employeeName: monthlyEmployee?.name || "Employee", date: date.slice(0, 10), currentLop });
-                                  }} />
+                                {/* LOP */}
+                                <td className={TD}>
+                                  <LopDetails
+                                    values={lopValues}
+                                    onAdjust={(currentLop) => {
+                                      setLopNotice(null);
+                                      setLopSelection({
+                                        userId: monthlyEmployeeId,
+                                        employeeName: monthlyEmployee?.name || "Employee",
+                                        date: date.slice(0, 10),
+                                        currentLop,
+                                      });
+                                    }}
+                                  />
                                 </td>
 
-                                <td className="px-4 py-2 text-center font-semibold tabular-nums text-slate-600">
+                                {/* PUNCHES */}
+                                <td className={`${TD} text-center font-bold tabular-nums text-slate-600`}>
                                   {day?.punches?.length ?? 0}
                                 </td>
-                                <td className="px-4 py-2 text-center font-semibold tabular-nums text-slate-600">
+
+                                {/* SESSIONS */}
+                                <td className={`${TD} text-center font-bold tabular-nums text-slate-600`}>
                                   {day?.sessions?.length ?? 0}
                                 </td>
 
-                                <td className="sticky right-0 bg-white px-4 py-2 text-right group-hover:bg-[#f5faff]">
+                                {/* ACTION */}
+                                <td className={`${TD} text-right`}>
                                   {canAddManualPunch ? (
                                     <CorrectionButton manual date={date} onClick={() => openCorrection(monthlyEmployeeId, date)} />
                                   ) : (
@@ -1576,7 +1707,7 @@ export default function AdminAttendanceOperationsPage() {
         />
       )}
 
-      {/* CORRECTION MODAL */}
+      {/* CORRECTION MODAL (unchanged colors) */}
       {isAddCorrectionOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
           <div className="bg-white border border-[#bfe0f5] rounded-3xl max-w-lg w-full p-6 shadow-2xl">
